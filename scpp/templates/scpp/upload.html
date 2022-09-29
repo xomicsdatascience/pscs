@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block header %}
+<h1>{% block title %}Data Upload{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+<form method="POST" enctype="multipart/form-data">
+    <label for="file_upload">File upload</label>
+    <input name="file_upload" type="file">
+    <input type="submit" value="Upload">
+</form>
+{% endblock %}
