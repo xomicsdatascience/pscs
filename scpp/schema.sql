@@ -22,5 +22,6 @@ CREATE TABLE data (
     username TEXT NOT NULL,
     file_path NOT NULL,
     sample_count INTEGER NOT NULL,
-    gene_count INTEGER NOT NULL
+    gene_count INTEGER NOT NULL,
+    file_hash TEXT NOT NULL
 )

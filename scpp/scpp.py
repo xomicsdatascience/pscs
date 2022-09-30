@@ -6,6 +6,7 @@ from werkzeug.utils import secure_filename
 
 from scpp.auth import login_required
 from scpp.db import get_db
+from scpp.metadata.metadata import get_metadata
 import os
 bp = Blueprint('scpp', __name__)
 UPLOAD_FOLDER = '/home/lex/flask-tutorial/upload/'
@@ -17,12 +18,15 @@ app.config['UPLOAD_FOLDER'] = os.path.join(UPLOAD_FOLDER, "{username}")
 @bp.route('/')
 def index():
     db = get_db()
-    posts = db.execute(
-        'SELECT p.id, title, body, created, author_id, username'
-        ' FROM post p JOIN user u ON p.author_id = u.id'
-        ' ORDER BY created DESC'
-    ).fetchall()
-    return render_template('scpp/index.html', posts=posts)
+    if g.user is not None:
+        user_uploads = db.execute(
+            'SELECT file_path, sample_count, gene_count, file_hash FROM data WHERE'
+            ' username = ?',
+            (g.user['username'],)
+        ).fetchall()
+        return render_template('scpp/index.html', data=user_uploads)
+    else:
+        return render_template('scpp/index.html', data=None)
 
 @bp.route('/create', methods=('GET', 'POST'))
 @login_required
@@ -122,9 +126,21 @@ def upload():
             return redirect(request.url)
         if file and allowed_file(file.filename):
             filename = secure_filename(file.filename)
-            os.makedirs(app.config['UPLOAD_FOLDER'].format(username=g.user['username']), exist_ok=True)
-            file.save(os.path.join(app.config['UPLOAD_FOLDER'].format(username=g.user['username']), filename))
-            return redirect(url_for('scpp.download_file', name=filename, user=g.user['username']))
+            out_path = app.config['UPLOAD_FOLDER'].format(username=g.user['username'])
+            os.makedirs(out_path, exist_ok=True)
+            out_file = os.path.join(out_path, filename)
+            file.save(out_file)
+            if filename.endswith('tsv'):
+                meta_dict = get_metadata(out_file)
+                sample_count, gene_count = meta_dict['table_dimensions']
+                hash_value = meta_dict['table_hash']
+                db = get_db()
+                db.execute(
+                    'INSERT INTO data (username, file_path, sample_count, gene_count, file_hash)'
+                    ' VALUES (?,?,?,?,?)',
+                    (g.user['username'], os.path.basename(filename), sample_count, gene_count, hash_value))
+                db.commit()
+            return redirect(url_for('scpp.index'))
     return '''
     <!doctype html>
     <title>Upload new File</title>

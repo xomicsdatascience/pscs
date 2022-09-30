@@ -1,28 +1,54 @@
 {% extends 'base.html' %}
 
 {% block header %}
-<h1>{% block title %}Posts{% endblock %}</h1>
 {% if g.user %}
+<h1>{% block title %}Data Summary{% endblock %}</h1>
 <a class="action" href="{{ url_for('scpp.upload') }}">Upload</a>
+{% else %}
+    <p>Log in to view options.</p>
 {% endif %}
 {% endblock %}
 
 {% block content %}
-{% for post in posts %}
+
+{% if g.user %}
 <article class="post">
     <header>
-        <div>
-            <h1>{{ post['title'] }}</h1>
-            <div class="about">by {{ post['username'] }} on {{ post['created'].strftime('%Y-%m-%d') }}</div>
-        </div>
-        {% if g.user['id'] == post['author_id'] %}
-        <a class="action" href="{{ url_for('scpp.update', id=post['id']) }}">Edit</a>
-        {% endif %}
+        <table>
+            <tr>
+                <th>File</th>
+                <th>Samples</th>
+                <th>Genes</th>
+                <th>Hash</th>
+            </tr>
+            {% for datum in data %}
+                <tr>
+                    <td>{{ datum['file_path'] }}</td>
+                    <td>{{ datum['sample_count'] }}</td>
+                    <td>{{ datum['gene_count'] }}</td>
+                    <td>{{ datum['file_hash'] }}</td>
+                </tr>
+            {% endfor %}
+        </table>
     </header>
-    <p class="body">{{ post['body'] }}</p>
 </article>
-{% if not loop.last %}
-<hr>
 {% endif %}
-{% endfor %}
-{% endblock %}
+
+<!--{% for post in posts %}-->
+<!--<article class="post">-->
+<!--    <header>-->
+<!--        <div>-->
+<!--            <h1>{{ post['title'] }}</h1>-->
+<!--            <div class="about">by {{ post['username'] }} on {{ post['created'].strftime('%Y-%m-%d') }}</div>-->
+<!--        </div>-->
+<!--        {% if g.user['id'] == post['author_id'] %}-->
+<!--        <a class="action" href="{{ url_for('scpp.update', id=post['id']) }}">Edit</a>-->
+<!--        {% endif %}-->
+<!--    </header>-->
+<!--    <p class="body">{{ post['body'] }}</p>-->
+<!--</article>-->
+<!--{% if not loop.last %}-->
+<!--<hr>-->
+<!--{% endif %}-->
+<!--{% endfor %}-->
+<!--{% endblock %}-->
