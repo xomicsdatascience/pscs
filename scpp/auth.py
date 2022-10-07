@@ -1,10 +1,10 @@
 import functools
+from uuid import uuid4
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for
 )
 
 from werkzeug.security import check_password_hash, generate_password_hash
-
 from scpp.db import get_db
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
@@ -24,9 +24,19 @@ def register():
 
         if error is None:
             try:
+                # Generate uuid for user
+                # there's a SLIM chance that uid is already in the table; this would result in the user receiving
+                # an error that is not reproducible and not at all their fault
+                # we'll first check that it's not in there
+                uid_row = 'starter'
+                while len(uid_row) > 0:
+                    # This section is basically impossible to test; it's okay if tests don't have coverage here
+                    uid = str(uuid4())
+                    uid_row = db.execute("SELECT id FROM users WHERE id=(?)", (uid,)).fetchall()
+
                 db.execute(
-                "INSERT INTO user (username, password) VALUES (?, ?)",
-                (username, generate_password_hash(password)))
+                "INSERT INTO users (id, username, password) VALUES (?, ?, ?)",
+                (uid, username, generate_password_hash(password)))
                 db.commit()
             except db.IntegrityError:
                 error = f"User {username} is already registered."
@@ -46,7 +56,7 @@ def login():
         db = get_db()
         error = None
         user = db.execute(
-            'SELECT * FROM user WHERE username = ?', (username,)
+            'SELECT * FROM users WHERE username = ?', (username,)
         ).fetchone()
 
         if user is None:
@@ -69,7 +79,7 @@ def load_logged_in_user():
         g.user = None
     else:
         g.user = get_db().execute(
-            "SELECT * FROM user WHERE id = ?", (user_id,)
+            "SELECT * FROM users WHERE id = ?", (user_id,)
         ).fetchone()
 
 

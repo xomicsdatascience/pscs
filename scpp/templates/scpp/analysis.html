@@ -1,0 +1,40 @@
+{% extends 'base.html' %}
+<!--
+Requires from Flask:
+- User file list
+- Project associated with file
+-->
+{% block header %}
+<h1>Analysis</h1>
+{% endblock %}
+
+{% block content %}
+{% if g.user %}
+    <h3>File Selection</h3>
+
+        <table>
+            <tr>
+                <th>File</th>
+                <th></th>
+            </tr>
+            {% for f in files %}
+            <tr>
+                <td>{{ f['file_path'] }}</td>
+                <td><form action="/analysis" method="post"><button type="submit" name="analyze" value="{{ f['file_path'] }}">Analyze</button></td>
+            </tr>
+            {% endfor %}
+        </table>
+
+
+    {% if results %}
+        {% for r in results %}
+<!--            <p>{{ url_for('static', filename=r)}}</p>-->
+        <p><img src="{{ r }}" alt="{{ r }}"></p>
+        {% endfor %}
+    {% endif %}
+
+{% endif %}
+{% endblock %}
+
+
+<!-- MOVE RESULTS DISPLAY TO NEW PAGE-->

@@ -1,27 +1,31 @@
-DROP TABLE IF EXISTS user;
-DROP TABLE IF EXISTS post;
+DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS projects;
 DROP TABLE IF EXISTS data;
 
-CREATE TABLE user (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
+CREATE TABLE users (
+    id TEXT UNIQUE NOT NULL PRIMARY KEY,
     username TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL
+    password TEXT NOT NULL,
+    time_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
-CREATE TABLE post (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    author_id INTEGER NOT NULL,
-    created TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
-    title TEXT NOT NULL,
-    body TEXT NOT NULL,
-    FOREIGN KEY (author_id) REFERENCES user (id)
+CREATE TABLE projects (
+    id TEXT UNIQUE NOT NULL,
+    name TEXT NOT NULL,
+    description TEXT,
+    userid TEXT NOT NULL,
+    role TEXT NOT NULL,
+    time_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT proj_key PRIMARY KEY (id,userid),
+    FOREIGN KEY (userid) REFERENCES users(id)
 );
 
 CREATE TABLE data (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    username TEXT NOT NULL,
+    id INTEGER PRIMARY KEY AUTOINCREMENT,  -- this should be updated to have uuid
+    userid TEXT NOT NULL,
     file_path NOT NULL,
     sample_count INTEGER NOT NULL,
     gene_count INTEGER NOT NULL,
-    file_hash TEXT NOT NULL
-)
+    file_hash TEXT NOT NULL,
+    FOREIGN KEY (userid) REFERENCES users(id)
+);

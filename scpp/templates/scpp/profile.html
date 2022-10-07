@@ -1,0 +1,27 @@
+{% extends 'base.html' %}
+
+{% block header %}
+<h1><center>{{ g.user['username'] }}</center></h1>
+{% endblock %}
+
+{% block content %}
+<a class="action" href="{{ url_for('scpp.upload') }}">Upload Data</a>
+<h2>Data Summary:</h2>
+<table>
+    <tr>
+        <th>File</th>
+        <th>Samples</th>
+        <th>Genes</th>
+        <th></th>
+    </tr>
+    {% for datum in data %}
+    <tr>
+        <td>{{ datum['file_path'] }}</td>
+        <td>{{ datum['sample_count'] }}</td>
+        <td>{{ datum['gene_count'] }}</td>
+        <td><form><input type="submit" name="delete" value="Remove" onclick="return confirm('Confirm removal?'"></form></td>
+    </tr>
+    {% endfor %}
+</table>
+</header>
+{% endblock %}
