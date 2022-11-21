@@ -11,7 +11,6 @@ Requires from Flask:
 {% block content %}
 {% if g.user %}
     <h3>File Selection</h3>
-
         <table>
             <tr>
                 <th>File</th>
@@ -19,17 +18,27 @@ Requires from Flask:
             </tr>
             {% for f in files %}
             <tr>
-                <td>{{ f['file_path'] }}</td>
+                <td>{{ f['file_path_basename'] }}</td>
                 <td><form action="/analysis" method="post"><button type="submit" name="analyze" value="{{ f['file_path'] }}">Analyze</button></td>
             </tr>
             {% endfor %}
         </table>
-
+    {% if graph_json %}
+        <div id='chart' class='chart'”></div>
+        <script src='https://cdn.plot.ly/plotly-latest.min.js'></script>
+        <script type='text/javascript'>
+              var graphs = {{graph_json | safe}};
+              Plotly.plot('chart',graphs,{}, width=400);
+        </script>
+    {% endif %}
 
     {% if results %}
         {% for r in results %}
-<!--            <p>{{ url_for('static', filename=r)}}</p>-->
-        <p><img src="{{ r }}" alt="{{ r }}"></p>
+        <center>
+            <h3>{{ r['title'] }}</h3>
+        <p><img src="{{ r['file_load_path'] }}" alt="{{ r['file_load_path'] }}"></p>
+            <p>{{ r['description'] }}</p>
+        </center>
         {% endfor %}
     {% endif %}
 

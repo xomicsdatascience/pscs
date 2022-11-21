@@ -1,3 +1,5 @@
+__version__ = '0.0.1'
+
 import os
 from flask import Flask
 
@@ -17,7 +19,7 @@ def create_app(test_config=None) -> Flask:
     app = Flask(__name__, instance_relative_config=True)
     app.config.from_mapping(
         SECRET_KEY='dev',
-        DATABASE=os.path.join(app.instance_path, 'scpp.sqlite'))
+        DATABASE=os.path.join(app.instance_path, 'pscs.sqlite'))
 
     if test_config is None:
         # Load instance
@@ -39,8 +41,8 @@ def create_app(test_config=None) -> Flask:
     from . import auth
     app.register_blueprint(auth.bp)
 
-    from . import scpp
-    app.register_blueprint(scpp.bp)
+    from . import pscs
+    app.register_blueprint(pscs.bp)
     app.add_url_rule('/', endpoint='index')
 
     return app

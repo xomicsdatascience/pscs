@@ -5,7 +5,7 @@ from flask import (
 )
 
 from werkzeug.security import check_password_hash, generate_password_hash
-from scpp.db import get_db
+from pscs.db import get_db
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -32,10 +32,10 @@ def register():
                 while len(uid_row) > 0:
                     # This section is basically impossible to test; it's okay if tests don't have coverage here
                     uid = str(uuid4())
-                    uid_row = db.execute("SELECT id FROM users WHERE id=(?)", (uid,)).fetchall()
+                    uid_row = db.execute("SELECT id_user FROM users WHERE id_user=(?)", (uid,)).fetchall()
 
                 db.execute(
-                "INSERT INTO users (id, username, password) VALUES (?, ?, ?)",
+                "INSERT INTO users (id_user, name_user, password) VALUES (?, ?, ?)",
                 (uid, username, generate_password_hash(password)))
                 db.commit()
             except db.IntegrityError:
@@ -56,7 +56,7 @@ def login():
         db = get_db()
         error = None
         user = db.execute(
-            'SELECT * FROM users WHERE username = ?', (username,)
+            'SELECT id_user, name_user, password FROM users WHERE name_user = ?', (username,)
         ).fetchone()
 
         if user is None:
@@ -66,7 +66,7 @@ def login():
 
         if error is None:
             session.clear()
-            session['user_id'] = user['id']
+            session['id_user'] = user['id_user']
             return redirect(url_for('index'))
         flash(error)
     return render_template('auth/login.html')
@@ -74,12 +74,12 @@ def login():
 
 @bp.before_app_request
 def load_logged_in_user():
-    user_id = session.get('user_id')
+    user_id = session.get('id_user')
     if user_id is None:
         g.user = None
     else:
         g.user = get_db().execute(
-            "SELECT * FROM users WHERE id = ?", (user_id,)
+            "SELECT id_user, name_user FROM users WHERE id_user = ?", (user_id,)
         ).fetchone()
 
 

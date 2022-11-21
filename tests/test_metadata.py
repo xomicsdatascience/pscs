@@ -1,8 +1,8 @@
 import unittest
 import os
 import hashlib
-from scpp.metadata.meta_extractor import TableHash, TableDims
-from scpp.metadata.metadata import MetaTable, get_metadata
+from pscs.metadata.meta_extractor import TableHash, TableDims
+from pscs.metadata.metadata import MetaTable, get_metadata
 
 test_topdir = os.path.dirname(__file__)
 test_data_dir = os.path.join(test_topdir, 'test_data', 'metadata')
