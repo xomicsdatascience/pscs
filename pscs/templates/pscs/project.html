@@ -1,0 +1,22 @@
+{% extends 'base.html' %}
+
+{% block header %}
+<h1><center>{{ project['name_project'] }}</center></h1>
+{% endblock %}
+
+{% block content %}
+<a class="action" href="{{ url_for('pscs.upload') }}">Upload Data</a>
+<table>
+    <tr>
+        <th>File</th>
+        <th>Date Uploaded</th>
+    </tr>
+    {% for f in files %}
+    <tr>
+        <td>{{ f['file_path_basename'] }}</td>
+        <td>{{ f['data_uploaded_time'] }}</td>
+        <td><form action="/analysis" method="post"><button type="submit" name="analyze" value="{{ f['file_path'] }}">Analyze</button></td>
+    </tr>
+    {% endfor %}
+</table>
+{% endblock %}

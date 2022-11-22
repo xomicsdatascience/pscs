@@ -1,37 +1,70 @@
-document.addEventListener("keydown", delTest, false);
-var lastSelected = null;
-var nodeCount = 0;
+// This JS file contains code for dragging, stretching, and reorienting
+// HTML elements.
+
+// Global variables
+var lastSelected = null;  // currently-selected HTML element
+var nodeCount = 0;  // used for creating new node & map IDs
+
+// ID substrings
 const SEPSTR = '-';
 const DRAGSTR = "draggable";
-const LINESTR = "line";
+const LINESTR = "connector";
 const IMAPSTR = "imagemap";
 const AREASTR = "area";
+// Facilitate code reading
+const DELKEY = 46;
 
-function delTest(e) {
-    if (event.keyCode == 46) {
-        lastSelected.remove();
+// For removing elements.
+document.addEventListener("keydown", delNode, false);
+function delNode(e) {
+    if (event.keyCode == DELKEY) {
+      len = lastSelected.src_lines.length;
+      for (let idx=0; idx<len; idx++){
+        remove_id = lastSelected.src_lines.pop();
+        line_elem = document.getElementById(remove_id);
+        line_elem.del();
+      }
+      len = lastSelected.dst_lines.length;
+      for (let idx=0; idx<len; idx++){
+        remove_id = lastSelected.dst_lines.pop();
+        line_elem = document.getElementById(remove_id);
+        line_elem.del();
+      }
+      lastSelected.remove();
     }
 }
 
 function dragElement(element) {
-    var moveX = 0, moveY = 0;
+/* Nested function to track selected element, mouse dragging, and mouse release. If any elements
+are stored in element.src_lines or element.dst_lines, their top/left properties are moved the
+same way as the selected element.
+Parameters
+----------
+element : HTMLElement
+    Element to which to apply dragging functionality.
+*/
+    // To keep track of previous position and distance moved by cursor.
+    var currentPos = [0,0];
+    var moveVector = [0,0];
     var oldX = 0, oldY = 0;
+    var moveX = 0, moveY = 0;
     element.onmousedown = grab;
     lastSelected = element;  // last created == last selected
     function grab(e) {
-        // marks the current element as grabbed
+        // Selects the element and adds the onmousemove function to have the element follow the cursor.
         e = e || window.event();
         e.preventDefault();
-        lastSelected = element;
-        oldX = e.clientX;
-        oldY = e.clientY;
+        lastSelected = element;  // marks the current element as grabbed
+        oldX = e.clientX;  // Current mouse position
+        oldY = e.clientY;  // Current mouse position
         document.onmouseup = release;  // while mouse is held, keep dragging
         document.onmousemove = drag;
     }
     function drag(e) {
-        // updates position of the currently-grabbed element
+        // Updates position of the currently-grabbed element
         e = e || window.event;
         e.preventDefault();
+        // Get move vector, update current position
         moveX = e.clientX - oldX;
         moveY = e.clientY - oldY;
         oldX = e.clientX;
@@ -42,8 +75,15 @@ function dragElement(element) {
         // move attached lines, if any
         for (let idx = 0; idx < element.src_lines.length; idx++){
           el_to_move = document.getElementById(element.src_lines[idx]);
-          el_to_move.style.top = addToPx(el_to_move.style.top, moveY);
-          el_to_move.style.left = addToPx(el_to_move.style.left, moveX);
+          el_to_move.srcX += moveX;
+          el_to_move.srcY += moveY;
+          el_to_move.update_pos(e);
+        }
+        for (let idx = 0; idx < element.dst_lines.length; idx++){
+          el_to_move = document.getElementById(element.dst_lines[idx]);
+          el_to_move.dstX += moveX;
+          el_to_move.dstY += moveY;
+          el_to_move.update_pos(e);
         }
     }
     function release() {
@@ -54,46 +94,80 @@ function dragElement(element) {
 }
 
 function createDraggable(x = 0, y = 0, img = "static/test2.png") {
+/* Creates a draggable image with an imagemap and adds them to the DOM.
+
+
+*/
   sample_id = nodeCount++;
   // create elements
   draggable = createDraggableImage(sample_id);
   imagemap = createDraggableImageMap(sample_id);
-
-//  document.body.appendChild(draggable);
+  document.body.appendChild(draggable);
   document.body.appendChild(imagemap);
-  dragElement(draggable);
+
 }
 
-function createDraggableImage(id, x = 0, y = 0, img="static/test2.png") {
+function createDraggableImage(id, x = 200, y = 100, img="static/test2.png") {
+/* Returns a draggable image element at the specified coordinates using the input image.
+Parameters
+----------
+id : int
+    Integer to use for the id; id is of the form [DRAGSTR][SEPSTR][id]. This id should also
+    be used with createDraggableImageMap to match the two.
+x, y : int
+    Position on the page where to add the image.
+img : String
+    Path to the image to use for the image
+Returns
+-------
+element
+    Handle of the created draggable element.
+*/
   const draggable = document.createElement("img");
   draggable.class = "dragged";
+  applyClassCSS(draggable);
+
   draggable.src = img;
   draggable.deg = 0;
   draggable.draggable = "true";
-  draggable.style = "position:absolute;cursor:move;";
   draggable.width = "81";
   draggable.height = "81";
   draggable.id = DRAGSTR + SEPSTR + id;
   draggable.useMap = '#' + IMAPSTR + SEPSTR + id;
-  document.body.appendChild(draggable);
-  draggable.style.top = "150px";
-  draggable.style.left = "50px";
+
+  draggable.style.left = x.toString() + 'px';
+  draggable.style.top = y.toString() + 'px';
+
   draggable.src_lines = new Array();  // edges that start at this node
   draggable.dst_lines = new Array();  // edges that end at this node
+  dragElement(draggable);
   return draggable;
 }
 
 function createDraggableImageMap(id) {
+/* Creates an ImageMap to be overlaid on a draggable image with a corresponding ID.
+Parameters
+----------
+id : int
+    ID used to create the draggable image.
+Returns
+-------
+element
+    Handle for the element.
+*/
   image_map = document.createElement("map");
   image_map.name = IMAPSTR + SEPSTR + id;
   image_map.id = image_map.name;
+
+  // Input area specs
   image_area = document.createElement("area");
   image_area.id = AREASTR + SEPSTR + id + SEPSTR + 'in' + SEPSTR + '0';
   image_area.shape = "rect";
   image_area.coords = "30,0,50,20";
-  image_area.onmouseup = function() {alert('thing!')};
+//  image_area.onmouseup = function() {alert('thing!')};
   image_map.appendChild(image_area);
 
+  // Output area specs
   image_other_area = document.createElement("area");
   image_other_area.id = AREASTR + SEPSTR + id + SEPSTR + 'out' + SEPSTR + '1';
   image_other_area.shape = "rect";
@@ -104,10 +178,17 @@ function createDraggableImageMap(id) {
 }
 
 function lineCreator(event) {
-    // get imagemap area
+/* Handler to create a scalable line centered on the target of the event, which is intended to
+ be an area of an imagemap on a draggable image.
+Parameters
+----------
+event
+    Event to handle.
+*/
+    // get target (imagemap area)
     area = event.target;
-    coords = area.coords.split(",");
-    area_width = (parseInt(coords[2]) - parseInt(coords[0]))/2;
+    coords = parseIntList(area.coords);
+    area_width_center = (coords[2] - coords[0])/2;
     // get id of map; these are made to correspond to draggable node
     mapid = area.parentElement.id;
     node_num = mapid.split(SEPSTR).pop();
@@ -115,77 +196,140 @@ function lineCreator(event) {
     draggable = document.getElementById(draggable_id);
     dragLeft = parseInt(draggable.style.left.split('px')[0]);
     dragTop = parseInt(draggable.style.top.split('px')[0]);
-    srcX = dragLeft + parseInt(coords[0]) + area_width;
-    srcY = dragTop + parseInt(coords[3]);
-    line_num = node_num + SEPSTR + (draggable.src_lines.length).toString();
-    line_id = createLine(line_num, srcX, srcY, event.clientX, event.clientY);
-    draggable.src_lines.push(line_id);
+    srcX = dragLeft + parseInt(coords[0]) + area_width_center;  // center of the area
+    srcY = dragTop + parseInt(coords[3]);  // bottom of the area
+
+    // Get line id; need to make sure that it is unique
+    line_count = draggable.src_lines.length;
+    line_num = node_num + SEPSTR + line_count.toString();  // id for this line
+    line_id = LINESTR + SEPSTR + line_num;
+    while (draggable.src_lines.includes(line_id)){
+      line_count += 1;
+      line_num = node_num + SEPSTR + line_count.toString();  // id for this line
+      line_id = LINESTR + SEPSTR + line_num;
+
+    }
+    line = createLine(line_num, srcX, srcY, event.clientX, event.clientY);
+    line_id = line.id;
+    line.srcNode = draggable_id;
+//    draggable.src_lines.push(line_id);
 }
 function createLine(line_num, srcX=0, srcY=0, dstX=10, dstY=100) {
+/* Creates a div element that acts as a connector between nodes. The div can be dragged and follows
+the cursor until released. If released over the input of a node, the line attaches itself to the node.
+*/
     const line = document.createElement("div");
     line.id = LINESTR + SEPSTR + line_num.toString();
-    line.class = "line";
+    line.class = "connector";
+    applyClassCSS(line);
+    line.srcNode = NaN;
+    line.dstNode = NaN;
+    // Set position params
     line.srcX = srcX;
     line.srcY = srcY;
     line.dstX = dstX;
     line.dstY = dstY;
-    line.style.backgroundColor = 'black';
+
+    // Compute position parameters
     height = Math.sqrt((dstX-srcX)**2 + (dstY-srcY)**2);
     rot_angle = getRadAngleFromVertical(dstY-srcY, dstX-srcX);
     rot_deg = radToDeg(rot_angle);
     line.deg = rot_deg;
-    line.style.height = height.toString() + "px";
-    line.style.width = "5px";
 
+    // Apply params to div style
+    line.style.height = height.toString() + "px";
     line.style.left = (line.srcX).toString() + "px";
     line.style.top = (line.srcY).toString() + "px";
-    line.style.position = "absolute";
-    line.style.transformOrigin = "50% 0%"
     line.style.transform = "rotate(" + line.deg.toString() + "deg)";
 
-    el = document.getElementById(DRAGSTR + SEPSTR + node_num.toString());
-    document.body.appendChild(line);
+    // Apply movement properties
     stretchLine(line);
-    return line.id;
+    document.body.appendChild(line);
+    return line;
 }
 
 function stretchLine(element) {
+/* Nested function to stretch a line div to follow the cursor or nodes it is attached to.
+Parameters
+----------
+element
+    Element handle for the line div.
+*/
+    // Position parameters
     var moveX = 0, moveY = 0;
     element.deg = 0;
     lastSelected = element;
     document.onmousemove = drag;
     document.onmouseup = release;
+    element.update_pos = update_pos;
+    element.del = del;
     lastSelected = element;  // last created == last selected
-    function grab(e) {
-        // marks the current element as grabbed
-        e = e || window.event();
-        e.preventDefault();
-        lastSelected = element;
-        document.onmouseup = release;  // while mouse is held, keep dragging
-        document.onmousemove = drag;
-    }
+
     function drag(e) {
         // updates position of the currently-grabbed element
         e = e || window.event;
         e.preventDefault();
         element.dstX = e.clientX;
         element.dstY = e.clientY;
-        moveX = element.dstX - element.srcX;
-        moveY = element.dstY - element.srcY;
-        rad_angle = getRadAngleFromVertical(moveY, moveX);
-        rot_deg = radToDeg(rad_angle);
-        element.deg = rot_deg;
-        height = Math.sqrt((element.dstX - element.srcX)**2 + (element.dstY - element.srcY)**2);
-        element.height = Math.round(height).toString() + "px";
-        element.style.height = Math.round(height).toString() + "px";
-        element.style.transform = "rotate(" + element.deg.toString() + "deg)";
-//        element.style.scale = ";scale(" + (height/20).toString() + ", 1)";
+        update_pos(e);
     }
+
+    function update_pos(event) {
+      event = event || window.event;
+      event.preventDefault();
+
+      // Position parameters determined by src
+      element.style.left = (element.srcX).toString() + "px";
+      element.style.top = (element.srcY).toString() + "px";
+
+      // Height determined by src, dist
+      height = Math.sqrt((element.dstX - element.srcX)**2 + (element.dstY - element.srcY)**2);
+      height = Math.round(height);
+      element.height = height.toString() + "px";
+      element.style.height = height.toString() + "px";
+
+      // Rotation determiend by src, dst; stored in .deg
+      deltaX = element.dstX - element.srcX;
+      deltaY = element.dstY - element.srcY;
+      rad_angle = getRadAngleFromVertical(deltaY, deltaX);
+      rot_deg = radToDeg(rad_angle);
+      element.deg = rot_deg;
+      element.style.transform = "rotate(" + element.deg.toString() + "deg)";
+    }
+
+    function del() {
+        // Go to srcNode, remove line id from src list
+        srcNode = document.getElementById(element.srcNode);
+        newSrcLines = new Array();
+        newDstLines = new Array();
+        for (let idx=0; idx<srcNode.src_lines.length; idx++) {
+          if (srcNode.src_lines[idx] != element.id){
+            newSrcLines.push(srcNode.src_lines[idx]);
+          }
+
+        }
+        srcNode.src_lines = newSrcLines;
+
+        // Go to dstNode, remove line id from dst list
+        dstNode = document.getElementById(element.dstNode);
+        for (let idx=0; idx<dstNode.dst_lines.length; idx++) {
+          if (dstNode.dst_lines[idx] != element.id){
+            newDstLines.push(dstNode.dst_lines[idx]);
+//            dstNode.dst_lines = dstNode.dst_lines.splice(idx, idx);
+//            break;
+          }
+        }
+        dstNode.dst_lines = newDstLines;
+        element.remove();
+    }
+
+
     function release(e) {
         // releases grabbed element; will no longer be grabbed
         // find nearest draggable; see if we can attach
         node_id = element.id.split(SEPSTR)[1];
         drag_list = document.elementsFromPoint(e.clientX, e.clientY);
+        var foundMatch = 0;
         for (let idx=0; idx < drag_list.length; idx++){
           drag_el = drag_list[idx];
           if(drag_el.id.startsWith(DRAGSTR)){
@@ -197,7 +341,6 @@ function stretchLine(element) {
             // get draggable coords; get area 0 coords
             imap_id = IMAPSTR + SEPSTR + second_node_id;
             imap = document.getElementById(imap_id);
-            console.log(imap);
 
             // for each area in the imagemap, check if it is an input
             // compute the distance between the current position and the center of the area
@@ -221,13 +364,20 @@ function stretchLine(element) {
             }
             if (!isNaN(closest_area)) {
               // connect to center
-              element.dstX = p_center[0];
-              element.dstY = p_center[1];
+              element.dstX = p_center[0] + drag_el.offsetLeft;
+              element.dstY = p_center[1] + drag_el.offsetTop;
+              element.dstNode = drag_el.id;
+              srcNode = document.getElementById(element.srcNode);
+              srcNode.src_lines.push(element.id);
+              drag_el.dst_lines.push(element.id);
+              element.update_pos(e);
+              foundMatch = 1;
             }
-
-
             break;
           }
+        }
+        if (foundMatch == 0) {
+          element.remove();
         }
         document.onmouseup = null;
         document.onmousemove = null;
@@ -274,7 +424,30 @@ function getCenterOfRect(coords){
   return [cx, cy];
 }
 
-function computeL2Dist(p0, p1){
+function computeL2Dist(p0, p1) {
 // computes the L2 distance between points p0 and p1, where each is an array of the form [x, y]
 return Math.sqrt((p1[0]-p0[0])**2 + (p1[1]-p0[0])**2);
+}
+
+function applyClassCSS(element, cls = "") {
+// Fetches the CSS for the class of the element and applies it. If class is specified, apply the
+//CSS for that class instead.
+//element : HTMLElement
+//    Elements to which to apply the CSS.
+//class : String
+//    Optional. Class for which to fetch the CSS rule; takes precedence over the element's class.
+//
+// Determine which class to check
+const class_to_check = element.class;
+if (cls.length != 0) {
+  class_to_check = cls;
+}
+// Find the matching rule
+for (const sheet of document.styleSheets) {
+    for (const r of sheet.rules){
+        if (r.selectorText == "." + class_to_check){
+            element.style = r.style.cssText;
+        }
+    }
+  }
 }
