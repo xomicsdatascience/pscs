@@ -165,6 +165,8 @@ element
   image_area.shape = "rect";
   image_area.coords = "30,0,50,20";
 //  image_area.onmouseup = function() {alert('thing!')};
+  image_area.onmouseenter = hoverDot;
+  image_area.onmouseout = unhoverDot;
   image_map.appendChild(image_area);
 
   // Output area specs
@@ -173,6 +175,8 @@ element
   image_other_area.shape = "rect";
   image_other_area.coords = "30,50,50,70";
   image_other_area.onmousedown = lineCreator;
+  image_other_area.onmouseenter = hoverDot;
+  image_other_area.onmouseout = unhoverDot;
   image_map.appendChild(image_other_area);
   return image_map;
 }
@@ -450,4 +454,56 @@ for (const sheet of document.styleSheets) {
         }
     }
   }
+}
+
+function hoverDot(event) {
+// Makes a dot appear near the center of the target. This is intended to highlight node connection points.
+  area = event.target;
+  area_coords = area.coords;
+  coords = parseIntList(area.coords);
+  p_center = getCenterOfRect(area_coords);
+
+  // get the dot element, or create if it doesn't exist
+  el = document.getElementById("bluedot");
+  if (el == null){
+    el = document.createElement("span");
+    el.id = "bluedot";
+    el.class = "hoverdot";
+    applyClassCSS(el);
+    document.body.appendChild(el);
+  }
+  // distinguish between input and output points
+  var vertOffset = 0
+  if (area.id.includes("in")){
+    el.style.backgroundColor = "#0000bb";
+    vertOffset = coords[1] - 3 ; // move the dot slightly higher for visibility; input assumed to be above
+  }
+  else {
+    el.style.backgroundColor = "#bb0000";
+    vertOffset = p_center[1]; // move dot to center of area.
+  }
+  el_height = parseInt(el.style.height.split("px")[0]);
+  // move dot to appropriate location
+  draggable = getDraggableFromImapID(area.parentElement.id);
+  el.style.top = (draggable.offsetTop + vertOffset).toString() + "px";
+  el.style.left = (draggable.offsetLeft + p_center[0]-el_height/2).toString() + "px";
+  el.style.opacity = 0.5;
+  el.style.zIndex = 1;
+}
+
+function unhoverDot(event) {
+// hide dot
+  el = document.getElementById("bluedot");
+  if (el == null){
+    return;
+  }
+  el.style.opacity = 0;
+  el.style.zIndex = -1;
+
+}
+
+function getDraggableFromImapID(id) {
+  node_num = id.split(SEPSTR).pop();
+  draggable_id = DRAGSTR + SEPSTR + node_num;
+  return document.getElementById(draggable_id);
 }
