@@ -7,7 +7,7 @@ def readfile(filename):
 
 setuptools.setup(
     name="pscs",
-    version="0.0.2",
+    version="0.0.3",
     author="Meyer Lab",
     author_email="",
     description="",
@@ -31,6 +31,8 @@ setuptools.setup(
         'pandas>=1.2.2',
         'Bio>=0.4.1',
         'PyQt5>=5.15.4',
-        'lxml>=4.6.2'
+        'lxml>=4.6.2',
+	'flask',
+	'anndata'
     ],
 )

@@ -1,9 +1,9 @@
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, url_for, Flask, session
 )
-from dash import Dash
-import dash.dcc as dcc
-import dash.html as html
+# from dash import Dash
+# import dash.dcc as dcc
+# import dash.html as html
 from werkzeug.exceptions import abort
 from werkzeug.utils import secure_filename
 
@@ -26,32 +26,10 @@ rootdir = '/home/lex/flask-tutorial/'
 UPLOAD_FOLDER = '/home/lex/flask-tutorial/upload/'
 ALLOWED_EXTENSIONS = {'csv', 'tsv'}
 
-# app = Flask(__name__)
-# app.config['UPLOAD_FOLDER'] = os.path.join(UPLOAD_FOLDER, "{userid}")
-# app.config['COMMON_DIRECTORY'] ='/home/lex/flask-tutorial/common/'
-# app.config['RESULTS_DIRECTORY'] = os.path.join("pscs","static", "results", "{userid}")
-
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.join(UPLOAD_FOLDER, "{userid}")
 app.config['COMMON_DIRECTORY'] ='/home/lex/flask-tutorial/common/'
 app.config['RESULTS_DIRECTORY'] = os.path.join("pscs","static", "results", "{userid}")
-
-dash_app = Dash(__name__, server=app, url_base_pathname='/dash/')
-
-# @bp.route('/dash')
-def dash_test(ann_data):
-    dat = pd.DataFrame(ann_data.obsm['X_umap'])
-    s = np.random.random(dat.shape[0])
-    dat['size'] = s
-    fig = px.scatter(dat, x=0,
-                     y=1,
-                     size='size',
-                     hover_name='size',
-                     size_max=30)
-
-    dash_app.layout = html.Div([dcc.Graph(id='sample', figure=fig)])
-    graph_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-    return
 
 
 @bp.route('/')
@@ -202,7 +180,6 @@ def analysis():
                          color=ann_data.obs['leiden'],
                          width=800)
 
-        # dash_app.layout = html.Div([dcc.Graph(id='sample', figure=fig)])
         graph_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
         # Move to new page
         return render_template("pscs/analysis.html", files=data_list, results=results_list, graph_json=graph_json)

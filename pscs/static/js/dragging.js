@@ -18,20 +18,27 @@ const DELKEY = 46;
 document.addEventListener("keydown", delNode, false);
 function delNode(e) {
     if (event.keyCode == DELKEY) {
-      len = lastSelected.src_lines.length;
-      for (let idx=0; idx<len; idx++){
-        remove_id = lastSelected.src_lines.pop();
-        line_elem = document.getElementById(remove_id);
-        line_elem.del();
+      if (lastSelected.id.startsWith(DRAGSTR)){
+        len = lastSelected.src_lines.length;
+        for (let idx=0; idx<len; idx++){
+          remove_id = lastSelected.src_lines.pop();
+          line_elem = document.getElementById(remove_id);
+          line_elem.del();
+        }
+        len = lastSelected.dst_lines.length;
+        for (let idx=0; idx<len; idx++){
+          remove_id = lastSelected.dst_lines.pop();
+          line_elem = document.getElementById(remove_id);
+          line_elem.del();
+        }
+
       }
-      len = lastSelected.dst_lines.length;
-      for (let idx=0; idx<len; idx++){
-        remove_id = lastSelected.dst_lines.pop();
-        line_elem = document.getElementById(remove_id);
-        line_elem.del();
+      else if (lastSelected.id.startsWith(LINESTR)){
+        lastSelected.del();
       }
-      lastSelected.remove();
+    lastSelected.remove();
     }
+
 }
 
 function dragElement(element) {
@@ -226,6 +233,7 @@ the cursor until released. If released over the input of a node, the line attach
     line.id = LINESTR + SEPSTR + line_num.toString();
     line.class = "connector";
     applyClassCSS(line);
+    line.onmousedown = function() {lastSelected = line};
     line.srcNode = NaN;
     line.dstNode = NaN;
     // Set position params
@@ -430,7 +438,7 @@ function getCenterOfRect(coords){
 
 function computeL2Dist(p0, p1) {
 // computes the L2 distance between points p0 and p1, where each is an array of the form [x, y]
-return Math.sqrt((p1[0]-p0[0])**2 + (p1[1]-p0[0])**2);
+return Math.sqrt((p1[0]-p0[0])**2 + (p1[1]-p0[1])**2);
 }
 
 function applyClassCSS(element, cls = "") {

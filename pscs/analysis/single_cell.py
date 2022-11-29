@@ -10,7 +10,8 @@ from pscs.db import get_db
 import uuid
 import hashlib
 common_directory = './common/'
-
+import matplotlib
+matplotlib.use('Agg')
 
 
 def analyze(filename: str,

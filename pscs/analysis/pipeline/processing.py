@@ -1,4 +1,4 @@
-from .pipeline import PipelineNode
+from base import PipelineNode
 import pandas as pd
 import numpy as np
 import pathlib
