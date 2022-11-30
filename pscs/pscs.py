@@ -215,5 +215,52 @@ def pipeline_designer():
 
 @bp.route('/test', methods=['GET'])
 def drag_test():
-    return render_template("pscs/tests.html")
+    f = open("pscs/static/node_data.json", 'r')
+    j = json.load(f)
+    f.close()
+    modules = get_unique_values_for_key(j, 'module')
+    node_json = convert_dict_to_list(j)
+
+    return render_template("pscs/tests.html", node_json=node_json, modules=modules)
+
+def convert_dict_to_list(d: dict) -> list:
+    """
+    Converts a dict of dicts into a list of dicts with the initial key converted to "name".
+    This function is intended to be used to pass JSON contents to Flask.
+    Parameters
+    ----------
+    d : dict
+        Dict of dicts to convert.
+    Returns
+    -------
+    list
+        List of dicts.
+    """
+    dict_list = []
+    for k, v in d.items():
+        v['name'] = k
+        dict_list.append(v)
+    return dict_list
+
+def get_unique_values_for_key(d: dict, key) -> list:
+    """
+    Gets the unique values for a given key.
+    Parameters
+    ----------
+    d : dict
+        Dict to check
+    key
+        Key to use for value lookups.
+
+    Returns
+    -------
+    list
+        List of unique values
+    """
+    unique_values = set()
+    for k, v in d.items():
+        unique_values.add(v[key])
+    return sorted(unique_values)
+
 app.add_url_rule('/upload/<name>', endpoint='download_file', build_only=True)
+

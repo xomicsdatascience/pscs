@@ -107,7 +107,7 @@ function createDraggable(x = 0, y = 0, img = "static/test2.png") {
 */
   sample_id = nodeCount++;
   // create elements
-  draggable = createDraggableImage(sample_id);
+  draggable = createDraggableImage(sample_id, x, y, img);
   imagemap = createDraggableImageMap(sample_id);
   document.body.appendChild(draggable);
   document.body.appendChild(imagemap);
@@ -450,14 +450,15 @@ function applyClassCSS(element, cls = "") {
 //    Optional. Class for which to fetch the CSS rule; takes precedence over the element's class.
 //
 // Determine which class to check
-const class_to_check = element.class;
+var class_to_check = element.class;
 if (cls.length != 0) {
   class_to_check = cls;
 }
 // Find the matching rule
 for (const sheet of document.styleSheets) {
     for (const r of sheet.rules){
-        if (r.selectorText == "." + class_to_check){
+        splitText = r.selectorText.replace(" ","").split(",");
+        if (splitText.includes("." + class_to_check)){
             element.style = r.style.cssText;
         }
     }
