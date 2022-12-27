@@ -7,31 +7,7 @@ import pandas as pd
 import os
 
 
-class Pipeline:
-    """
-    Class for storing, designing, and running related processes. Useful for keeping track of results and pipelines run.
-    """
-    def __init__(self, segment_list: list = None):
-        self.pipeline = segment_list
-        return
 
-    def run(self):
-        # identify top-level nodes, get data from those to pass along
-        input_nodes = []
-        for p in self.pipeline:
-            if isinstance(p, InputNode):
-                input_nodes.append(p)
-
-
-        ann_data = pipes[0].run()
-        for p in pipes[1:]:
-            p.run(ann_data)
-        return
-
-    def reset(self):
-        for p in self.pipeline:
-            p.reset()
-        return
 
 
 class PipelineNode(ABC):
@@ -50,15 +26,17 @@ class PipelineNode(ABC):
         return
 
     @abstractmethod
-    def run(self,
-            ann_dat: anndata.AnnData):
+    def run(self):
         """
         Method for executing this node's effects.
-        Returns
-        -------
-        anndata.AnnData
-
         """
+        return
+
+    def run_pipeline(self):
+        if self.is_ready:
+            self.run()
+            for next_node in self._next:
+                next_node.run_pipeline()
         return
 
     @property
@@ -108,6 +86,13 @@ class PipelineNode(ABC):
     def is_complete(self) -> bool:
         return self._result is not None
 
+    @property
+    def is_ready(self) -> bool:
+        """Checks whether all inputs to this node have a result."""
+        for p in self._previous:
+            if not p.is_complete:
+                return False
+        return True
 
     def connect_to_output(self, node):
         """
@@ -214,3 +199,37 @@ class OutputNode(PipelineNode):
 
     def connect_to_output(self, node):
         raise ValueError(f"This node doesn't have an output to be received.")
+
+
+class Pipeline:
+    """
+    Class for storing, designing, and running related processes. Useful for keeping track of results and pipelines run.
+    """
+
+    def __init__(self, segment_list: list = None):
+        if segment_list is None:
+            self.pipeline = []
+            return
+
+        self.pipeline = segment_list
+        self.inputs = []
+        for node in self.pipeline:
+            if isinstance(node, InputNode):
+                self.inputs.append(node)
+        return
+
+    def add_node(self, node: PipelineNode):
+        self.pipeline.append(node)
+        if isinstance(node, InputNode):
+            self.inputs.append(node)
+
+    def run(self):
+        for input_node in self.inputs:
+            input_node.run_pipeline()
+        # Check that
+        return
+
+    def reset(self):
+        for p in self.pipeline:
+            p.reset()
+        return

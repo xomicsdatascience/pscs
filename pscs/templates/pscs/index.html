@@ -15,6 +15,7 @@
 {% if g.user %}
 <center><p>Welcome, {{ g.user['name_user'] }}!</p></center>
 <a class="action" href="{{ url_for('pscs.create_project') }}">Create Project</a>
+<a class="action" href="{{ url_for('pscs.pipeline_designer') }}">Create Analysis</a>
 <p></p>
 <table>
     <tr>

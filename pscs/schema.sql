@@ -1,19 +1,33 @@
-DROP TABLE IF EXISTS users;
+DROP TABLE IF EXISTS users_auth;
+DROP TABLE IF EXISTS users_meta;
+DROP TABLE IF EXISTS users_affiliation;
 DROP TABLE IF EXISTS projects;
 DROP TABLE IF EXISTS data;
 DROP TABLE IF EXISTS data_table_gene;
 DROP TABLE IF EXISTS results;
 DROP TABLE IF EXISTS analysis;
 
-CREATE TABLE users (
+CREATE TABLE users_auth (
     id_user TEXT UNIQUE NOT NULL PRIMARY KEY,
     name_user TEXT UNIQUE NOT NULL,
-    password TEXT NOT NULL,
+    password TEXT NOT NULL,  -- this contains hash method, salt, and pass hash
     creation_time_user TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
+CREATE TABLE users_meta (
+    id_user TEXT UNIQUE NOT NULL PRIMARY KEY,
+    email TEXT UNIQUE NOT NULL,
+    name TEXT,
+    orcid TEXT
+)
+
+CREATE TABLE users_affiliation (
+    id_user TEXT NOT NULL PRIMARY KEY,
+    affiliation TEXT NOT NULL
+)
+
 CREATE TABLE projects (
-    id_project TEXT UNIQUE NOT NULL,  -- id for this project
+    id_project TEXT UNIQUE NOT NULL PRIMARY KEY,  -- id for this project
     id_user TEXT NOT NULL,
     name_project TEXT NOT NULL,
     description TEXT,

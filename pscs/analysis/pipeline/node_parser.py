@@ -1,14 +1,18 @@
 from os.path import join, basename, dirname
-from base import PipelineNode
+# from base import PipelineNode, InputNode, OutputNode
+from pscs.analysis.pipeline.base import PipelineNode
+from pscs.analysis.pipeline.base import InputNode, OutputNode
 import os
 import json
 from importlib import import_module
 import inspect
+import re
 exclude_files = set(["__init__.py", "base.py", "exceptions.py", basename(__file__)])
 reserved_params = set(['num_inputs', 'num_outputs', 'effect'])  # These are parameters that should be public but unused
 
 # This file parses available nodes and creates a JSON object describing coarse node properties
 # for use by the pipeline designer.
+
 
 def without_leading_underscore(d: dict) -> list:
     """
@@ -30,27 +34,54 @@ def without_leading_underscore(d: dict) -> list:
     return without_underscore
 
 
-def get_node_parameters(node: PipelineNode) -> dict:
+def get_node_parameters(node: callable) -> dict:
     """
     Extracts the relevant node parameters from the input node.
     Parameters
     ----------
-    node : PipelineNode
-        Node from which to extract the parameters.
+    node : callable
+        Reference to a PipelineNode (or subclass) from which to extract the parameters.
     Returns
     -------
     dict
         Dictionary containing the relevant parameters.
     """
     d = dict()
-    d['num_inputs'] = node.num_inputs
-    d['num_outputs'] = node.num_outputs
-    d['requirements'] = node._requirements
-    all_params = vars(node)  # want to get rid of the hidden or reserved ones
-    node_params = without_leading_underscore(all_params)
-    node_params = set(node_params).difference(reserved_params)
-    d['parameters'] = list(node_params)
+    param_dict = inspect.signature(node).parameters
+    params = parse_params(param_dict)
+
+    # To support MIMO nodes in the designer, this part needs to be updated.
+    # Check which type of node this is
+    d['num_inputs'] = 1
+    d['num_outputs'] = 1
+    if issubclass(node, InputNode):
+        d['num_inputs'] = 0
+    elif issubclass(node, OutputNode):
+        d['num_outputs'] = 0
+    d['parameters'] = params
     return d
+
+
+def parse_params(params_dict: dict) -> dict:
+    """
+    Parses the param dict and returns a dict holding only the annotation (type) and default value.
+    Parameters
+    ----------
+    params_dict : dict
+        Dict of parameters as retruend by inspect.signature(callable).parameters
+
+    Returns
+    -------
+    dict
+        Dict of tuples of the form (annotation, default_value)
+    """
+    params = {}
+    for param_name, param_value in params_dict.items():
+        annot = str(param_value.annotation)
+        annot = re.search("'(.*)'", annot).group()[1:-1]  # look for the string between quotes, then omit the quotes
+        params[param_name] = (annot, param_value.default)
+    return params
+
 
 def find_unique_name(d: dict, name: str) -> str:
     """
@@ -76,7 +107,7 @@ def find_unique_name(d: dict, name: str) -> str:
     return newname
 
 
-if __name__ == "__main__":
+def main():
     self_path = dirname(__file__)
     tmp_files = os.listdir(self_path)
     node_files = []
@@ -91,14 +122,18 @@ if __name__ == "__main__":
         for node_tuple in node_classes:  # iterate through the classes in the pipeline file
             node_name = node_tuple[0]
             node_name = find_unique_name(js_dict, node_name)  # in case nodes are named the same
-            node_instance = node_tuple[1]()
-            node_params = get_node_parameters(node_instance)
+            node_params = get_node_parameters(node_tuple[1])
             node_params['module'] = module
             js_dict[node_name] = node_params
 
     # find static dir
     idx = self_path.rfind('pscs')
-    static_json_path = join(self_path[:idx+len('pscs')], 'static', 'node_data.json')
+    static_json_path = join(self_path[:idx + len('pscs')], 'static', 'node_data.json')
     f = open(static_json_path, 'w')
-    json.dump(js_dict, f)
+    json.dump(js_dict, f, indent=1)
     f.close()
+    return
+
+
+if __name__ == "__main__":
+    main()

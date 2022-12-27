@@ -22,8 +22,8 @@ import json
 
 default_role = 'owner'
 bp = Blueprint('pscs', __name__)
-rootdir = '/home/lex/flask-tutorial/'
-UPLOAD_FOLDER = '/home/lex/flask-tutorial/upload/'
+rootdir = '/home/lex/projects/pscs'
+UPLOAD_FOLDER = '/home/lex/projects/pscs/upload/'
 ALLOWED_EXTENSIONS = {'csv', 'tsv'}
 
 app = Flask(__name__)
@@ -52,6 +52,7 @@ def allowed_file(filename):
 @login_required
 def download_file(name, user):
     return send_from_directory(app.config['UPLOAD_FOLDER'].format(username=user), name)
+
 
 @bp.route('/upload', methods=['GET','POST'])
 @login_required
@@ -98,6 +99,7 @@ def upload():
     </form>
     '''
 
+
 @bp.route('/profile', methods=['GET'])
 @login_required
 def profile():
@@ -107,6 +109,7 @@ def profile():
         ' id_user = ?',
         (g.user['id_user'],)).fetchall()
     return render_template('pscs/profile.html', data=user_uploads)
+
 
 @bp.route('/create_project', methods=['GET', 'POST'])
 @login_required
@@ -132,6 +135,7 @@ def create_project():
             db.commit()
         return redirect(url_for('pscs.index'))
     return render_template("pscs/create.html")
+
 
 @bp.route('/analysis', methods=['GET', 'POST'])
 @login_required
@@ -185,10 +189,12 @@ def analysis():
         return render_template("pscs/analysis.html", files=data_list, results=results_list, graph_json=graph_json)
         # return render_template("pscs/analysis.html", files=data_list, results=results, graph_json=graph_json)
 
+
 @bp.route('/results/<userid>/<filename>', methods=['GET'])
 @login_required
 def get_file(userid, filename):
     return send_from_directory(app.config['RESULTS_DIRECTORY'].format(userid=userid), filename)
+
 
 @bp.route('/project/<id_project>', methods=['GET'])
 @login_required
@@ -207,21 +213,28 @@ def project(id_project):
         return render_template("pscs/project.html", project=project_name, files=project_dicts)
     return redirect(url_for('pscs.index'))
 
-@bp.route('/pipeline', methods=['GET','POST'])
-@login_required
+
+@bp.route('/pipeline', methods=['GET', 'POST'])
 def pipeline_designer():
-    return render_template("pscs/pipeline.html")
+    if request.method == 'GET':
+        f = open("pscs/static/node_data.json", 'r')
+        j = json.load(f)
+        f.close()
+        modules = get_unique_values_for_key(j, 'module')
+        node_json = convert_dict_to_list(j)
+        print(node_json)
+        return render_template("pscs/pipeline.html", node_json=node_json, modules=modules)
+    elif request.method == 'POST':
+        pipeline_summary = request.json
+        output_name = secure_filename(pipeline_summary['name'])
+        if not output_name.endswith('.json'):
+            output_name += '.json'
+        f = open(os.path.join(app.config['UPLOAD_FOLDER'].format(userid=g.user['id_user']), output_name), 'w')
+        j = request.json
+        json.dump(j, f, indent=2)
+        f.close()
+        return render_template("pscs/pipeline.html")
 
-
-@bp.route('/test', methods=['GET'])
-def drag_test():
-    f = open("pscs/static/node_data.json", 'r')
-    j = json.load(f)
-    f.close()
-    modules = get_unique_values_for_key(j, 'module')
-    node_json = convert_dict_to_list(j)
-
-    return render_template("pscs/tests.html", node_json=node_json, modules=modules)
 
 def convert_dict_to_list(d: dict) -> list:
     """
@@ -242,6 +255,7 @@ def convert_dict_to_list(d: dict) -> list:
         dict_list.append(v)
     return dict_list
 
+
 def get_unique_values_for_key(d: dict, key) -> list:
     """
     Gets the unique values for a given key.
@@ -261,6 +275,7 @@ def get_unique_values_for_key(d: dict, key) -> list:
     for k, v in d.items():
         unique_values.add(v[key])
     return sorted(unique_values)
+
 
 app.add_url_rule('/upload/<name>', endpoint='download_file', build_only=True)
 

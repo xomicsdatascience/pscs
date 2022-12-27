@@ -4,13 +4,18 @@
 // Global variables
 var lastSelected = null;  // currently-selected HTML element
 var nodeCount = 0;  // used for creating new node & map IDs
-
+var nodeIds = new Array();
+var lastOpenPanel;;
 // ID substrings
 const SEPSTR = '-';
 const DRAGSTR = "draggable";
 const LINESTR = "connector";
 const IMAPSTR = "imagemap";
 const AREASTR = "area";
+const NODECLASS = "dragged"
+const TEXTCLASS = "dragtext";
+const PANELCLASS = "panel";
+const INPUTCLASS = "input";
 // Facilitate code reading
 const DELKEY = 46;
 
@@ -31,12 +36,16 @@ function delNode(e) {
           line_elem = document.getElementById(remove_id);
           line_elem.del();
         }
+        textDiv = document.getElementById(lastSelected.label);
+        textDiv.remove();
 
       }
       else if (lastSelected.id.startsWith(LINESTR)){
         lastSelected.del();
       }
     lastSelected.remove();
+    idx = nodeIds.indexOf(lastSelected.id);
+    nodeIds.splice(idx, 1);
     }
 
 }
@@ -56,6 +65,8 @@ element : HTMLElement
     var oldX = 0, oldY = 0;
     var moveX = 0, moveY = 0;
     element.onmousedown = grab;
+    element.class = NODECLASS;
+    element.ondblclick = openPanel;
     lastSelected = element;  // last created == last selected
     function grab(e) {
         // Selects the element and adds the onmousemove function to have the element follow the cursor.
@@ -92,29 +103,136 @@ element : HTMLElement
           el_to_move.dstY += moveY;
           el_to_move.update_pos(e);
         }
+        // move label, if any
+
+        textDiv = document.getElementById(element.label);
+        textDiv.style.top = addToPx(textDiv.style.top, moveY);
+        textDiv.style.left = addToPx(textDiv.style.left, moveX);
     }
     function release() {
         // releases grabbed element; will no longer be grabbed
         document.onmouseup = null;
         document.onmousemove = null;
    }
+
+   function openPanel(e){
+     // Close other panel if it's already opened
+     if (lastOpenPanel != null){
+       lastOpenPanel.remove();
+     }
+     // Don't open a panel if node has no parameters
+     if (element.params.length == 0){
+       return;
+     }
+     const panel = document.createElement("div");
+     panel.class = PANELCLASS;
+     panel.id = PANELCLASS + SEPSTR + getNodeNumFromId(element.id);
+     panel.nodeId = element.id;
+     applyClassCSS(panel);
+     // Create table for user input
+     tbl = document.createElement('table');
+     tbl.style.width = '100px';
+     tbl.style.border = '5px solid black';
+     for (var idx=0; idx<element.params.length; idx++) {
+       // Get labels / default values, if any
+       parName = element.params[idx];
+       parVal = element.paramsValues[parName];
+       parType = element.paramsTypes[parName];  // todo: use for validation
+       // Create row; one per parameter
+       tr = tbl.insertRow();
+       td = tr.insertCell();
+       td.appendChild(document.createTextNode(parName));
+       td = tr.insertCell();
+       inp = document.createElement('INPUT');
+       if (parVal != null){
+         inp.defaultValue = parVal;
+       }
+       inp.id = INPUTCLASS + SEPSTR + parName;
+       inp.parType = parType;
+       td.appendChild(inp);
+     }
+
+     // Create save/close buttons
+     tr = tbl.insertRow();
+     td = tr.insertCell();
+     btn = document.createElement("button");
+     btn.onclick = closePanel;
+     btn.panelId = panel.id;
+     btn.innerHTML = "&times; Cancel"
+     td.appendChild(btn);
+     td = tr.insertCell();
+     btn = document.createElement("button");
+     btn.onclick = saveParams;
+     btn.nodeId = element.id;
+     btn.panelId = panel.id;
+     btn.innerHTML = "&#10003; Save"
+     td.appendChild(btn);
+
+     panel.appendChild(tbl);
+     document.body.appendChild(panel);
+     lastOpenPanel = panel;
+   }
 }
 
-function createDraggable(x = 0, y = 0, img = "static/test2.png") {
+function closePanel(event) {
+  btn = event.target;
+  panel = document.getElementById(btn.panelId);
+  panel.remove();
+  return
+}
+function saveParams(event) {
+  // Save parameters that are in the panel and store them in the node.
+  btn = event.target;
+  panelId = btn.panelId;
+  nodeId = btn.nodeId;
+  panel = document.getElementById(panelId);
+  node = document.getElementById(panel.nodeId);
+  tbl = panel.children[0];
+  console.log(tbl);
+  var params = new Object();
+  for (var i=0, row; row = tbl.rows[i]; i++){
+    for (var j=0, cell; cell = row.cells[j]; j++){
+      if (cell.children.length > 0 && cell.children[0].id.includes(INPUTCLASS)){
+        txtBox = cell.children[0];
+        param = txtBox.id.substring(INPUTCLASS.length + 1, txtBox.id.length);
+        params[param] =     txtBox.value;
+      }
+    }
+  }
+  node.paramsValues = params;
+  closePanel(event);
+  return
+}
+
+function createDraggable(img="static/test2.png", name, module, params) {
 /* Creates a draggable image with an imagemap and adds them to the DOM.
 
 
 */
   sample_id = nodeCount++;
   // create elements
-  draggable = createDraggableImage(sample_id, x, y, img);
+  draggable = createDraggableImage(sample_id, 400, 200, img, name);
   imagemap = createDraggableImageMap(sample_id);
   document.body.appendChild(draggable);
   document.body.appendChild(imagemap);
+  var param_names = new Array();
+  draggable.paramsValues = new Object();
+  draggable.paramsTypes = new Object();
+  params = parseParams(params);
+  for (const p in params){
+    param_names.push(p);
+    draggable.paramsTypes[p] = params[p][0];
+    draggable.paramsValues[p] = params[p][1];
+  }
+  draggable.title = param_names;
+  draggable.params = param_names;
 
+  draggable.module = module;
+  draggable.procName = name;
+  nodeIds.push(draggable.id);
 }
 
-function createDraggableImage(id, x = 200, y = 100, img="static/test2.png") {
+function createDraggableImage(id, x = 200, y = 100, img="static/test2.png", name="node") {
 /* Returns a draggable image element at the specified coordinates using the input image.
 Parameters
 ----------
@@ -131,7 +249,7 @@ element
     Handle of the created draggable element.
 */
   const draggable = document.createElement("img");
-  draggable.class = "dragged";
+  draggable.class = NODECLASS;
   applyClassCSS(draggable);
 
   draggable.src = img;
@@ -144,6 +262,17 @@ element
 
   draggable.style.left = x.toString() + 'px';
   draggable.style.top = y.toString() + 'px';
+
+  const textDiv = document.createElement("div");
+  textDiv.class = TEXTCLASS;
+  textDiv.innerHTML = name;
+  applyClassCSS(textDiv);
+  textDiv.style.left = addToPx(draggable.style.left, 0);
+  textDiv.style.top = addToPx(draggable.style.top, -10);
+  textDiv.style.zIndex = '2';
+  textDiv.id = TEXTCLASS + SEPSTR + id;
+  document.body.appendChild(textDiv);
+  draggable.label = textDiv.id;
 
   draggable.src_lines = new Array();  // edges that start at this node
   draggable.dst_lines = new Array();  // edges that end at this node
@@ -220,21 +349,23 @@ event
       line_id = LINESTR + SEPSTR + line_num;
 
     }
-    line = createLine(line_num, srcX, srcY, event.clientX, event.clientY);
+//    line.srcNode = draggable_id;
+    line = createLine(line_num, srcX, srcY, event.clientX, event.clientY, draggable_id);
     line_id = line.id;
-    line.srcNode = draggable_id;
+
 //    draggable.src_lines.push(line_id);
 }
-function createLine(line_num, srcX=0, srcY=0, dstX=10, dstY=100) {
+function createLine(line_num, srcX=0, srcY=0, dstX=10, dstY=100, srcNodeId="") {
 /* Creates a div element that acts as a connector between nodes. The div can be dragged and follows
 the cursor until released. If released over the input of a node, the line attaches itself to the node.
 */
     const line = document.createElement("div");
-    line.id = LINESTR + SEPSTR + line_num.toString();
+//    line.id = LINESTR + SEPSTR + line_num.toString();
     line.class = "connector";
     applyClassCSS(line);
+
     line.onmousedown = function() {lastSelected = line};
-    line.srcNode = NaN;
+    line.srcNode = srcNodeId;
     line.dstNode = NaN;
     // Set position params
     line.srcX = srcX;
@@ -339,7 +470,8 @@ element
     function release(e) {
         // releases grabbed element; will no longer be grabbed
         // find nearest draggable; see if we can attach
-        node_id = element.id.split(SEPSTR)[1];
+//        node_id = element.id.split(SEPSTR)[1];
+        node_id = element.srcNode.split(SEPSTR)[1];
         drag_list = document.elementsFromPoint(e.clientX, e.clientY);
         var foundMatch = 0;
         for (let idx=0; idx < drag_list.length; idx++){
@@ -376,9 +508,23 @@ element
             }
             if (!isNaN(closest_area)) {
               // connect to center
+              element.dstNode = drag_el.id;
+              srcNode = document.getElementById(element.srcNode);
+
+              // create line id
+              srcNum = getNodeNumFromId(srcNode.id);
+              dstNum = getNodeNumFromId(drag_el.id);
+              lineId = LINESTR + SEPSTR + srcNum + SEPSTR + dstNum;
+              // check if this id exists already
+              otherLine = document.getElementById(lineId);
+              // todo: fix this
+              if (otherLine != null){  // a line connecting the two nodes already exists; don't connect
+                break;
+              }
+              element.id = lineId;
               element.dstX = p_center[0] + drag_el.offsetLeft;
               element.dstY = p_center[1] + drag_el.offsetTop;
-              element.dstNode = drag_el.id;
+
               srcNode = document.getElementById(element.srcNode);
               srcNode.src_lines.push(element.id);
               drag_el.dst_lines.push(element.id);
@@ -515,4 +661,44 @@ function getDraggableFromImapID(id) {
   node_num = id.split(SEPSTR).pop();
   draggable_id = DRAGSTR + SEPSTR + node_num;
   return document.getElementById(draggable_id);
+}
+
+function parseParams(s) {
+// This function parses a string-ified Python list
+  // remove brackets
+  s = s.replaceAll("'", '"');
+  s = s.replaceAll("None", null);
+  params = JSON.parse(s);
+  return params;
+}
+
+function getNodeNumFromId(id){
+  return id.split(SEPSTR).pop();
+}
+
+function exportPipeline() {
+// This function pulls together all nodes, their properties, and connections
+  pipelineName = window.prompt("Name of pipeline: ");
+  if (pipelineName == null) {
+    return  // user cancelled
+  }
+  var node_export = new Array();
+  for(var i=0; i<nodeIds.length; i++){
+    el = document.getElementById(nodeIds[i]);
+    node_export.push(el);
+  }
+  var pipelineSummary = new Object();
+  pipelineSummary['name'] = pipelineName;
+  pipelineSummary['nodes'] = node_export;
+
+    fetch("/pipeline", {
+        method: "POST",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        },
+//        body: JSON.stringify(node_export)
+        body: JSON.stringify(pipelineSummary)
+//
+    });
 }

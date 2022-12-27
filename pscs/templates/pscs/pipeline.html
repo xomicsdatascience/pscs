@@ -1,9 +1,48 @@
 {% extends 'base.html' %}
-<!--
-Requires from Flask:
-
--->
 {% block header %}
-<h1>Pipeline Designer</h1>
+<h2 class="bottomarea">Pipeline Designer</h2>
+
 {% endblock %}
 
+{% block content %}
+<script src="static/js/dragging.js"></script>
+<script src="static/js/pipelineSidebar.js"></script>
+
+<!--<button type="button" onclick="createDraggable();">Insert node</button>-->
+
+<div id="sidebar" class="sidebar-closed">
+    {% for m in modules %}
+      <h2>{{ m[0].upper() + m[1:] }}</h2>
+      {% for j in node_json %}
+        {% if j['module'] == m %}
+<!--          <p title="{{ j['parameters'] }}" color="#999999">{{ j['name'] }}-->
+          {% if j['num_inputs'] == 0 %}
+              <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/input.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters'] }}&quot;)">{{ j['name'] }}
+              <img width="20px" height="20px" src="static/nodes/input.png">
+          </p>
+          {% elif j['num_outputs'] == 0 %}
+<!--    <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable(0,0,'static/nodes/output.png')">{{ j['name'] }}-->
+            <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/output.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;)">{{ j['name'] }}
+              <img width="20px" height="20px" src="static/nodes/output.png">
+          {% elif j['num_inputs'] == 1 %}
+<!--        <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable(0,0,'static/nodes/simo.png')">{{ j['name'] }}-->
+    <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/simo.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;)">{{ j['name'] }}
+              <img width="20px" height="20px" src="static/nodes/simo.png">
+          {% else %}
+<!--    <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable(0,0,'static/nodes/mimo.png')">{{ j['name'] }}-->
+    <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/mimo.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;)">{{ j['name'] }}
+              <img width="20px" height="20px" src="static/nodes/mimo.png">
+          {% endif %}
+<!--    <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/input.png',&quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;)">{{ j['name'] }}-->
+<!--              <img width="20px" height="20px" src="static/nodes/input.png">-->
+        {% endif %}
+      {% endfor %}
+    {% endfor %}
+</div>
+
+<button type="button" onclick="toggleSidebar()">&#9776;</button>
+<button type="button" onclick="exportPipeline()">Save Pipeline</button>
+<!--<button type="button" onclick='prompt("Enter a name for the pipeline:", "Analysis")'>Save Pipeline</button>-->
+
+<!--<form action="/test" method="post"><button type="submit" name="export" value="export" onclick="exportPipeline()">Export!</button></form>-->
+{% endblock %}

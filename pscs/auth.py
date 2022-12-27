@@ -30,12 +30,11 @@ def register():
                 # we'll first check that it's not in there
                 uid_row = 'starter'
                 while len(uid_row) > 0:
-                    # This section is basically impossible to test; it's okay if tests don't have coverage here
                     uid = str(uuid4())
-                    uid_row = db.execute("SELECT id_user FROM users WHERE id_user=(?)", (uid,)).fetchall()
+                    uid_row = db.execute("SELECT id_user FROM users_auth WHERE id_user=(?)", (uid,)).fetchall()
 
                 db.execute(
-                "INSERT INTO users (id_user, name_user, password) VALUES (?, ?, ?)",
+                "INSERT INTO users_auth (id_user, name_user, password) VALUES (?, ?, ?, ?)",
                 (uid, username, generate_password_hash(password)))
                 db.commit()
             except db.IntegrityError:
@@ -56,7 +55,7 @@ def login():
         db = get_db()
         error = None
         user = db.execute(
-            'SELECT id_user, name_user, password FROM users WHERE name_user = ?', (username,)
+            'SELECT id_user, name_user, password FROM users_auth WHERE name_user = ?', (username,)
         ).fetchone()
 
         if user is None:
@@ -79,7 +78,7 @@ def load_logged_in_user():
         g.user = None
     else:
         g.user = get_db().execute(
-            "SELECT id_user, name_user FROM users WHERE id_user = ?", (user_id,)
+            "SELECT id_user, name_user FROM users_auth WHERE id_user = ?", (user_id,)
         ).fetchone()
 
 
