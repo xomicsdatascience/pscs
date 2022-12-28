@@ -34,7 +34,7 @@ def register():
                     uid_row = db.execute("SELECT id_user FROM users_auth WHERE id_user=(?)", (uid,)).fetchall()
 
                 db.execute(
-                "INSERT INTO users_auth (id_user, name_user, password) VALUES (?, ?, ?, ?)",
+                "INSERT INTO users_auth (id_user, name_user, password) VALUES (?, ?, ?)",
                 (uid, username, generate_password_hash(password)))
                 db.commit()
             except db.IntegrityError:
