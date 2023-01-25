@@ -9,11 +9,19 @@
 <script src="/static/js/projects.js"></script>
 
 <!-- Create dropdown of analyses -->
-<select name="analysis" id="analysis">
+<!--<select name="analysis" id="analysis">-->
+<script>
+  function parseAndCreateTable(sel){
+    analysis_nodes = {{analysis_nodes | tojson}}
+    createTable({{files | tojson}}, analysis_nodes[sel.value]);
+  }
+</script>
+<select name="analysis" id="analysis" autocomplete="off" onchange="parseAndCreateTable(this);">
   <option value="def" selected disabled>Select analysis pipeline...</option>
 <!--    Go through each available analysis -->
   {% for an in analyses %}
-    <option value="{{an}}" onclick='createTable({{files | tojson}}, {{analysis_nodes[an] | tojson}} );'>{{analyses[an]}}</option>
+<!--    <option value="{{an}}" onclick='createTable({{files | tojson}}, {{analysis_nodes[an] | tojson}} );'>{{analyses[an]}}</option>-->
+    <option value="{{an}}">{{analyses[an]}}</option>
   {% endfor %}
 </select>
 
