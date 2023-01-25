@@ -5,7 +5,7 @@
 var lastSelected = null;  // currently-selected HTML element
 var nodeCount = 0;  // used for creating new node & map IDs
 var nodeIds = new Array();
-var lastOpenPanel;;
+var lastOpenPanel;
 // ID substrings
 const SEPSTR = '-';
 const DRAGSTR = "draggable";
@@ -16,6 +16,7 @@ const NODECLASS = "dragged"
 const TEXTCLASS = "dragtext";
 const PANELCLASS = "panel";
 const INPUTCLASS = "input";
+const NAMECLASS = "name";
 // Facilitate code reading
 const DELKEY = 46;
 
@@ -23,6 +24,9 @@ const DELKEY = 46;
 document.addEventListener("keydown", delNode, false);
 function delNode(e) {
     if (event.keyCode == DELKEY) {
+      if (lastSelected == null){
+        return;
+      }
       if (lastSelected.id.startsWith(DRAGSTR)){
         len = lastSelected.src_lines.length;
         for (let idx=0; idx<len; idx++){
@@ -124,6 +128,7 @@ element : HTMLElement
      if (element.params.length == 0){
        return;
      }
+     lastSelected = null;  // prevent character deletion from
      const panel = document.createElement("div");
      panel.class = PANELCLASS;
      panel.id = PANELCLASS + SEPSTR + getNodeNumFromId(element.id);
@@ -133,6 +138,15 @@ element : HTMLElement
      tbl = document.createElement('table');
      tbl.style.width = '100px';
      tbl.style.border = '5px solid black';
+     // Name for display / input selection later
+     tr = tbl.insertRow();
+     td = tr.insertCell();
+     td.appendChild(document.createTextNode('Node label'));
+     td = tr.insertCell();
+     inp = document.createElement('input');
+     inp.defaultValue = element.labelText;
+     inp.id = NAMECLASS + SEPSTR + getNodeNumFromId(element.id);
+     td.appendChild(inp);
      for (var idx=0; idx<element.params.length; idx++) {
        // Get labels / default values, if any
        parName = element.params[idx];
@@ -192,10 +206,21 @@ function saveParams(event) {
   var params = new Object();
   for (var i=0, row; row = tbl.rows[i]; i++){
     for (var j=0, cell; cell = row.cells[j]; j++){
-      if (cell.children.length > 0 && cell.children[0].id.includes(INPUTCLASS)){
+      if (cell.children.length > 0 && cell.children[0].id.includes(INPUTCLASS)){  // only select boxes of this class
         txtBox = cell.children[0];
         param = txtBox.id.substring(INPUTCLASS.length + 1, txtBox.id.length);
-        params[param] =     txtBox.value;
+        if (txtBox.value.length > 0){
+          params[param] = txtBox.value;
+        }
+        else if (txtBox.value.length == 0){
+          params[param] = null;
+        }
+      }
+      else if(cell.children.length > 0 && cell.children[0].id.includes(NAMECLASS)){
+        // display name for the node
+        txtBox = cell.children[0];
+        name = txtBox.value;
+        updateLabel(node, name);
       }
     }
   }
@@ -273,11 +298,19 @@ element
   textDiv.id = TEXTCLASS + SEPSTR + id;
   document.body.appendChild(textDiv);
   draggable.label = textDiv.id;
+  draggable.labelText = name;
 
   draggable.src_lines = new Array();  // edges that start at this node
   draggable.dst_lines = new Array();  // edges that end at this node
   dragElement(draggable);
   return draggable;
+}
+
+function updateLabel(node, newname){
+  textDiv = document.getElementById(node.label);
+  node.labelText = newname;
+  textDiv.innerHTML = node.labelText;
+
 }
 
 function createDraggableImageMap(id) {
@@ -676,29 +709,87 @@ function getNodeNumFromId(id){
   return id.split(SEPSTR).pop();
 }
 
-function exportPipeline() {
+function exportPipeline(pipelineName, pipelineDestination) {
 // This function pulls together all nodes, their properties, and connections
-  pipelineName = window.prompt("Name of pipeline: ");
-  if (pipelineName == null) {
-    return  // user cancelled
-  }
+  isDestProject = pipelineDestination.startsWith('project:');
+  dest = pipelineDestination.substring(pipelineDestination.indexOf(':')+1);
+
   var node_export = new Array();
   for(var i=0; i<nodeIds.length; i++){
     el = document.getElementById(nodeIds[i]);
+    el.nodeId = el.id;
     node_export.push(el);
   }
   var pipelineSummary = new Object();
   pipelineSummary['name'] = pipelineName;
   pipelineSummary['nodes'] = node_export;
-
+  pipelineSummary['isDestProject'] = isDestProject;
+  pipelineSummary['saveId'] = dest;
     fetch("/pipeline", {
         method: "POST",
         headers: {
             "Accept": "application/json",
             "Content-Type": "application/json"
         },
-//        body: JSON.stringify(node_export)
         body: JSON.stringify(pipelineSummary)
-//
     });
+}
+
+function openSavePanel(projDestsJSON, userDestsJSON) {
+  projDestsJSON = projDestsJSON.replaceAll("'", '"');
+  projDestsJSON = projDestsJSON.replaceAll("None", null);
+  projDests = JSON.parse(projDestsJSON);
+
+  userDestsJSON = userDestsJSON.replaceAll("'", '"');
+  userDestsJSON = userDestsJSON.replaceAll("None", null);
+  userDests = JSON.parse(userDestsJSON);
+
+  const panel = document.createElement("div");
+  panel.class = PANELCLASS;
+  panel.id = PANELCLASS + SEPSTR + "save";
+  applyClassCSS(panel);
+
+  tbl = document.createElement('table');
+  tbl.style.width = '100px';
+  tbl.style.border = '5px solid black';
+
+  // Need: pipeline name, associated project
+  tr = tbl.insertRow();
+  td = tr.insertCell();
+  inpName = document.createElement("INPUT");
+  td.appendChild(inpName);
+
+  td = tr.insertCell();
+  drop = document.createElement("select");
+  drop.style.maxWidth = '100px';
+  option = document.createElement("option");
+  option.innerHTML = "Destination";
+  option.disabled = true;
+  option.selected = true;
+  drop.appendChild(option);
+
+  option = document.createElement("option");
+  option.innerHTML = "Userspace: " + userDests['user'];
+  option.value = 'user:' + userDests['id'];
+  drop.appendChild(option);
+  for (var proj in projDests){
+    option = document.createElement("option");
+    var projDisplay = proj;
+    if (proj.length > 20){
+      projDisplay = proj.substring(0,17) + "...";
+    }
+    option.innerHTML = "Project: " + projDisplay;
+    option.value = 'project:' + projDests[proj];
+    drop.appendChild(option);
+  }
+  td.appendChild(drop);
+
+  td = tr.insertCell();
+  btn = document.createElement("button");
+  btn.innerHTML = "Save";
+  btn.onclick = function() {exportPipeline(inpName.value.toString(), drop.value.toString() ); panel.remove();}
+  td.appendChild(btn);
+  panel.appendChild(tbl);
+
+  document.body.appendChild(panel);
 }

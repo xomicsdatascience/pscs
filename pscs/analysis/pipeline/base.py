@@ -202,31 +202,32 @@ class OutputNode(PipelineNode):
 
 
 class Pipeline:
-    """
-    Class for storing, designing, and running related processes. Useful for keeping track of results and pipelines run.
-    """
-
-    def __init__(self, segment_list: list = None):
-        if segment_list is None:
-            self.pipeline = []
-            return
-
-        self.pipeline = segment_list
-        self.inputs = []
-        for node in self.pipeline:
-            if isinstance(node, InputNode):
-                self.inputs.append(node)
-        return
-
-    def add_node(self, node: PipelineNode):
-        self.pipeline.append(node)
-        if isinstance(node, InputNode):
-            self.inputs.append(node)
+    def __init__(self, nodes: dict = None):
+        """
+        Class for storing, designing, and running related processes. Useful for keeping track of results and pipelines run.
+        Parameters
+        ----------
+        nodes : dict
+            Nodes indexed by their ID. Default: None.
+        """
+        self.pipeline = nodes
 
     def run(self):
-        for input_node in self.inputs:
-            input_node.run_pipeline()
-        # Check that
+        # Get how many are ready, how many are done
+        to_run = []
+        ready_list = []
+        for _, node in self.pipeline.items():
+            if node.is_ready:
+                ready_list.append(node)
+        print(ready_list)
+        while len(ready_list) > 0:
+            run_list = ready_list
+            ready_list = []
+            for node in run_list:
+                node.run()
+                for next_node in node._next:
+                    if next_node.is_ready:
+                        ready_list.append(next_node)
         return
 
     def reset(self):

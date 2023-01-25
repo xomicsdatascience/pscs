@@ -10,13 +10,16 @@ import os
 class CSVLoadingNode(InputNode):
     def __init__(self,
                  path: str = None,
-                 index_col: list = None):
+                 index_col: str = None):
         """
         Loads a .csv and stores the data in an AnnData object.
         Parameters
         ----------
-        csv_path : str
+        path : str
             Path to the .csv to load
+        index_col : [str, int]
+            Variable indicating the column to use as an index. If string, looks for the column with the header.
+            If int, takes the column at that position.
         """
         super().__init__()
         path = str(path)
@@ -24,7 +27,8 @@ class CSVLoadingNode(InputNode):
             self.sep = '\t'
         else:
             self.sep = ','
-
+        if index_col is None:
+            index_col = 0
         self.path = path
         self.index_col = index_col
         self.effect = ['+X', '+obs', '+var']  # creates the data object

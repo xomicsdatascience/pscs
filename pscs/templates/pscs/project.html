@@ -1,26 +1,21 @@
 {% extends 'base.html' %}
 
 {% block header %}
-<h1><center>{{ project['name_project'] }}</center></h1>
+<h1><center>{{ project_name }}</center></h1>
 {% endblock %}
 
 {% block content %}
 <a class="action" href="{{ url_for('pscs.upload') }}">Upload Data</a>
-<table>
-    <tr>
-        <th>File</th>
-        <th>Date Uploaded</th>
-    </tr>
-    {% for f in files %}
-    <tr>
-        <td>{{ f['file_path_basename'] }}</td>
-        <td>{{ f['data_uploaded_time'] }}</td>
-        <td><select name="analysis" id="analysis_0">
-            <option value="default" selected>Select pipeline...</option>
-<!--            TODO: populate this with pipelines available to user-->
-        </select></td>
-        <td><form action="/analysis" method="post"><button type="submit" name="analyze" value="{{ f['file_path'] }}">Analyze</button></td>
-    </tr>
-    {% endfor %}
-</table>
+<script src="/static/js/projects.js"></script>
+
+<!-- Create dropdown of analyses -->
+<select name="analysis" id="analysis">
+  <option value="def" selected disabled>Select analysis pipeline...</option>
+<!--    Go through each available analysis -->
+  {% for an in analyses %}
+    <option value="{{an}}" onclick='createTable({{files | tojson}}, {{analysis_nodes[an] | tojson}} );'>{{analyses[an]}}</option>
+  {% endfor %}
+</select>
+
+<button onclick="executePipeline();">Run</button>
 {% endblock %}

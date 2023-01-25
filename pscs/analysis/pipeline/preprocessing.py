@@ -36,7 +36,7 @@ class FilterCellValues(PipelineNode):
         return
 
     def run(self):
-        ann_data = self.previous[0].result
+        ann_data = self._previous[0].result
         # get obs keep if it already exists
         if 'obs_keep' in ann_data.obs.keys():
             obs_keep = ann_data.obs['obs_keep']
@@ -45,16 +45,16 @@ class FilterCellValues(PipelineNode):
         obs_keep_list = []
         # filter_cells only accepts one arg at a time; go through each one
         if self.minimum_unique_protein is not None:
-            ok, _ = sc.pp.filter_cells(ann_data, min_genes=self.minimum_unique_protein, inplace=False)
+            ok, _ = sc.pp.filter_cells(ann_data, min_genes=float(self.minimum_unique_protein), inplace=False)
             obs_keep_list.append(ok)
         if self.maximum_unique_protein is not None:
-            ok, _ = sc.pp.filter_cells(ann_data, max_genes=self.maximum_unique_protein, inplace=False)
+            ok, _ = sc.pp.filter_cells(ann_data, max_genes=float(self.maximum_unique_protein), inplace=False)
             obs_keep_list.append(ok)
         if self.minimum_total_protein is not None:
-            ok, _ = sc.pp.filter_cells(ann_data, min_counts=self.minimum_total_protein, inplace=False)
+            ok, _ = sc.pp.filter_cells(ann_data, min_counts=float(self.minimum_total_protein), inplace=False)
             obs_keep_list.append(ok)
         if self.maximum_total_protein is not None:
-            ok, _ = sc.pp.filter_cells(ann_data, max_counts=self.maximum_total_protein, inplace=False)
+            ok, _ = sc.pp.filter_cells(ann_data, max_counts=float(self.maximum_total_protein), inplace=False)
             obs_keep_list.append(ok)
         # Iterate through the kept observations
         for ok in obs_keep_list:
@@ -98,23 +98,23 @@ class FilterGeneValues(PipelineNode):
 
     def run(self):
         # filter_genes only accepts on arg at a time
-        ann_data = self.previous[0].result
+        ann_data = self._previous[0].result
         if "var_keep" in ann_data.var.keys():
             var_keep = ann_data.var["var_keep"]
         else:
             var_keep = pd.Series([True]*ann_data.n_vars, index=ann_data.var.index)
         var_keep_list = []
         if self.minimum_cell_presence is not None:
-            vk, _ = sc.pp.filter_genes(ann_data, min_cells=self.minimum_cell_presence, inplace=False)
+            vk, _ = sc.pp.filter_genes(ann_data, min_cells=float(self.minimum_cell_presence), inplace=False)
             var_keep_list.append(vk)
         if self.maximum_cell_presence is not None:
-            vk, _ = sc.pp.filter_genes(ann_data, max_cells=self.maximum_cell_presence, inplace=False)
+            vk, _ = sc.pp.filter_genes(ann_data, max_cells=float(self.maximum_cell_presence), inplace=False)
             var_keep_list.append(vk)
         if self.minimum_cell_amount is not None:
-            vk, _ = sc.pp.filter_genes(ann_data, min_counts=self.minimum_cell_amount, inplace=False)
+            vk, _ = sc.pp.filter_genes(ann_data, min_counts=float(self.minimum_cell_amount), inplace=False)
             var_keep_list.append(vk)
         if self.maximum_cell_amount is not None:
-            vk, _ = sc.pp.filter_genes(ann_data, max_counts=self.maximum_cell_amount, inplace=False)
+            vk, _ = sc.pp.filter_genes(ann_data, max_counts=float(self.maximum_cell_amount), inplace=False)
             var_keep_list.append(vk)
         # Iterate through kept variables
         for vk in var_keep_list:
