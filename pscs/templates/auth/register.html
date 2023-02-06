@@ -5,11 +5,31 @@
 {% endblock %}
 
 {% block content %}
-<form method="post">
+<script src="/static/js/registration.js"></script>
+<script src="https://www.google.com/recaptcha/api.js" async defer></script>
+<form method="post" onsubmit="return validateForm();">
     <label for="username">Username</label>
-    <input name="username" id="username" required>
+    <input name="username" id="username" style="width: 150px;">
+
+    <label for="email">E-mail</label>
+    <input type="email" name="email" id="email" style="width: 300px;">
+
+    <label for="name">Name (optional)</label>
+    <input name="name" id="name" style="width: 300px;">
+
     <label for="password">Password</label>
-    <input type="password" name="password" id="password" required>
+    <input type="password" name="password" id="password" style="width: 300px;" minlength="12">
+
+    <label for="passwordConfirm">Confirm Password</label>
+    <input type="password" name="passwordConfirm" id="passwordConfirm" style="width: 300px;">
+    <div class="g-recaptcha" data-sitekey="6Lc9-DskAAAAAH5yHqx0Ar2W8_VwPgwuGWQGWr4w"></div>
+
+    <label for="noPHI" style="font-weight: normal">I agree that any data sent to PSCS has had <a href="https://www.dhcs.ca.gov/dataandstats/data/Pages/ListofHIPAAIdentifiers.aspx">Personal Health Information</a> removed and that I will report any datasets I find that contain any.
+    <input type="checkbox" id="noPHI" style="float: left;">
+    </label>
     <input type="submit" value="Register">
 </form>
+
+
+
 {% endblock %}

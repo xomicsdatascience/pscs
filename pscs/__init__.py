@@ -17,9 +17,18 @@ def create_app(test_config=None) -> Flask:
         An instance of the Flask app.
     """
     app = Flask(__name__, instance_relative_config=True)
+    # Recaptcha settings
+    recaptcha_client_file = open(os.path.join(app.instance_path, 'recaptcha_client'), 'r')
+    recaptcha_client_token = recaptcha_client_file.read().strip()
+    recaptcha_client_file.close()
+    recaptcha_server_file = open(os.path.join(app.instance_path, 'recaptcha_server'), 'r')
+    recaptcha_server_token = recaptcha_server_file.read().strip()
+    recaptcha_server_file.close()
     app.config.from_mapping(
         SECRET_KEY='dev',
-        DATABASE=os.path.join(app.instance_path, 'pscs.sqlite'))
+        DATABASE=os.path.join(app.instance_path, 'pscs.sqlite'),
+        RECAPTCHA_CLIENT=recaptcha_client_token,
+        RECAPTCHA_SERVER=recaptcha_server_token)
 
     if test_config is None:
         # Load instance
@@ -29,11 +38,6 @@ def create_app(test_config=None) -> Flask:
 
     # Make sure path exists
     os.makedirs(app.instance_path, exist_ok=True)
-
-    # Say hello!
-    @app.route('/hello')
-    def hello():
-        return "Hello!"
 
     from . import db
     db.init_app(app)

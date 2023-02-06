@@ -162,7 +162,6 @@ def initialize_pipeline(node_json: str, input_files: dict, output_dir: str):
     """
     pipeline_nodes = load_from_nodes(node_json)
     pipeline = Pipeline(pipeline_nodes)
-    print(f'init: {pipeline}')
     assign_inputs(pipeline, input_files=input_files)
     assign_outputs(pipeline, output_dir)
     return pipeline

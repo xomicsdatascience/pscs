@@ -7,7 +7,7 @@ def readfile(filename):
 
 setuptools.setup(
     name="pscs",
-    version="0.0.3",
+    version="0.0.4",
     author="Meyer Lab",
     author_email="",
     description="",
@@ -19,9 +19,9 @@ setuptools.setup(
         "Programming Language :: Python :: 3",
         "License :: OSI Approved :: MIT License"
     ],
-
     packages=setuptools.find_packages(),
-    python_requires='>=3.8',
+    include_package_data=True,
+    python_requires='>=3.10',
     license="MIT",
     install_requires=[
         'pyteomics>=4.4.1',
@@ -32,7 +32,9 @@ setuptools.setup(
         'Bio>=0.4.1',
         'PyQt5>=5.15.4',
         'lxml>=4.6.2',
-	'flask',
-	'anndata'
+        'flask',
+        'anndata',
+        'scanpy',
+        'plotly'
     ],
 )

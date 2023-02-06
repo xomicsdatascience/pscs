@@ -1,19 +1,18 @@
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, url_for, Flask, session
+    Blueprint, flash, g, redirect, render_template, request, url_for, Flask, session, current_app
 )
-# from dash import Dash
-# import dash.dcc as dcc
-# import dash.html as html
+
 from werkzeug.exceptions import abort
 from werkzeug.utils import secure_filename
 from pscs.auth import login_required
-from pscs.db import get_db
+from pscs.db import get_db, get_unique_value_for_field
 from pscs.metadata.metadata import get_metadata
 from pscs.analysis.pipeline import node_parser
 import os
 import uuid
 import numpy as np
 from pscs.analysis import single_cell
+from pscs.analysis.dispatching import dispatch
 from flask import send_from_directory
 import plotly.express as px
 import plotly
@@ -24,15 +23,13 @@ import pathlib
 
 default_role = 'owner'
 bp = Blueprint('pscs', __name__)
-rootdir = '/home/lex/projects/pscs'
-UPLOAD_FOLDER = '/home/lex/projects/pscs/upload/'
+UPLOAD_FOLDER = 'upload/'
 ALLOWED_EXTENSIONS = {'csv', 'tsv'}
 PATH_KEYWORD = 'path'
 
+
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.join(UPLOAD_FOLDER, "{userid}")
-app.config['COMMON_DIRECTORY'] ='/home/lex/flask-tutorial/common/'
-# app.config['RESULTS_DIRECTORY'] = os.path.join("pscs","static", "results", "{userid}")
 app.config['PROJECTS_DIRECTORY'] = os.path.join("pscs", "static", "projects", "{id_project}")
 app.config['RESULTS_DIRECTORY'] = os.path.join(app.config['PROJECTS_DIRECTORY'], "results", "{id_analysis}")
 
@@ -42,8 +39,14 @@ def index():
     db = get_db()
     if g.user is not None:
         # Get project meta data to list for user
-        user_projects = db.execute('SELECT name_project, description, role, num_files, id_project, num_members FROM projects WHERE id_user = ?',
-                                   (g.user['id_user'],)).fetchall()
+        user_projects = db.execute('SELECT projects.name_project, projects.description, projects.num_files,'
+                                   ' projects.id_project, projects.num_members, projects_roles.role'
+                                   ' FROM projects'
+                                   ' INNER JOIN  projects_roles'
+                                   ' ON projects.id_project=projects_roles.id_project'
+                                   ' AND projects.id_user=? AND projects_roles.id_user=?',
+                                   (g.user['id_user'], g.user['id_user']))
+
         return render_template('pscs/index.html', projects=user_projects)
     else:
         return render_template('pscs/index.html', projects=None)
@@ -120,7 +123,6 @@ def profile():
 @login_required
 def create_project():
     if request.method == 'POST':  # data has been sent to us
-        print(request.form)
         project_name = request.form['name']
         project_description = request.form['description']
         error = None
@@ -135,15 +137,15 @@ def create_project():
             while len(project_row) > 0:
                 project_id = str(uuid.uuid4())
                 project_row = db.execute("SELECT id_project FROM projects WHERE id_project=(?)", (project_id,)).fetchall()
-            db.execute("INSERT INTO projects (id_project, id_user, name_project, description, role) VALUES (?,?,?,?,?)",
-                       (project_id, g.user['id_user'], project_name,project_description,'admin'))
+            db.execute("INSERT INTO projects (id_project, id_user, name_project, description) VALUES (?,?,?,?)",
+                       (project_id, g.user['id_user'], project_name,project_description))
+            db.execute("INSERT INTO projects_roles (id_project, id_user, role) VALUES (?,?,?)",
+                       (project_id, g.user['id_user'], 'admin'))
             db.commit()
             proj_dir = pathlib.Path(app.config['PROJECTS_DIRECTORY'].format(id_project=project_id))
-            proj_dir.mkdir(exists_ok=True)
-            # os.mkdir(app.config['PROJECTS_DIRECTORY'].format(id_project=project_id))
-            results_dir = pathlib.Path(join(app.config['PROJECTS_DIRECTORY'], 'results'))
-            results_dir.mkdir(exists_ok=True)
-            # os.mkdir(join(app.config['PROJECTS_DIRECTORY'], 'results'))
+            proj_dir.mkdir(exist_ok=True)
+            results_dir = pathlib.Path(os.path.join(app.config['PROJECTS_DIRECTORY'], 'results').format(id_project=project_id))
+            results_dir.mkdir(exist_ok=True)
 
         return redirect(url_for('pscs.index'))
     return render_template("pscs/create.html")
@@ -213,7 +215,7 @@ def project(id_project):
     if request.method == 'GET':
         db = get_db()
         id_user = g.user['id_user']
-        role = db.execute('SELECT role FROM projects WHERE id_project = ? and id_user = ?', (id_project, id_user)).fetchall()
+        role = db.execute('SELECT role FROM projects_roles WHERE id_project = ? and id_user = ?', (id_project, id_user)).fetchall()
         if len(role) > 0:
             # Display files for this project only
             session['CURRENT_PROJECT'] = id_project
@@ -238,13 +240,17 @@ def project(id_project):
             return render_template("pscs/project.html", project_name=project_name, analyses=analyses, files=files, analysis_nodes=analysis_nodes)
     return redirect(url_for('pscs.index'))
 
+
 @bp.route('/run_analysis', methods=['POST'])
 @login_required
 def run_analysis():
     if request.method == 'POST':
         pipeline_specs = request.json
+        id_project = session['CURRENT_PROJECT']
+        id_analysis = pipeline_specs['id_analysis']
         # Get analysis json
         db = get_db()
+        # TODO: need to confirm that current user can access this analysis
         pipeline_json = db.execute('SELECT node_file FROM analysis WHERE id_analysis = ?',
                                    (pipeline_specs['id_analysis'],)).fetchall()[0]['node_file']
 
@@ -258,9 +264,14 @@ def run_analysis():
         for node_id, file_id in file_ids.items():
             buf = db.execute('SELECT file_path FROM data WHERE id_data = ?', (file_id,)).fetchall()[0]
             file_ids[node_id] = buf['file_path']
-        pipeline = node_parser.initialize_pipeline(pipeline_json, input_files=file_ids, output_dir=output_dir)
-        pipeline.run()
+        # Dispatch to OSP
+        dispatch(pipeline_json=pipeline_json,
+                 file_ids=file_ids,
+                 id_project=id_project,
+                 id_analysis=id_analysis,
+                 resource='osp')
         return redirect(url_for('pscs.project', id_project=session['CURRENT_PROJECT']))
+
 
 @bp.route('/pipeline', methods=['GET', 'POST'])
 def pipeline_designer():
@@ -270,7 +281,6 @@ def pipeline_designer():
         f.close()
         modules = get_unique_values_for_key(j, 'module')
         node_json = convert_dict_to_list(j)
-        print(node_json)
         proj_dests, user_dests = get_save_destinations()
         return render_template("pscs/pipeline.html", node_json=node_json, modules=modules, proj_dests=proj_dests, user_dests=user_dests)
     elif request.method == 'POST':
@@ -321,31 +331,6 @@ def pipeline_designer():
                 )
             db.commit()
         return render_template("pscs/pipeline.html")
-
-
-def get_unique_value_for_field(db, field: str, table: str) -> str:
-    """
-    Gets a unique uuid for the given field in the given table. This is intended for use with DBMs that don't have
-    this as an built-in feature.
-    Parameters
-    ----------
-    db
-        Database object from which to pull, obtained via get_db
-    field : str
-        Field for which the unique value should be obtained
-    table : str
-        Table from which the field should be pulled
-
-    Returns
-    -------
-    str
-        Unique value for the field
-    """
-    row = 'temp'
-    while len(row) != 0:
-        tentative_id = str(uuid.uuid4())
-        row = db.execute(f'SELECT {field} FROM {table} WHERE {field} = ?', (tentative_id,)).fetchall()
-    return tentative_id
 
 
 def get_save_destinations():
@@ -405,6 +390,7 @@ def get_unique_values_for_key(d: dict, key) -> list:
 
 
 app.add_url_rule('/upload/<name>', endpoint='download_file', build_only=True)
+
 
 def calc_hash_of_file(file: str) -> str:
     """

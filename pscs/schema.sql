@@ -2,24 +2,27 @@ DROP TABLE IF EXISTS users_auth;
 DROP TABLE IF EXISTS users_meta;
 DROP TABLE IF EXISTS users_affiliation;
 DROP TABLE IF EXISTS projects;
+DROP TABLE IF EXISTS projects_roles;
 DROP TABLE IF EXISTS data;
 DROP TABLE IF EXISTS data_table_gene;
 DROP TABLE IF EXISTS results;
 DROP TABLE IF EXISTS analysis;
 DROP TABLE IF EXISTS analysis_author;
+DROP TABLE IF EXISTS analysis_inputs;
+DROP TABLE IF EXISTS universities;
+DROP TABLE IF EXISTS university_domains;
 
 CREATE TABLE users_auth (
-    id_user TEXT UNIQUE NOT NULL PRIMARY KEY,
-    name_user TEXT UNIQUE NOT NULL,
+    id_user TEXT UNIQUE NOT NULL PRIMARY KEY,  -- id; backend
+    name_user TEXT UNIQUE NOT NULL,  -- username; visible to user
     password TEXT NOT NULL,  -- this contains hash method, salt, and pass hash
-    creation_time_user TIMESTAMP DEFAULT CURRENT_TIMESTAMP
-);
-
-CREATE TABLE users_meta (
-    id_user TEXT UNIQUE NOT NULL PRIMARY KEY,
     email TEXT UNIQUE NOT NULL,
-    name TEXT,
-    orcid TEXT
+    name TEXT,  -- human name, "John Smith"
+    orcid TEXT UNIQUE,  -- linked ORCID
+    creation_time_user TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    ip TEXT,
+    confirmed BIT DEFAULT 0,  -- whether user has confirmed their email address
+    confirmed_datetime TIMESTAMP
 );
 
 CREATE TABLE users_affiliation (
@@ -31,15 +34,21 @@ CREATE TABLE users_affiliation (
 
 CREATE TABLE projects (
     id_project TEXT UNIQUE NOT NULL,  -- id for this project
-    id_user TEXT NOT NULL,
-    name_project TEXT NOT NULL,
-    description TEXT,
-    role TEXT NOT NULL DEFAULT "member",
+    id_user TEXT NOT NULL,  -- owner of the project
+    name_project TEXT NOT NULL,  -- title of project, input by user
+    description TEXT,  -- description of project, input by user
     num_files INT DEFAULT 0,
     num_members INT DEFAULT 1,
     creation_time_project TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    CONSTRAINT proj_key PRIMARY KEY (id_project, id_user),
-    FOREIGN KEY (id_user) REFERENCES users(id_user)
+    FOREIGN KEY (id_user) REFERENCES users_auth(id_user)
+);
+
+CREATE TABLE projects_roles (
+    id_project TEXT UNIQUE NOT NULL,
+    id_user TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT "member",
+    FOREIGN KEY (id_project) REFERENCES projects(id_project),
+    CONSTRAINT proj_key PRIMARY KEY (id_project, id_user)
 );
 
 CREATE TABLE data (
@@ -95,4 +104,20 @@ CREATE TABLE analysis_inputs(
     node_id TEXT NOT NULL,  -- id of the node within the pipeline, not within DB
     node_name TEXT NOT NULL,  -- displayed name of the node
     FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis)
+);
+
+CREATE TABLE universities(
+  id_university TEXT UNIQUE NOT NULL PRIMARY KEY,
+  name TEXT,
+  alpha_two_code TEXT,  -- country code
+  state_province TEXT,
+  country TEXT,
+  web_page TEXT
+);
+
+CREATE TABLE university_domains(
+  id_university TEXT NOT NULL,
+  university_domain TEXT NOT NULL,
+  FOREIGN KEY (id_university) REFERENCES universities(id_university),
+  CONSTRAINT university_key PRIMARY KEY (id_university, university_domain)
 );
