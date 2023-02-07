@@ -32,6 +32,7 @@ app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.join(UPLOAD_FOLDER, "{userid}")
 app.config['PROJECTS_DIRECTORY'] = os.path.join("pscs", "static", "projects", "{id_project}")
 app.config['RESULTS_DIRECTORY'] = os.path.join(app.config['PROJECTS_DIRECTORY'], "results", "{id_analysis}")
+app.config['DELETION_DIRECTORY'] = os.path.join("deletion", "{id_project}")
 
 
 @bp.route('/')
@@ -215,8 +216,8 @@ def project(id_project):
     if request.method == 'GET':
         db = get_db()
         id_user = g.user['id_user']
-        role = db.execute('SELECT role FROM projects_roles WHERE id_project = ? and id_user = ?', (id_project, id_user)).fetchall()
-        if len(role) > 0:
+        role_info = db.execute('SELECT data_read, data_write FROM projects_roles WHERE id_project = ? AND id_user = ?', (id_project, id_user)).fetchall()
+        if len(role_info) > 0 and role_info[0]['data_read'] == 1:  # Check that user has read permission
             # Display files for this project only
             session['CURRENT_PROJECT'] = id_project
             project_name = db.execute('SELECT name_project FROM projects WHERE id_project = ? and id_user = ?', (id_project, id_user)).fetchall()[0]['name_project']
@@ -237,7 +238,9 @@ def project(id_project):
             files = {}
             for project_file in project_data:
                 files[project_file['id_data']] = os.path.basename(project_file['file_path'])
-            return render_template("pscs/project.html", project_name=project_name, analyses=analyses, files=files, analysis_nodes=analysis_nodes)
+            project_data_summary = db.execute('SELECT id_data, file_path, data_type, file_hash, data_uploaded_time FROM data WHERE id_project = ?', (id_project,)).fetchall()
+
+            return render_template("pscs/project.html", project_name=project_name, analyses=analyses, files=files, analysis_nodes=analysis_nodes, project_data_summary=project_data_summary)
     return redirect(url_for('pscs.index'))
 
 
@@ -271,6 +274,49 @@ def run_analysis():
                  id_analysis=id_analysis,
                  resource='osp')
         return redirect(url_for('pscs.project', id_project=session['CURRENT_PROJECT']))
+
+
+@bp.route('/project/delete_data', methods=['POST'])
+def delete_data():
+    """
+    Deletes the data specified by the POST request. Verifies that user has permission to do so.
+    Returns
+    -------
+    None
+    """
+    if request.method == 'POST':
+        # Get data id
+        data_spec = request.json
+        id_data = data_spec['id_data']
+        id_user = g.user['id_user']
+        # Get related project id
+        db = get_db()
+        data_row = db.execute('SELECT * FROM data WHERE id_data = ?', (id_data,)).fetchone()
+        data_write = db.execute('SELECT data_write FROM projects_roles WHERE id_project = ? AND id_user = ?',
+                                (data_row['id_project'], id_user)).fetchone()
+        if data_write == 0:
+            flash("You do not have permission to delete data. Contact your project's manager to remove data.")
+        elif data_row['is_published']:
+            flash("Data has been published and can't be deleted.")
+        else:
+            # Permissions check out; stage data for deletion
+            deletion_destination = os.path.join(
+                app.config["DELETION_DIRECTORY"].format(id_project=data_row["id_project"]), data_row['id_data'])
+            db.execute('INSERT INTO data_deletion '
+                       '(id_data, id_user, id_project, file_path, data_type, file_hash, id_results, data_uploaded_time,'
+                       ' id_user_deleter, deletion_path) VALUES(?,?,?,?,?,?,?,?,?)',
+                       (data_row['id_data'], data_row['id_user'], data_row['id_project'], data_row['file_path'],
+                        data_row['data_type'],data_row['file_hash'], data_row['id_results'],
+                        data_row['data_uploaded_time'], id_user, deletion_destination))
+            db.execute('DELETE FROM data WHERE id_data = ?', (id_data,))
+            # Move data over
+            os.makedirs(app.config["DELETION_DIRECTORY"].format(id_project=data_row['id_project']), exist_ok=True)
+
+            os.replace(data_row['file_path'], deletion_destination)
+            db.commit()
+            flash("Data deleted.")
+        # return redirect(url_for('pscs.project', id_project=session['CURRENT_PROJECT']))
+    return
 
 
 @bp.route('/pipeline', methods=['GET', 'POST'])

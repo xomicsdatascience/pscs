@@ -47,6 +47,8 @@ CREATE TABLE projects_roles (
     id_project TEXT UNIQUE NOT NULL,
     id_user TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT "member",
+    data_read BIT DEFAULT 0,
+    data_write BIT DEFAULT 0,
     FOREIGN KEY (id_project) REFERENCES projects(id_project),
     CONSTRAINT proj_key PRIMARY KEY (id_project, id_user)
 );
@@ -60,9 +62,26 @@ CREATE TABLE data (
     file_hash TEXT NOT NULL,  -- sha3-256 hash of the data
     id_results TEXT DEFAULT NULL,  -- pointer to results, if any
     data_uploaded_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_published BIT DEFAULT 0,  -- whether this data has been published; prevents auto deletion
     FOREIGN KEY (id_user) REFERENCES users(id_user),
     FOREIGN KEY (id_project) REFERENCES projects(id_project),
     FOREIGN KEY (id_results) REFERENCES results(id_results)
+);
+
+CREATE TABLE data_deletion (
+    id_data TEXT UNIQUE NOT NULL PRIMARY KEY,
+    id_user TEXT NOT NULL,  -- owner/uploader
+    id_project TEXT NOT NULL,  -- project that this data is associated with
+    file_path TEXT NOT NULL,  -- path of the data on server
+    data_type TEXT NOT NULL,
+    file_hash TEXT NOT NULL,  -- sha3-256 hash of the data
+    id_results TEXT DEFAULT NULL,  -- pointer to results, if any
+    data_uploaded_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    id_user_deleter TEXT NOT NULL,  -- user who marked data for deletion,
+    data_deletion_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    deletion_path TEXT NOT NULL,  -- path where data is staged for deletion
+    FOREIGN KEY (id_data) REFERENCES data(id_data),
+    FOREIGN KEY (id_project) REFERENCES projects(id_project),
 );
 
 CREATE TABLE results(

@@ -5,7 +5,35 @@
 {% endblock %}
 
 {% block content %}
+<!--Data summary-->
+<h2>Data Summary</h2>
 <a class="action" href="{{ url_for('pscs.upload') }}">Upload Data</a>
+
+<!--Analysis-->
+<script>
+  function color(id, color = 'rgba(255,255,255,0.2)'){
+    elem = document.getElementById(id);
+    elem.style.backgroundColor = color;
+  }
+</script>
+<table>
+  <tr>
+    <th>file_path</th>
+    <th>data_type</th>
+    <th>date_uploaded</th>
+  </tr>
+  {% for data_row in project_data_summary %}
+  <tr onmouseover="color('{{loop.index0}}', 'rgba(200,200,200,0.5)')" onmouseleave="color('{{loop.index0}}')" id="{{loop.index0}}">
+    <td>{{data_row['file_path']}}</td>
+    <td>{{data_row['data_type']}}</td>
+    <td>{{data_row['data_uploaded_time']}}</td>
+    <td><button onclick="startDeletion('{{data_row['id_data']}}', '{{data_row['file_path']}}' )">Delete</button></td>
+  </tr>
+  {% endfor %}
+</table>
+
+
+<h2>Analyses</h2>
 <script src="/static/js/projects.js"></script>
 
 <!-- Create dropdown of analyses -->

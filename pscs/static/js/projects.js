@@ -79,6 +79,22 @@ function executePipeline(){
 
 }
 
+function startDeletion(id_data, name_data){
+  // Asks user to confirm their choice, then sends a request for the data to be deleted.
+  confirmationText = "Confirmation deletion of:\n" + name_data
+  if(confirm(confirmationText)){
+    var data_spec = new Object();
+    data_spec['id_data'] = id_data;
+    fetch("/project/delete_data",{
+    method: "POST",
+    headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"},
+    body: JSON.stringify(data_spec)
+    });
+  }
+}
+
 function parseFileInputId(id){
   first_sep_idx = id.indexOf(FIELDSEP);
   return id.substr(first_sep_idx+1);
