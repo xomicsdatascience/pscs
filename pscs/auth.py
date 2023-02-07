@@ -19,8 +19,6 @@ def register():
         email = request.form['email']
         recaptcha = request.form['g-recaptcha-response']
         user_ip = request.remote_addr
-        print(request.form)
-        print(user_ip)
         db = get_db()
         try:
             # Generate uuid for user
@@ -28,7 +26,6 @@ def register():
 
             # If recaptcha is not valid, stop bothering the server
             recaptcha_valid, recaptcha_msg = validate_recaptcha(recaptcha, current_app.config['RECAPTCHA_SERVER'], user_ip)
-            print(recaptcha_valid)
             if not recaptcha_valid:
                 error = recaptcha_msg
                 # Error from recaptcha is relatively useless; just tell user that there was a problem
@@ -52,7 +49,7 @@ def register():
             else:
                 db.execute(
                 "INSERT INTO users_auth (id_user, name_user, password, email, ip) VALUES (?, ?, ?, ?, ?)",
-                    (uid, username, generate_password_hash(password), email), user_ip)
+                    (uid, username, generate_password_hash(password), email, user_ip))
                 db.commit()
 
                 # Send mail to user to verify.

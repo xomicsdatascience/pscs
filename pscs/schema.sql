@@ -4,6 +4,7 @@ DROP TABLE IF EXISTS users_affiliation;
 DROP TABLE IF EXISTS projects;
 DROP TABLE IF EXISTS projects_roles;
 DROP TABLE IF EXISTS data;
+DROP TABLE IF EXISTS data_deletion;
 DROP TABLE IF EXISTS data_table_gene;
 DROP TABLE IF EXISTS results;
 DROP TABLE IF EXISTS analysis;
@@ -81,7 +82,7 @@ CREATE TABLE data_deletion (
     data_deletion_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     deletion_path TEXT NOT NULL,  -- path where data is staged for deletion
     FOREIGN KEY (id_data) REFERENCES data(id_data),
-    FOREIGN KEY (id_project) REFERENCES projects(id_project),
+    FOREIGN KEY (id_project) REFERENCES projects(id_project)
 );
 
 CREATE TABLE results(

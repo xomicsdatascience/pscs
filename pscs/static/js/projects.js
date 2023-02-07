@@ -91,9 +91,11 @@ function startDeletion(id_data, name_data){
         "Accept": "application/json",
         "Content-Type": "application/json"},
     body: JSON.stringify(data_spec)
-    });
+    }).then(response => {window.location.href = response.url});
   }
 }
+
+
 
 function parseFileInputId(id){
   first_sep_idx = id.indexOf(FIELDSEP);

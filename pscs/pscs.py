@@ -140,8 +140,8 @@ def create_project():
                 project_row = db.execute("SELECT id_project FROM projects WHERE id_project=(?)", (project_id,)).fetchall()
             db.execute("INSERT INTO projects (id_project, id_user, name_project, description) VALUES (?,?,?,?)",
                        (project_id, g.user['id_user'], project_name,project_description))
-            db.execute("INSERT INTO projects_roles (id_project, id_user, role) VALUES (?,?,?)",
-                       (project_id, g.user['id_user'], 'admin'))
+            db.execute("INSERT INTO projects_roles (id_project, id_user, role, data_read, data_write) VALUES (?,?,?,?,?)",
+                       (project_id, g.user['id_user'], 'admin', 1, 1))
             db.commit()
             proj_dir = pathlib.Path(app.config['PROJECTS_DIRECTORY'].format(id_project=project_id))
             proj_dir.mkdir(exist_ok=True)
@@ -293,30 +293,28 @@ def delete_data():
         db = get_db()
         data_row = db.execute('SELECT * FROM data WHERE id_data = ?', (id_data,)).fetchone()
         data_write = db.execute('SELECT data_write FROM projects_roles WHERE id_project = ? AND id_user = ?',
-                                (data_row['id_project'], id_user)).fetchone()
+                                (data_row['id_project'], id_user)).fetchone()['data_write']
         if data_write == 0:
             flash("You do not have permission to delete data. Contact your project's manager to remove data.")
         elif data_row['is_published']:
             flash("Data has been published and can't be deleted.")
-        else:
+        elif data_write == 1 and data_row['is_published'] == 0:  # assertion of conditions instead of 'else'
             # Permissions check out; stage data for deletion
             deletion_destination = os.path.join(
                 app.config["DELETION_DIRECTORY"].format(id_project=data_row["id_project"]), data_row['id_data'])
             db.execute('INSERT INTO data_deletion '
                        '(id_data, id_user, id_project, file_path, data_type, file_hash, id_results, data_uploaded_time,'
-                       ' id_user_deleter, deletion_path) VALUES(?,?,?,?,?,?,?,?,?)',
+                       ' id_user_deleter, deletion_path) VALUES(?,?,?,?,?,?,?,?,?,?)',
                        (data_row['id_data'], data_row['id_user'], data_row['id_project'], data_row['file_path'],
                         data_row['data_type'],data_row['file_hash'], data_row['id_results'],
                         data_row['data_uploaded_time'], id_user, deletion_destination))
             db.execute('DELETE FROM data WHERE id_data = ?', (id_data,))
-            # Move data over
+            # Move data from location to deletion staging
             os.makedirs(app.config["DELETION_DIRECTORY"].format(id_project=data_row['id_project']), exist_ok=True)
-
             os.replace(data_row['file_path'], deletion_destination)
             db.commit()
             flash("Data deleted.")
-        # return redirect(url_for('pscs.project', id_project=session['CURRENT_PROJECT']))
-    return
+        return redirect(url_for('pscs.project', id_project=session['CURRENT_PROJECT']))
 
 
 @bp.route('/pipeline', methods=['GET', 'POST'])
