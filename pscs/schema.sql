@@ -50,6 +50,7 @@ CREATE TABLE projects_roles (
     role TEXT NOT NULL DEFAULT "member",
     data_read BIT DEFAULT 0,
     data_write BIT DEFAULT 0,
+    project_management BIT DEFAULT 0,
     FOREIGN KEY (id_project) REFERENCES projects(id_project),
     CONSTRAINT proj_key PRIMARY KEY (id_project, id_user)
 );

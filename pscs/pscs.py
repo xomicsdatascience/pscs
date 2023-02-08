@@ -239,8 +239,20 @@ def project(id_project):
             for project_file in project_data:
                 files[project_file['id_data']] = os.path.basename(project_file['file_path'])
             project_data_summary = db.execute('SELECT id_data, file_path, data_type, file_hash, data_uploaded_time FROM data WHERE id_project = ?', (id_project,)).fetchall()
-
             return render_template("pscs/project.html", project_name=project_name, analyses=analyses, files=files, analysis_nodes=analysis_nodes, project_data_summary=project_data_summary)
+    elif request.method == 'POST':
+        new_project_name = request.json['newName']
+        # Assert that user has permission
+        db = get_db()
+        role_info = db.execute('SELECT project_management FROM projects_roles WHERE id_user = ? and id_project = ?', (g.user['id_user'], id_project)).fetchone()
+        if role_info['project_management'] == 0 or len(new_project_name) == 0:
+            flash("You do not have permission to rename the project; contact the project manager.")
+        elif role_info['project_management'] == 1 and len(new_project_name) > 0:
+            # Update name
+            db.execute('UPDATE projects SET name_project = ? WHERE id_project = ?', (new_project_name, id_project))
+            db.commit()
+        return url_for('pscs.project', id_project=id_project)
+
     return redirect(url_for('pscs.index'))
 
 

@@ -5,8 +5,9 @@
 {% endblock %}
 
 {% block content %}
+
 <!--Data summary-->
-<h2>Data Summary</h2>
+<h3>Data Summary</h3>
 <a class="action" href="{{ url_for('pscs.upload') }}">Upload Data</a>
 
 <!--Analysis-->
@@ -33,11 +34,10 @@
 </table>
 
 
-<h2>Analyses</h2>
+<h3>Analyses</h3>
 <script src="/static/js/projects.js"></script>
 
 <!-- Create dropdown of analyses -->
-<!--<select name="analysis" id="analysis">-->
 <script>
   function parseAndCreateTable(sel){
     analysis_nodes = {{analysis_nodes | tojson}}
@@ -48,10 +48,18 @@
   <option value="def" selected disabled>Select analysis pipeline...</option>
 <!--    Go through each available analysis -->
   {% for an in analyses %}
-<!--    <option value="{{an}}" onclick='createTable({{files | tojson}}, {{analysis_nodes[an] | tojson}} );'>{{analyses[an]}}</option>-->
     <option value="{{an}}">{{analyses[an]}}</option>
   {% endfor %}
 </select>
+<button onclick="executePipeline();" id="buttonRun">Run</button>
 
-<button onclick="executePipeline();">Run</button>
+<h3>Project Management</h3>
+
+  <table>
+    <tr>
+      <td>Rename project</td>
+      <td style="vertical-align: middle;"><input type="text" id="inputRename"></td>
+      <td><button onclick="renameProject();">Submit</button></td>
+    </tr>
+  </table>
 {% endblock %}

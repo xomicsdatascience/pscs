@@ -30,7 +30,8 @@ function createTable(projectFiles, analysisInputs){
     dropClone.id = INPUTDROPDOWNPREFIX + FIELDSEP + inp.toString();
     td.appendChild(dropClone);
   }
-  document.body.appendChild(tbl);
+  buttonRun = document.getElementById('buttonRun');
+  buttonRun.parentNode.insertBefore(tbl, buttonRun.nextSibling);
 }
 
 
@@ -110,4 +111,35 @@ function delTable(id) {
   tbl.remove();
   lastTable = null;
   return
+}
+
+function validateRename(renameEl){
+//  renameEl = document.getElementById('inputRename');
+//  console.log(renameEl);
+//  console.log(renameEl.value);
+//  console.log(renameEl.value.length);
+  if(renameEl.value.length > 0){
+    return true
+  }
+  else{
+    renameEl.setCustomValidity('New project name must be at least 1 character.');
+    renameEl.reportValidity();
+    return false
+  }
+}
+
+function renameProject(){
+  renameEl = document.getElementById('inputRename');
+  if(validateRename(renameEl)){
+    var rename_spec = new Object();
+    rename_spec['newName'] = renameEl.value;
+    fetch(window.location.href,{
+    method: "POST",
+    headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"},
+    body: JSON.stringify(rename_spec)
+    }).then(response => {window.location.href = response.url});
+
+  }
 }
