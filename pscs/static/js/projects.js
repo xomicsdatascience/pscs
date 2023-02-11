@@ -82,7 +82,7 @@ function executePipeline(){
 
 function startDeletion(id_data, name_data){
   // Asks user to confirm their choice, then sends a request for the data to be deleted.
-  confirmationText = "Confirmation deletion of:\n" + name_data
+  confirmationText = "Confirm deletion of:\n" + name_data
   if(confirm(confirmationText)){
     var data_spec = new Object();
     data_spec['id_data'] = id_data;
@@ -114,10 +114,6 @@ function delTable(id) {
 }
 
 function validateRename(renameEl){
-//  renameEl = document.getElementById('inputRename');
-//  console.log(renameEl);
-//  console.log(renameEl.value);
-//  console.log(renameEl.value.length);
   if(renameEl.value.length > 0){
     return true
   }
@@ -141,5 +137,22 @@ function renameProject(){
     body: JSON.stringify(rename_spec)
     }).then(response => {window.location.href = response.url});
 
+  }
+}
+
+function deleteProject(projectName){
+  confirmationText = "Delete project " + projectName
+  if(confirm(confirmationText)){
+    var delete_spec = new Object();
+    delete_spec['delete'] = true;
+    console.log(delete_spec);
+    console.log(JSON.stringify(delete_spec));
+    fetch(window.location.href, {
+    method: "POST",
+    headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"},
+    body: JSON.stringify(delete_spec)
+    }).then(response => {window.location.href = response.url});
   }
 }

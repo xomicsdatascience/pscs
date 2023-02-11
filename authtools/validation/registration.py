@@ -133,7 +133,6 @@ def validate_recaptcha(recaptcha: str,
     post_body = {"secret": server_token, "response": recaptcha, "remoteip": user_ip}
     response_txt = requests.post(recaptcha_url, post_body)
     response = json.loads(response_txt.text)
-    print(f"response: {response}")
     if "error-codes" in response.keys():
         return response["success"], response["error-codes"]
     else:

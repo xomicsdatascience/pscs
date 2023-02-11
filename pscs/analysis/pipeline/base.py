@@ -7,9 +7,6 @@ import pandas as pd
 import os
 
 
-
-
-
 class PipelineNode(ABC):
     """
     Class for describing an individual pipeline segment, with all necessary classes indicated.

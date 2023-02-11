@@ -1,0 +1,8 @@
+include pscs/schema.sql
+
+global-include *.js
+global-include *.png
+global-include *.html
+global-include *.css
+global-include *.ico
+global-include *.submit

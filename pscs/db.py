@@ -19,7 +19,7 @@ def get_db():
             detect_types=sqlite3.PARSE_DECLTYPES
         )
         g.db.row_factory = sqlite3.Row
-
+        g.db.execute('PRAGMA foreign_keys = ON;')  # enforce foreign key relationships
     return g.db
 
 
@@ -88,3 +88,22 @@ def get_unique_value_for_field(db, field: str, table: str) -> str:
         tentative_id = str(uuid.uuid4())
         row = db.execute(f'SELECT {field} FROM {table} WHERE {field} = ?', (tentative_id,)).fetchall()
     return tentative_id
+
+
+def delete_project(db: sqlite3.Connection, id_project: str):
+    """
+    Stages the project specified by the user ID and related content for deletion.
+    Parameters
+    ----------
+    db : sqlite3.Connection
+        DB from which to remove project.
+    id_project : str
+        ID of the project to delete.
+
+    Returns
+    -------
+    None
+    """
+    db.execute('DELETE FROM projects WHERE id_project = ?', (id_project,))
+    db.commit()
+    return

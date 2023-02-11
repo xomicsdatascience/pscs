@@ -5,6 +5,7 @@ from flask import (
 from werkzeug.exceptions import abort
 from werkzeug.utils import secure_filename
 from pscs.auth import login_required
+import pscs.db
 from pscs.db import get_db, get_unique_value_for_field
 from pscs.metadata.metadata import get_metadata
 from pscs.analysis.pipeline import node_parser
@@ -210,6 +211,7 @@ def get_file(userid, filename):
     return send_from_directory(app.config['RESULTS_DIRECTORY'].format(userid=userid), filename)
 
 
+# We are mixing several levels of abstraction; the programmer is being RUDE.
 @bp.route('/project/<id_project>', methods=['GET', 'POST'])
 @login_required
 def project(id_project):
@@ -241,18 +243,29 @@ def project(id_project):
             project_data_summary = db.execute('SELECT id_data, file_path, data_type, file_hash, data_uploaded_time FROM data WHERE id_project = ?', (id_project,)).fetchall()
             return render_template("pscs/project.html", project_name=project_name, analyses=analyses, files=files, analysis_nodes=analysis_nodes, project_data_summary=project_data_summary)
     elif request.method == 'POST':
-        new_project_name = request.json['newName']
-        # Assert that user has permission
-        db = get_db()
-        role_info = db.execute('SELECT project_management FROM projects_roles WHERE id_user = ? and id_project = ?', (g.user['id_user'], id_project)).fetchone()
-        if role_info['project_management'] == 0 or len(new_project_name) == 0:
-            flash("You do not have permission to rename the project; contact the project manager.")
-        elif role_info['project_management'] == 1 and len(new_project_name) > 0:
-            # Update name
-            db.execute('UPDATE projects SET name_project = ? WHERE id_project = ?', (new_project_name, id_project))
-            db.commit()
-        return url_for('pscs.project', id_project=id_project)
-
+        # Check for rename or delete
+        if 'newName' in request.json:  # is rename
+            new_project_name = request.json['newName']
+            # Assert that user has permission
+            db = get_db()
+            role_info = db.execute('SELECT project_management FROM projects_roles WHERE id_user = ? and id_project = ?', (g.user['id_user'], id_project)).fetchone()
+            if role_info['project_management'] == 0 or len(new_project_name) == 0:
+                flash("You do not have permission to rename the project; contact the project manager.")
+            elif role_info['project_management'] == 1 and len(new_project_name) > 0:
+                # Update name
+                db.execute('UPDATE projects SET name_project = ? WHERE id_project = ?', (new_project_name, id_project))
+                db.commit()
+            return url_for('pscs.project', id_project=id_project)
+        elif 'delete' in request.json:  # is delete
+            # Check that user is allowed
+            db = get_db()
+            role_info = db.execute('SELECT project_management FROM projects_roles WHERE id_user = ? and id_project = ?',
+                                   (g.user['id_user'], id_project)).fetchone()
+            if role_info["project_management"] == 0:
+                flash("You do not have permission to delete this project.")
+                return url_for('pscs.project', id_project=id_project)
+            elif role_info["project_management"] == 1:
+                pscs.db.delete_project(db, id_project=id_project)
     return redirect(url_for('pscs.index'))
 
 
