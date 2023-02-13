@@ -135,18 +135,16 @@ def create_project():
         else:
             db = get_db()
             # Insert into projects table
-            project_row = 'temp'
-            while len(project_row) > 0:
-                project_id = str(uuid.uuid4())
-                project_row = db.execute("SELECT id_project FROM projects WHERE id_project=(?)", (project_id,)).fetchall()
+            id_project = get_unique_value_for_field(db, field="id_project", table="projects")
+
             db.execute("INSERT INTO projects (id_project, id_user, name_project, description) VALUES (?,?,?,?)",
-                       (project_id, g.user['id_user'], project_name,project_description))
-            db.execute("INSERT INTO projects_roles (id_project, id_user, role, data_read, data_write) VALUES (?,?,?,?,?)",
-                       (project_id, g.user['id_user'], 'admin', 1, 1))
+                       (id_project, g.user['id_user'], project_name, project_description))
+            db.execute("INSERT INTO projects_roles (id_project, id_user, role, data_read, data_write, project_management) VALUES (?,?,?,?,?,?)",
+                       (id_project, g.user['id_user'], 'admin', 1, 1, 1))
             db.commit()
-            proj_dir = pathlib.Path(app.config['PROJECTS_DIRECTORY'].format(id_project=project_id))
+            proj_dir = pathlib.Path(app.config['PROJECTS_DIRECTORY'].format(id_project=id_project))
             proj_dir.mkdir(exist_ok=True)
-            results_dir = pathlib.Path(os.path.join(app.config['PROJECTS_DIRECTORY'], 'results').format(id_project=project_id))
+            results_dir = pathlib.Path(os.path.join(app.config['PROJECTS_DIRECTORY'], 'results').format(id_project=id_project))
             results_dir.mkdir(exist_ok=True)
 
         return redirect(url_for('pscs.index'))
@@ -225,7 +223,7 @@ def project(id_project):
             project_name = db.execute('SELECT name_project FROM projects WHERE id_project = ? and id_user = ?', (id_project, id_user)).fetchall()[0]['name_project']
             # Get analyses
             project_analyses = db.execute('SELECT id_analysis, analysis_name FROM analysis WHERE id_project = ?', (id_project,)).fetchall()
-            analyses = {}
+            analyses = {}  # used to store analysis name, keyed by ID
             analysis_nodes = {}
             for an in project_analyses:
                 analyses[an['id_analysis']] = an['analysis_name']
