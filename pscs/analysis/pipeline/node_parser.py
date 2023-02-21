@@ -277,7 +277,6 @@ def main():
             node_files.append(f[:-len('.py')])  # remove the .py to be able to load directly
     js_dict = {}
     for module in node_files:  # iterate through the pipeline files
-        print(__package__)
         imp = import_module(module, package=__package__)
         node_classes = inspect.getmembers(imp, lambda mem: inspect.isclass(mem) and mem.__module__ == module)
         for node_tuple in node_classes:  # iterate through the classes in the pipeline file

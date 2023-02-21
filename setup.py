@@ -25,7 +25,7 @@ setuptools.setup(
     license="MIT",
     install_requires=[
         'pyteomics>=4.4.1',
-        'matplotlib>=3.3.4',
+        'matplotlib<3.7',
         'numba>=0.53.1',
         'numpy>=1.20.1',
         'pandas>=1.2.2',

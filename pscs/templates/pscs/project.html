@@ -10,7 +10,7 @@
 <h3>Data Summary</h3>
 <a class="action" href="{{ url_for('pscs.upload') }}">Upload Data</a>
 
-<!--Analysis-->
+<!--Data-->
 <script>
   function color(id, color = 'rgba(255,255,255,0.2)'){
     elem = document.getElementById(id);
@@ -33,7 +33,7 @@
   {% endfor %}
 </table>
 
-
+<!--Analysis-->
 <h3>Analyses</h3>
 <script src="/static/js/projects.js"></script>
 
@@ -53,6 +53,16 @@
 </select>
 <button onclick="executePipeline();" id="buttonRun">Run</button>
 
+<!--Results-->
+<h3>Results</h3>
+{% for f in results %}
+<div>
+<p align="center"><b>{{f['title']}}</b></p>
+<p align="center"><img src="{{f['file_path']}}"></p>
+  <p align="center">{{f['description']}}</p>
+</div>
+{% endfor %}
+
 <h3>Project Management</h3>
 
   <table>
@@ -64,7 +74,7 @@
     <tr>
       <td>Delete project</td>
       <td></td>
-      <td><button onclick="deleteProject({{project_name}});">Delete</button></td>
+      <td><button onclick="deleteProject('{{project_name}}');">Delete</button></td>
     </tr>
   </table>
 {% endblock %}

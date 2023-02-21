@@ -239,7 +239,12 @@ def project(id_project):
             for project_file in project_data:
                 files[project_file['id_data']] = os.path.basename(project_file['file_path'])
             project_data_summary = db.execute('SELECT id_data, file_path, data_type, file_hash, data_uploaded_time FROM data WHERE id_project = ?', (id_project,)).fetchall()
-            return render_template("pscs/project.html", project_name=project_name, analyses=analyses, files=files, analysis_nodes=analysis_nodes, project_data_summary=project_data_summary)
+
+            # Get results
+            results_rows = db.execute("SELECT file_path, title, description FROM results WHERE id_project == ?", (id_project,)).fetchall()
+            results_files = results_rows
+
+            return render_template("pscs/project.html", project_name=project_name, analyses=analyses, files=files, analysis_nodes=analysis_nodes, project_data_summary=project_data_summary, results=results_files)
     elif request.method == 'POST':
         # Check for rename or delete
         if 'newName' in request.json:  # is rename

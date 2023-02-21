@@ -11,11 +11,10 @@ request_memory = 256 MB
 request_disk = 128 MB
 
 # transfer things
-#ef5e4b74-f117-481a-83df-8f6fee9d190b.json  proteomics.csv  pscs-filepaths-jutihih9.json
 transfer_input_files = {input_files}
 transfer_output_files = {output_top}
 Requirements = HAS_SINGULARITY == TRUE && SINGULARITY_CAN_USE_SIF == TRUE
 +ProjectName = "CedarsSinai_Meyer"
-+SingularityImage = "stash:///osgconnect/protected/ahutton/pscs_sing.sif"
++SingularityImage = "stash:///osgconnect/protected/ahutton/pscs_sing-0.0.4.sif"
 
 queue 1

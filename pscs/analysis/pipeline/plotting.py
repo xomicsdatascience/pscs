@@ -4,17 +4,16 @@ from matplotlib import pyplot as plt
 import scanpy as sc
 # matplotlib.use('Agg')
 
+
 class ScatterPlot(OutputNode):
     def __init__(self,
                  x_gene: str = None,
                  y_gene: str = None,
-                 output_name: str = None,
-                 color: str = None):
+                 output_name: str = None):
         super().__init__()
         self.x = x_gene
         self.y = y_gene
         self.output_name = output_name
-        self.color = color
         return
 
     def run(self):
@@ -42,4 +41,34 @@ class Violin(OutputNode):
 
     def run(self):
         raise NotImplementedError
+        return
+
+
+class UMAPPlot(OutputNode):
+    def __init__(self,
+                 add_outline: bool = None,
+                 color: list = None,
+                 output_name: str = "UMAP.png"):
+        """
+        Creates the UMAP plot based on the ann_data.obsm['X_umap'] matrix.
+        Parameters
+        ----------
+        add_outline : bool
+            Whether to add outlines to clusters on the plot.
+        color : list
+            List of column names to use to apply colors.
+        output_name : str
+            Name to use for the output file.
+        """
+        super().__init__()
+        self.add_outline = add_outline
+        self.output_name = output_name
+        self.requirements = ["+.obsm['X_umap']"]
+        self.color = color
+        return
+
+    def run(self):
+        ann_data = self._previous[0].result
+        sc.pl.umap(ann_data, add_outline=self.add_outline)
+        plt.savefig(self.output_name)
         return
