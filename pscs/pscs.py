@@ -41,14 +41,11 @@ def index():
     db = get_db()
     if g.user is not None:
         # Get project meta data to list for user
-        user_projects = db.execute('SELECT projects.name_project, projects.description, projects.num_files,'
-                                   ' projects.id_project, projects.num_members, projects_roles.role'
-                                   ' FROM projects'
-                                   ' INNER JOIN  projects_roles'
-                                   ' ON projects.id_project=projects_roles.id_project'
-                                   ' AND projects.id_user=? AND projects_roles.id_user=?',
-                                   (g.user['id_user'], g.user['id_user']))
-
+        user_projects = db.execute("SELECT projects.name_project, projects.description, projects.num_files, "
+                                   "projects.id_project, projects.num_members, projects_roles.role "
+                                   "FROM projects INNER JOIN projects_roles "
+                                   "ON projects.id_project=projects_roles.id_project "
+                                   "AND projects_roles.id_user=?", (g.user['id_user'],))
         return render_template('pscs/index.html', projects=user_projects)
     else:
         return render_template('pscs/index.html', projects=None)
@@ -76,6 +73,13 @@ def upload():
             flash('No selected file')
             return redirect(request.url)
         if file and allowed_file(file.filename):
+            # Check that user has permission
+            has_perm = check_user_permission(permission_name="data_write",
+                                             permission_value=1,
+                                             id_project=session["CURRENT_PROJECT"])
+            if not has_perm:
+                flash("You do not have permission to upload files.")
+                return redirect(url_for("pscs.project", id_project=session["CURRENT_PROJECT"]))
             filename = secure_filename(file.filename)
             out_path = app.config['UPLOAD_FOLDER'].format(userid=g.user['id_user'])
             os.makedirs(out_path, exist_ok=True)
@@ -87,16 +91,14 @@ def upload():
                 hash_value = meta_dict['table_hash']
                 id_project = session['CURRENT_PROJECT']
                 db = get_db()
-                data_row = 'temporary'
-                while len(data_row) > 0:
-                    id_data = str(uuid.uuid4())
-                    data_row = db.execute('SELECT file_hash FROM data WHERE id_data = ?', (id_data,)).fetchall()
+                id_data = get_unique_value_for_field(db, "id_data", "data")
                 db.execute(
                     'INSERT INTO data (id_data, id_user, id_project, file_path, data_type, file_hash)'
                     ' VALUES (?,?,?,?,?,?)',
                     (id_data, g.user['id_user'], id_project, out_file, 'table', hash_value))
-                db.execute('UPDATE projects SET num_files = num_files + 1 WHERE id_project = ? AND id_user = ?',
-                           (id_project, g.user['id_user']))
+                num_files = len(db.execute("SELECT id_data FROM data WHERE id_project = ?", (id_project,)).fetchall())
+                db.execute(f'UPDATE projects SET num_files = {num_files} WHERE id_project = ?',
+                           (id_project,))
                 db.commit()
             return redirect(url_for('pscs.project', id_project=session['CURRENT_PROJECT']))
     return '''
@@ -137,10 +139,13 @@ def create_project():
             # Insert into projects table
             id_project = get_unique_value_for_field(db, field="id_project", table="projects")
 
+            # Create project
             db.execute("INSERT INTO projects (id_project, id_user, name_project, description) VALUES (?,?,?,?)",
                        (id_project, g.user['id_user'], project_name, project_description))
-            db.execute("INSERT INTO projects_roles (id_project, id_user, role, data_read, data_write, project_management) VALUES (?,?,?,?,?,?)",
-                       (id_project, g.user['id_user'], 'admin', 1, 1, 1))
+            # Add user to project
+            add_user_to_project(id_user=g.user['id_user'], id_project=id_project, db=db, role='admin',
+                                permissions={'data_read': 1, 'data_write': 1, 'project_management': 1,
+                                             "analysis_read": 1, "analysis_write": 1, "analysis_execute": 1})
             db.commit()
             proj_dir = pathlib.Path(app.config['PROJECTS_DIRECTORY'].format(id_project=id_project))
             proj_dir.mkdir(exist_ok=True)
@@ -149,6 +154,50 @@ def create_project():
 
         return redirect(url_for('pscs.index'))
     return render_template("pscs/create.html")
+
+
+def add_user_to_project(id_user: str,
+                        id_project: str,
+                        db,
+                        role: str = "member",
+                        permissions: dict = None):
+    """
+    Adds a user to a project. If permissions is "None", default is to add as data-read only.
+    Parameters
+    ----------
+    id_user : str
+        ID of the user to add.
+    id_project : str
+        ID of the project to which the user should be added.
+    db : sqlite3.Connection
+        Connection to the SQL database.
+    role : str
+        Name of the user's role.
+    permissions : dict
+        Optional. Dictionary keyed by permission name : value. See the SQL schema for possible keys.
+
+    Returns
+    -------
+    None
+    """
+    if permissions is None:
+        permissions = {"data_read": 1}
+    elif 'data_read' not in permissions.keys() or permissions['data_read'] != 1:
+        # Raise an error; caller is doing something weird.
+        raise ValueError("The data_read property must be included and set to 1 for users of a project.")
+
+    # Build command string
+    cmd = f"INSERT INTO projects_roles (id_user, id_project, role"
+    values = 'VALUES(?,?,?'
+    for perm_name in permissions.keys():
+        cmd += ',' + str(perm_name)
+        values += ',?'
+    cmd += ') '
+    values += ')'
+    cmd += values
+    db.execute(cmd, (id_user, id_project, role) + tuple(permissions.values()))
+    db.commit()
+    return
 
 
 @bp.route('/analysis', methods=['GET', 'POST'])
@@ -215,12 +264,15 @@ def get_file(userid, filename):
 def project(id_project):
     if request.method == 'GET':
         db = get_db()
+        user_read = check_user_permission('data_read', 1, id_project)
+        user_write = check_user_permission('data_write', 1, id_project)
         id_user = g.user['id_user']
-        role_info = db.execute('SELECT data_read, data_write FROM projects_roles WHERE id_project = ? AND id_user = ?', (id_project, id_user)).fetchall()
-        if len(role_info) > 0 and role_info[0]['data_read'] == 1:  # Check that user has read permission
+        if user_read:  # Check that user has read permission
             # Display files for this project only
             session['CURRENT_PROJECT'] = id_project
-            project_name = db.execute('SELECT name_project FROM projects WHERE id_project = ? and id_user = ?', (id_project, id_user)).fetchall()[0]['name_project']
+            project_name = db.execute('SELECT name_project FROM projects WHERE id_project = ?', (id_project,)).fetchone()
+            project_name = project_name["name_project"]
+            # project_name = db.execute('SELECT name_project FROM projects WHERE id_project = ? and id_user = ?', (id_project, id_user)).fetchall()[0]['name_project']
             # Get analyses
             project_analyses = db.execute('SELECT id_analysis, analysis_name FROM analysis WHERE id_project = ?', (id_project,)).fetchall()
             analyses = {}  # used to store analysis name, keyed by ID
@@ -244,33 +296,102 @@ def project(id_project):
             results_rows = db.execute("SELECT file_path, title, description FROM results WHERE id_project == ?", (id_project,)).fetchall()
             results_files = results_rows
 
-            return render_template("pscs/project.html", project_name=project_name, analyses=analyses, files=files, analysis_nodes=analysis_nodes, project_data_summary=project_data_summary, results=results_files)
+            # Get users associated with project
+            users = db.execute("SELECT name_user "
+                               "FROM users_auth INNER JOIN projects_roles "
+                               "ON users_auth.id_user = projects_roles.id_user WHERE id_project = ?", (id_project,)).fetchall()
+
+            user_list = []
+            for u in users:
+                user_list.append(u['name_user'])
+            return render_template("pscs/project.html",
+                                   project_name=project_name,
+                                   analyses=analyses,
+                                   files=files,
+                                   analysis_nodes=analysis_nodes,
+                                   project_data_summary=project_data_summary,
+                                   results=results_files,
+                                   user_list=user_list)
     elif request.method == 'POST':
         # Check for rename or delete
         if 'newName' in request.json:  # is rename
             new_project_name = request.json['newName']
             # Assert that user has permission
-            db = get_db()
-            role_info = db.execute('SELECT project_management FROM projects_roles WHERE id_user = ? and id_project = ?', (g.user['id_user'], id_project)).fetchone()
-            if role_info['project_management'] == 0 or len(new_project_name) == 0:
+            has_perm = check_user_permission(permission_name='project_management',
+                                             permission_value=1,
+                                             id_project=id_project)
+            if not has_perm:
                 flash("You do not have permission to rename the project; contact the project manager.")
-            elif role_info['project_management'] == 1 and len(new_project_name) > 0:
+            elif has_perm:
                 # Update name
+                db = get_db()
                 db.execute('UPDATE projects SET name_project = ? WHERE id_project = ?', (new_project_name, id_project))
                 db.commit()
             return url_for('pscs.project', id_project=id_project)
         elif 'delete' in request.json:  # is delete
             # Check that user is allowed
-            db = get_db()
-            role_info = db.execute('SELECT project_management FROM projects_roles WHERE id_user = ? and id_project = ?',
-                                   (g.user['id_user'], id_project)).fetchone()
-            if role_info["project_management"] == 0:
+            has_perm = check_user_permission(permission_name='project_management',
+                                             permission_value=1,
+                                             id_project=id_project)
+            if not has_perm:
                 flash("You do not have permission to delete this project.")
                 return url_for('pscs.project', id_project=id_project)
-            elif role_info["project_management"] == 1:
+            elif has_perm:
+                db = get_db()
                 pscs.db.delete_project(db, id_project=id_project)
+        elif 'addUser' in request.json:
+            # check that current user is allowed to add users
+            has_perm = check_user_permission(permission_name='project_management',
+                                             permission_value=1,
+                                             id_project=id_project)
+            if has_perm:
+                # add user
+                user_to_add = request.json['addUser']
+                # get user id
+                db = get_db()
+                id_user = db.execute("SELECT id_user FROM users_auth WHERE name_user = ?", (user_to_add,)).fetchone()
+                if id_user is None:
+                    # user doesn't exist
+                    flash(f"User {user_to_add} not found.")
+                    return url_for('pscs.project', id_project=id_project)
+                add_user_to_project(id_user=id_user["id_user"], id_project=id_project, db=db,
+                                    role='member', permissions={'data_read': 1})
+            else:
+                flash("You do not have permission to add users to the project.")
+            return url_for("pscs.project", id_project=id_project)
+        elif "deleteData" in request.json:
+            id_data = request.json["deleteData"]
+            delete_data(id_data)
+            return url_for("pscs.project", id_project=id_project)
+
     return redirect(url_for('pscs.index'))
 
+
+def check_user_permission(permission_name: str,
+                          permission_value: int,
+                          id_project: str) -> bool:
+    """
+    Checks that the user has the appropriate permission for the specified project.
+    Parameters
+    ----------
+    permission_name : str
+        Name of the permission to check.
+    permission_value
+        Value that the permission should have to be accepted.
+    id_project : str
+        ID of the project to check.
+
+    Returns
+    -------
+    bool
+        Whether the current user has permission.
+    """
+    db = get_db()
+    role_info = db.execute(f'SELECT {permission_name} FROM projects_roles WHERE id_user = ? and id_project = ?',
+                           (g.user['id_user'], id_project)).fetchone()
+    if role_info is None:
+        return False
+    return role_info[permission_name] == permission_value
 
 @bp.route('/run_analysis', methods=['POST'])
 @login_required
@@ -304,45 +425,30 @@ def run_analysis():
         return redirect(url_for('pscs.project', id_project=session['CURRENT_PROJECT']))
 
 
-@bp.route('/project/delete_data', methods=['POST'])
-def delete_data():
+# @bp.route('/project/delete_data', methods=['POST'])
+def delete_data(id_data):
     """
     Deletes the data specified by the POST request. Verifies that user has permission to do so.
     Returns
     -------
     None
     """
-    if request.method == 'POST':
-        # Get data id
-        data_spec = request.json
-        id_data = data_spec['id_data']
-        id_user = g.user['id_user']
-        # Get related project id
-        db = get_db()
-        data_row = db.execute('SELECT * FROM data WHERE id_data = ?', (id_data,)).fetchone()
-        data_write = db.execute('SELECT data_write FROM projects_roles WHERE id_project = ? AND id_user = ?',
-                                (data_row['id_project'], id_user)).fetchone()['data_write']
-        if data_write == 0:
-            flash("You do not have permission to delete data. Contact your project's manager to remove data.")
-        elif data_row['is_published']:
-            flash("Data has been published and can't be deleted.")
-        elif data_write == 1 and data_row['is_published'] == 0:  # assertion of conditions instead of 'else'
-            # Permissions check out; stage data for deletion
-            deletion_destination = os.path.join(
-                app.config["DELETION_DIRECTORY"].format(id_project=data_row["id_project"]), data_row['id_data'])
-            db.execute('INSERT INTO data_deletion '
-                       '(id_data, id_user, id_project, file_path, data_type, file_hash, id_results, data_uploaded_time,'
-                       ' id_user_deleter, deletion_path) VALUES(?,?,?,?,?,?,?,?,?,?)',
-                       (data_row['id_data'], data_row['id_user'], data_row['id_project'], data_row['file_path'],
-                        data_row['data_type'],data_row['file_hash'], data_row['id_results'],
-                        data_row['data_uploaded_time'], id_user, deletion_destination))
-            db.execute('DELETE FROM data WHERE id_data = ?', (id_data,))
-            # Move data from location to deletion staging
-            os.makedirs(app.config["DELETION_DIRECTORY"].format(id_project=data_row['id_project']), exist_ok=True)
-            os.replace(data_row['file_path'], deletion_destination)
-            db.commit()
-            flash("Data deleted.")
-        return redirect(url_for('pscs.project', id_project=session['CURRENT_PROJECT']))
+    # Get related project id
+    db = get_db()
+    data_row = db.execute('SELECT * FROM data WHERE id_data = ?', (id_data,)).fetchone()
+    data_write = check_user_permission(permission_name="data_write",
+                                       permission_value=1,
+                                       id_project=data_row["id_project"])
+    if not data_write:
+        flash("You do not have permission to delete data. Contact your project's manager to remove data.")
+    elif data_row['is_published']:
+        flash("Data has been published and can't be deleted.")
+    elif data_write and data_row['is_published'] == 0:  # assertion of conditions instead of 'else'
+        # Permissions check out; stage data for deletion
+        db.execute('DELETE FROM data WHERE id_data = ?', (id_data,))
+        db.commit()
+        flash("Data deleted.")
+    return
 
 
 @bp.route('/pipeline', methods=['GET', 'POST'])
@@ -354,8 +460,36 @@ def pipeline_designer():
         modules = get_unique_values_for_key(j, 'module')
         node_json = convert_dict_to_list(j)
         proj_dests, user_dests = get_save_destinations()
-        return render_template("pscs/pipeline.html", node_json=node_json, modules=modules, proj_dests=proj_dests, user_dests=user_dests)
+
+        # Fetch analysis that user is allowed to read
+        db = get_db()
+        analyses = db.execute("SELECT analysis.id_analysis, analysis.analysis_name "
+                              "FROM analysis INNER JOIN projects_roles "
+                              "WHERE projects_roles.id_user = ? AND projects_roles.analysis_read = 1",
+                              (g.user['id_user'],)).fetchall()
+        return render_template("pscs/pipeline.html", node_json=node_json, modules=modules, proj_dests=proj_dests,
+                               user_dests=user_dests, analyses=analyses)
     elif request.method == 'POST':
+        if "loadAnalysis" in request.json:
+            # Check user perm
+            # Get id of related project
+            db = get_db()
+            id_analysis = request.json["loadAnalysis"]
+            id_project = db.execute("SELECT id_project "
+                                    "FROM analysis WHERE id_analysis = ?", (id_analysis,)).fetchone()["id_project"]
+            has_perm = check_user_permission(permission_name="analysis_read",
+                                             permission_value=1,
+                                             id_project=id_project)
+            if not has_perm:
+                return {"": ""}
+            elif has_perm:
+                # has permission to read; go get analysis file and return JSON
+                node_file = db.execute("SELECT node_file FROM analysis WHERE id_analysis = ?", (id_analysis,)).fetchone()['node_file']
+                f = open(node_file, 'r')
+                node_data = json.load(f)
+                f.close()
+                return node_data
+            return {"": ""}
         pipeline_summary = request.json
         is_dest_project = pipeline_summary['isDestProject']
         id_project = pipeline_summary['saveId']
@@ -368,11 +502,8 @@ def pipeline_designer():
         # TODO: saveID is from the user; need to validate that the user has access to it
         # Create new pipeline ID
         db = get_db()
-        pipeline_id = str(uuid.uuid4())
-        pipeline_row = 'temporary'
-        while len(pipeline_row) > 0:
-            id_analysis = str(uuid.uuid4())
-            pipeline_row = db.execute('SELECT id_analysis FROM analysis WHERE id_analysis = ?', (id_analysis,)).fetchall()
+        id_analysis = get_unique_value_for_field(db, "id_analysis", "analysis")
+        pipeline_id = id_analysis
 
         if is_dest_project:
             pipeline_dir = app.config['PROJECTS_DIRECTORY'].format(id_project=id_project)

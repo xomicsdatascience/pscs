@@ -85,8 +85,8 @@ function startDeletion(id_data, name_data){
   confirmationText = "Confirm deletion of:\n" + name_data
   if(confirm(confirmationText)){
     var data_spec = new Object();
-    data_spec['id_data'] = id_data;
-    fetch("/project/delete_data",{
+    data_spec['deleteData'] = id_data;
+    fetch(window.location.href,{
     method: "POST",
     headers: {
         "Accept": "application/json",
@@ -95,8 +95,6 @@ function startDeletion(id_data, name_data){
     }).then(response => {window.location.href = response.url});
   }
 }
-
-
 
 function parseFileInputId(id){
   first_sep_idx = id.indexOf(FIELDSEP);
@@ -145,8 +143,6 @@ function deleteProject(projectName){
   if(confirm(confirmationText)){
     var delete_spec = new Object();
     delete_spec['delete'] = true;
-    console.log(delete_spec);
-    console.log(JSON.stringify(delete_spec));
     fetch(window.location.href, {
     method: "POST",
     headers: {
@@ -156,3 +152,17 @@ function deleteProject(projectName){
     }).then(response => {window.location.href = response.url});
   }
 }
+
+function addUser(){
+   var adduser_spec = new Object();
+   userEl = document.getElementById('addUser');
+   adduser_spec['addUser'] = userEl.value;
+   fetch(window.location.href, {
+   method: "POST",
+   headers: {
+        "Accept": "application/json",
+        "Content-Type": "application/json"},
+   body: JSON.stringify(adduser_spec)
+   }).then(response => {window.location.href = response.url});
+}
+

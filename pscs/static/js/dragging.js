@@ -6,6 +6,13 @@ var lastSelected = null;  // currently-selected HTML element
 var nodeCount = 0;  // used for creating new node & map IDs
 var nodeIds = new Array();
 var lastOpenPanel;
+// constants
+const VERTICAL_POSITION_INITIAL = 200;
+const HORIZONTAL_POSITION_INITIAL = 400;
+const VERTICAL_SPACING = 100;
+const HORIZONTAL_SPACING = 100;
+const VERTICAL_JIGGLE = 10;
+const HORIZONTAL_JIGGLE = 15;
 // ID substrings
 const SEPSTR = '-';
 const DRAGSTR = "draggable";
@@ -22,36 +29,14 @@ const DELKEY = 46;
 
 // For removing elements.
 document.addEventListener("keydown", delNode, false);
-function delNode(e) {
+function delNode(event) {
     if (event.keyCode == DELKEY) {
       if (lastSelected == null){
         return;
       }
-      if (lastSelected.id.startsWith(DRAGSTR)){
-        len = lastSelected.src_lines.length;
-        for (let idx=0; idx<len; idx++){
-          remove_id = lastSelected.src_lines.pop();
-          line_elem = document.getElementById(remove_id);
-          line_elem.del();
-        }
-        len = lastSelected.dst_lines.length;
-        for (let idx=0; idx<len; idx++){
-          remove_id = lastSelected.dst_lines.pop();
-          line_elem = document.getElementById(remove_id);
-          line_elem.del();
-        }
-        textDiv = document.getElementById(lastSelected.label);
-        textDiv.remove();
-
-      }
-      else if (lastSelected.id.startsWith(LINESTR)){
-        lastSelected.del();
-      }
-    lastSelected.remove();
-    idx = nodeIds.indexOf(lastSelected.id);
-    nodeIds.splice(idx, 1);
+      lastSelected.del();
+      lastSelected = null;
     }
-
 }
 
 function dragElement(element) {
@@ -64,13 +49,13 @@ element : HTMLElement
     Element to which to apply dragging functionality.
 */
     // To keep track of previous position and distance moved by cursor.
-    var currentPos = [0,0];
-    var moveVector = [0,0];
     var oldX = 0, oldY = 0;
     var moveX = 0, moveY = 0;
     element.onmousedown = grab;
     element.class = NODECLASS;
     element.ondblclick = openPanel;
+    element.move = move;
+    element.del = del;
     lastSelected = element;  // last created == last selected
     function grab(e) {
         // Selects the element and adds the onmousemove function to have the element follow the cursor.
@@ -91,6 +76,10 @@ element : HTMLElement
         moveY = e.clientY - oldY;
         oldX = e.clientX;
         oldY = e.clientY;
+        move(moveX, moveY);
+    }
+
+    function move(moveX, moveY){
         // set new pos
         element.style.top = (element.offsetTop + moveY) + "px";
         element.style.left = (element.offsetLeft + moveX) + "px";
@@ -99,20 +88,39 @@ element : HTMLElement
           el_to_move = document.getElementById(element.src_lines[idx]);
           el_to_move.srcX += moveX;
           el_to_move.srcY += moveY;
-          el_to_move.update_pos(e);
+          el_to_move.update_pos();
         }
         for (let idx = 0; idx < element.dst_lines.length; idx++){
           el_to_move = document.getElementById(element.dst_lines[idx]);
           el_to_move.dstX += moveX;
           el_to_move.dstY += moveY;
-          el_to_move.update_pos(e);
+          el_to_move.update_pos();
         }
         // move label, if any
-
         textDiv = document.getElementById(element.label);
         textDiv.style.top = addToPx(textDiv.style.top, moveY);
         textDiv.style.left = addToPx(textDiv.style.left, moveX);
     }
+    function del(){
+        // delete this element and associated elemeents
+        for(let idx=element.dst_lines.length-1; idx>=0; idx--){
+          document.getElementById(element.dst_lines[idx]).del();
+        }
+        for(let idx=element.src_lines.length-1; idx>=0; idx--){
+          document.getElementById(element.src_lines[idx]).del();
+        }
+        // delete text label
+        textDiv = document.getElementById(element.label);
+        textDiv.remove();
+        // remove self
+        idx = nodeIds.indexOf(element.id);
+        nodeIds.splice(idx, 1);
+        element.remove();
+        return;
+
+    }
+
+
     function release() {
         // releases grabbed element; will no longer be grabbed
         document.onmouseup = null;
@@ -202,7 +210,6 @@ function saveParams(event) {
   panel = document.getElementById(panelId);
   node = document.getElementById(panel.nodeId);
   tbl = panel.children[0];
-  console.log(tbl);
   var params = new Object();
   for (var i=0, row; row = tbl.rows[i]; i++){
     for (var j=0, cell; cell = row.cells[j]; j++){
@@ -229,15 +236,23 @@ function saveParams(event) {
   return
 }
 
-function createDraggable(img="static/test2.png", name, module, params) {
+function createDraggable(img="static/test2.png", name, module, params, analysisNodeType="simo", id) {
 /* Creates a draggable image with an imagemap and adds them to the DOM.
 
 
 */
-  sample_id = nodeCount++;
+  if(id == null){
+    sample_id = nodeCount++;
+  }
+  else{
+    sample_id = id;
+    nodeCount = parseInt(id) + 1;
+  }
   // create elements
-  draggable = createDraggableImage(sample_id, 400, 200, img, name);
+  draggable = createDraggableImage(sample_id, HORIZONTAL_POSITION_INITIAL, VERTICAL_POSITION_INITIAL, img, name);
+  draggable.analysisNodeType = analysisNodeType;
   imagemap = createDraggableImageMap(sample_id);
+
   document.body.appendChild(draggable);
   document.body.appendChild(imagemap);
   var param_names = new Array();
@@ -255,6 +270,7 @@ function createDraggable(img="static/test2.png", name, module, params) {
   draggable.module = module;
   draggable.procName = name;
   nodeIds.push(draggable.id);
+  return draggable;
 }
 
 function createDraggableImage(id, x = 200, y = 100, img="static/test2.png", name="node") {
@@ -278,6 +294,7 @@ element
   applyClassCSS(draggable);
 
   draggable.src = img;
+  draggable.src_img = img;
   draggable.deg = 0;
   draggable.draggable = "true";
   draggable.width = "81";
@@ -340,7 +357,7 @@ element
 
   // Output area specs
   image_other_area = document.createElement("area");
-  image_other_area.id = AREASTR + SEPSTR + id + SEPSTR + 'out' + SEPSTR + '1';
+  image_other_area.id = AREASTR + SEPSTR + id + SEPSTR + 'out' + SEPSTR + '0';
   image_other_area.shape = "rect";
   image_other_area.coords = "30,50,50,70";
   image_other_area.onmousedown = lineCreator;
@@ -450,10 +467,10 @@ element
         update_pos(e);
     }
 
-    function update_pos(event) {
-      event = event || window.event;
-      event.preventDefault();
-
+//    function update_pos(event) {
+//      event = event || window.event;
+//      event.preventDefault();
+    function update_pos() {
       // Position parameters determined by src
       element.style.left = (element.srcX).toString() + "px";
       element.style.top = (element.srcY).toString() + "px";
@@ -699,10 +716,16 @@ function getDraggableFromImapID(id) {
 function parseParams(s) {
 // This function parses a string-ified Python list
   // remove brackets
-  s = s.replaceAll("'", '"');
-  s = s.replaceAll("None", null);
-  params = JSON.parse(s);
-  return params;
+  if(typeof s == "string"){
+    s = s.replaceAll("'", '"');
+    s = s.replaceAll("None", null);
+    params = JSON.parse(s);
+    return params;
+  }
+  else{
+    return s;
+  }
+
 }
 
 function getNodeNumFromId(id){
@@ -792,4 +815,175 @@ function openSavePanel(projDestsJSON, userDestsJSON) {
   panel.appendChild(tbl);
 
   document.body.appendChild(panel);
+}
+
+async function getAnalysis(){
+  analysis_selection = document.getElementById("analyses");
+  id_analysis = analysis_selection.value;
+  var analysis_spec = new Object();
+  analysis_spec["loadAnalysis"] = id_analysis;
+
+  let response = await fetch(window.location.href, {
+                          method: "POST",
+                          headers: {
+                                "Accept": "application/json",
+                                "Content-Type": "application/json"},
+                          body: JSON.stringify(analysis_spec)});
+  let data = await response.json();
+  nodes = data["nodes"];
+  clearNodes();
+  var nodeObject = new Object();
+  var nodesWithoutDepth = new Array();
+  for (let idx=0; idx<nodes.length; idx++){
+    node = nodes[idx];
+    var load_params = new Object();
+    for (let param_idx=0; param_idx<node["params"].length; param_idx++){
+      paramName = node["params"][param_idx];
+      paramType = node["paramsTypes"][paramName];
+      paramValue = node["paramsValues"][paramName];
+      load_params[paramName] = [paramType, paramValue];
+    }
+    id = getNodeNumFromId(node["nodeId"]);
+    loadedNode = createDraggable(nodes[idx]["src_img"], nodes[idx]["labelText"], nodes[idx]["module"], load_params, node["analysisNodeType"], id);
+    if(node["analysisNodeType"] == "input"){
+      loadedNode.depth = 0;
+    }
+    else{
+      loadedNode.depth = -1;
+      nodesWithoutDepth.push(loadedNode);
+    }
+    loadedNode.id = node["nodeId"];
+
+//    Object.assign(loadedNode, node["nodeId"]);
+    loadedNode.dst_lines = node["dst_lines"];
+    loadedNode.src_lines = node["src_lines"];
+    nodeNum = getNodeNumFromId(node["nodeId"]);
+    nodeObject[nodeNum] = loadedNode;
+  }
+
+  // make connectors
+  for(var nodeIdx in nodeObject){
+    currentNode = nodeObject[nodeIdx];
+    // go through src
+    currentNodeNum = getNodeNumFromId(currentNode.id);
+    srcAreaPos = getAreaCenter(currentNode, idx=0, areaType="out");
+    srcNodeLeft = parseInt(currentNode.style.left.split("px")[0]);
+    srcNodeTop = parseInt(currentNode.style.top.split("px")[0]);
+    for(var srcIdx in currentNode.src_lines){
+        srcString = currentNode.src_lines[srcIdx];
+        nextNodeNum = getNodeNumFromSrc(srcString);
+        nextNode = getNodeFromNum(nextNodeNum);
+
+        // We want to connect the output of currentNode to the input of nextNode
+        nextAreaPos = getAreaCenter(nextNode, idx=0, areaType="in");
+        nextNodeLeft = parseInt(nextNode.style.left.split("px")[0]);
+        nextNodeTop = parseInt(nextNode.style.top.split("px")[0]);
+        line = createLine("", srcAreaPos[0]+srcNodeLeft, srcAreaPos[1]+srcNodeTop, nextAreaPos[0]+nextNodeLeft, nextAreaPos[1]+nextNodeTop, currentNode.id);
+        line.id = srcString;
+        line.dstNode = nextNode.id;
+        document.onmousemove = null;
+        document.onmouseup = null;
+    }
+
+  }
+  // Below this is aesthetics.
+  // determine depth of each node
+  while(nodesWithoutDepth.length > 0){
+    var spliceIdxList = new Array();
+    for(let spliceIdx = 0; spliceIdx < nodesWithoutDepth.length; spliceIdx++){
+      node = nodesWithoutDepth[spliceIdx];
+      // examine previous nodes; if they all have depth, assign max depth+1 to this node
+      var maxDepth = -1;
+      var doBreak = false;
+      for(let previousNodeIdx = 0; previousNodeIdx < node["dst_lines"].length; previousNodeIdx++){
+        // get num of previous node
+        var prevNum = getNodeNumFromDst(node["dst_lines"][previousNodeIdx]);
+        var prevNode = nodeObject[prevNum];
+        if(prevNode.depth == -1){
+          doBreak = true;
+          break;
+        }
+        // has depth; compare to maxdepth
+        maxDepth = Math.max(maxDepth, prevNode.depth);
+      }
+      if(doBreak){
+        break;
+      }
+      node.depth = maxDepth + 1;
+      spliceIdxList.push(spliceIdx);
+    }
+    spliceIdxList.reverse();  // going backwards to preserve idx validity as we remove entries
+    spliceIdxList.forEach(idx => {
+        nodesWithoutDepth.splice(idx, 1);
+    });
+  }
+
+  // determine x position of each
+  var xposByDepth = new Object();
+  for(let idx=0; idx<maxDepth+2; idx++){
+    xposByDepth[idx] = 0;
+  }
+  for(var n in nodeObject){
+    var node = nodeObject[n];
+    node.xpos = xposByDepth[node.depth];
+    xposByDepth[node.depth]+=1;
+  }
+
+  // move nodes to position
+  for(idx in nodeObject){
+    node = nodeObject[idx];
+    xpos = node.xpos * HORIZONTAL_SPACING + Math.random() * HORIZONTAL_JIGGLE;
+    ypos = node.depth * VERTICAL_SPACING + Math.random() * VERTICAL_JIGGLE;
+    node.move(xpos, node.depth * VERTICAL_SPACING + Math.random() * VERTICAL_JIGGLE);
+  }
+
+}
+
+function getNodeNumFromDst(dstString){
+/* Returns the node number of the node leading to the current node, as determined by the dstString.
+Expected structure: LINESTR + SEPSTR + PREVIOUS + SEPSTR + CURRENT
+*/
+return dstString.split(SEPSTR)[1]
+}
+
+function getNodeNumFromSrc(srcString){
+/* Returns the node number of the node downstream from the current node, as determined by the srcString.
+Expected structure: LINESTR + SEPSTR + CURRENT + SEPSTR + NEXT
+*/
+return srcString.split(SEPSTR)[2];
+}
+
+function getNodeFromNum(num){
+/* Returns the node specified by the number */
+return document.getElementById(DRAGSTR + SEPSTR + String(num));
+}
+
+function getImageMapFromNode(node, areaIdx=0, areaType="in"){
+/* Gets the imagemap for the node; if there are multiple maps, return the one specified by inputIdx
+node : object representing pipeline nodes
+areaIdx : index for which map to return
+areaType : "in" or "out"; specify the type of area being identified
+*/
+  nodeNum = getNodeNumFromId(node.id);
+  areaMapId = AREASTR + SEPSTR + nodeNum + SEPSTR + areaType + SEPSTR + String(areaIdx);
+  return document.getElementById(areaMapId);
+}
+
+function getAreaCenter(node, idx=0, areaType="in"){
+  // gets the X, Y coordinates for the center of an area
+  area = getImageMapFromNode(node, idx, areaType);
+  coords = parseIntList(area.coords);
+  centerX = Math.floor((coords[0] + coords[2])/2);
+  centerY = Math.floor((coords[1] + coords[3])/2);
+  return [centerX, centerY]
+}
+
+function clearNodes(){
+  // removes all nodes from the page
+  for(let idx=nodeIds.length-1; idx>=0; idx--){
+    nodeId = nodeIds[idx];
+    node = document.getElementById(nodeId);
+    node.del();
+  }
+  nodeCount = 0;
 }

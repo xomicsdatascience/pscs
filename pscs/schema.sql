@@ -1,14 +1,18 @@
-DROP TABLE IF EXISTS users_auth;
-DROP TABLE IF EXISTS users_meta;
-DROP TABLE IF EXISTS users_affiliation;
-DROP TABLE IF EXISTS projects;
-DROP TABLE IF EXISTS projects_roles;
-DROP TABLE IF EXISTS data;
-DROP TABLE IF EXISTS data_table_gene;
 DROP TABLE IF EXISTS results;
-DROP TABLE IF EXISTS analysis;
+
 DROP TABLE IF EXISTS analysis_author;
 DROP TABLE IF EXISTS analysis_inputs;
+DROP TABLE IF EXISTS analysis;
+
+DROP TABLE IF EXISTS data;
+
+DROP TABLE IF EXISTS projects_roles;
+DROP TABLE IF EXISTS projects;
+
+DROP TABLE IF EXISTS users_meta;
+DROP TABLE IF EXISTS users_affiliation;
+DROP TABLE IF EXISTS users_auth;
+
 DROP TABLE IF EXISTS universities;
 DROP TABLE IF EXISTS university_domains;
 
@@ -19,7 +23,7 @@ DROP TABLE IF EXISTS results_deletion;
 DROP TABLE IF EXISTS analysis_deletion;
 DROP TABLE IF EXISTS analysis_author_deletion;
 DROP TABLE IF EXISTS analysis_inputs_deletion;
---PRAGMA foreign_keys = ON;
+PRAGMA foreign_keys = ON;
 
 CREATE TABLE users_auth (
     id_user TEXT UNIQUE NOT NULL PRIMARY KEY,  -- id; backend
@@ -39,7 +43,7 @@ CREATE TABLE users_affiliation (
     affiliation TEXT NOT NULL,
     CONSTRAINT affiliation_key
      PRIMARY KEY (id_user, affiliation),
-     FOREIGN KEY (id_user) REFERENCES users_auth(id_user)
+     FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
 );
 
 CREATE TABLE projects (
@@ -51,7 +55,7 @@ CREATE TABLE projects (
     num_members INT DEFAULT 1,
     creation_time_project TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_published BIT DEFAULT 0,
-    FOREIGN KEY (id_user) REFERENCES users_auth(id_user)
+    FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
 );
 
 CREATE TABLE projects_deletion AS SELECT * FROM projects;
@@ -67,15 +71,18 @@ CREATE TRIGGER stage_project_deletion
   END;
 
 CREATE TABLE projects_roles (
-    id_project TEXT UNIQUE NOT NULL,
+    id_project TEXT,
     id_user TEXT NOT NULL,
     role TEXT NOT NULL DEFAULT "member",
-    data_read BIT DEFAULT 0,
-    data_write BIT DEFAULT 0,
-    project_management BIT DEFAULT 0,
+    data_read BIT DEFAULT 0,  -- whether user can read data uploaded to project
+    data_write BIT DEFAULT 0,  -- whether user can upload new data
+    analysis_read BIT DEFAULT 0,  -- whether user can load pipeline in editor
+    analysis_write BIT DEFAULT 0,  -- whether user can add new pipelines to project
+    analysis_execute BIT DEFAULT 0,  -- whether user can run pipelines on project data
+    project_management BIT DEFAULT 0,  -- whether user can add users
     CONSTRAINT proj_key PRIMARY KEY (id_project, id_user)
       FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE,
-      FOREIGN KEY (id_user) REFERENCES users_auth(id_user)
+      FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
 );
 CREATE TABLE projects_roles_deletion AS SELECT * FROM projects_roles;
 ALTER TABLE projects_roles_deletion ADD deletion_time_projects_roles TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
@@ -83,8 +90,8 @@ CREATE TRIGGER stage_project_roles_deletion
   BEFORE DELETE ON projects_roles
   FOR EACH ROW
   BEGIN
-    INSERT INTO projects_roles_deletion(id_project, id_user, role, data_read, data_write, project_management)
-    VALUES(OLD.id_project, OLD.id_user, OLD.role, OLD.data_read, OLD.data_write, OLD.project_management);
+    INSERT INTO projects_roles_deletion(id_project, id_user, role, data_read, data_write, analysis_read, analysis_write, analysis_execute, project_management)
+    VALUES(OLD.id_project, OLD.id_user, OLD.role, OLD.data_read, OLD.data_write, OLD.analysis_read, OLD.analysis_write, OLD.analysis_execute, OLD.project_management);
   END;
 
 CREATE TABLE data (
@@ -96,25 +103,19 @@ CREATE TABLE data (
     file_hash TEXT NOT NULL,  -- sha3-256 hash of the data
     data_uploaded_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_published BIT DEFAULT 0,  -- whether this data has been published; prevents auto deletion
-    FOREIGN KEY (id_user) REFERENCES users_auth(id_user),
-    FOREIGN KEY (id_project) REFERENCES projects(id_project)
+    FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE,
+    FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE
 );
 
-CREATE TABLE data_deletion (
-    id_data TEXT UNIQUE NOT NULL PRIMARY KEY,
-    id_user TEXT NOT NULL,  -- owner/uploader
-    id_project TEXT NOT NULL,  -- project that this data is associated with
-    file_path TEXT NOT NULL,  -- path of the data on server
-    data_type TEXT NOT NULL,
-    file_hash TEXT NOT NULL,  -- sha3-256 hash of the data
-    id_results TEXT DEFAULT NULL,  -- pointer to results, if any
-    data_uploaded_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    id_user_deleter TEXT NOT NULL,  -- user who marked data for deletion,
-    data_deletion_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    deletion_path TEXT NOT NULL,  -- path where data is staged for deletion
-    FOREIGN KEY (id_data) REFERENCES data(id_data),
-    FOREIGN KEY (id_project) REFERENCES projects(id_project)
-);
+CREATE TABLE data_deletion AS SELECT * FROM data;
+ALTER TABLE data_deletion ADD deletion_time_data TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+CREATE TRIGGER stage_data_deletion
+  BEFORE DELETE ON data
+  FOR EACH ROW
+  BEGIN
+    INSERT INTO data_deletion(id_data, id_user, id_project, file_path, data_type, data_type, file_hash, data_uploaded_time, is_published)
+    VALUES(OLD.id_data, OLD.id_user, OLD.id_project, OLD.file_path, OLD.data_type, OLD.data_type, OLD.file_hash, OLD.data_uploaded_time, OLD.is_published);
+  END;
 
 CREATE TABLE results(
     id_result TEXT UNIQUE NOT NULL PRIMARY KEY,  -- unique ID for each file produced by analysis
@@ -165,7 +166,7 @@ CREATE TABLE analysis_author(
     id_analysis TEXT UNIQUE NOT NULL,
     id_user TEXT NOT NULL,
     FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE,
-    FOREIGN KEY (id_user) REFERENCES users_auth(id_user),
+    FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE,
     CONSTRAINT author_key PRIMARY KEY (id_user, id_analysis)
 );
 

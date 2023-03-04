@@ -16,17 +16,17 @@
       {% for j in node_json %}
         {% if j['module'] == m %}
           {% if j['num_inputs'] == 0 %}
-              <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/input.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters'] }}&quot;)">{{ j['name'] }}
+              <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/input.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters'] }}&quot;, 'input')">{{ j['name'] }}
               <img width="20px" height="20px" src="static/nodes/input.png">
           </p>
           {% elif j['num_outputs'] == 0 %}
-            <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/output.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;)">{{ j['name'] }}
+              <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/output.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;, 'output')">{{ j['name'] }}
               <img width="20px" height="20px" src="static/nodes/output.png">
           {% elif j['num_inputs'] == 1 %}
-    <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/simo.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;)">{{ j['name'] }}
+              <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/simo.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;, 'simo')">{{ j['name'] }}
               <img width="20px" height="20px" src="static/nodes/simo.png">
           {% else %}
-    <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/mimo.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;)">{{ j['name'] }}
+              <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/mimo.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;, 'mimo')">{{ j['name'] }}
               <img width="20px" height="20px" src="static/nodes/mimo.png">
           {% endif %}
         {% endif %}
@@ -36,5 +36,14 @@
 
 <button type="button" onclick="toggleSidebar()">&#9776;</button>
 <button type="button" onclick="openSavePanel( &quot;{{ proj_dests }}&quot;, &quot;{{user_dests}}&quot; )">Save Pipeline</button>
+<p></p>
+<!--Create list-->
+<select name="analyses" id="analyses" autocomplete="off">
+    <option value="def" selected disabled>Load analysis pipeline</option>
+    {% for an in analyses %}
+      <option value="{{an['id_analysis']}}">{{an["analysis_name"]}}</option>
+    {% endfor %}
+</select>
+<button id="analysis_load" onclick="getAnalysis();">Load</button>
 
 {% endblock %}

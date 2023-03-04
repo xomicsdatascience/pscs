@@ -1,7 +1,7 @@
 {% extends 'base.html' %}
 
 {% block header %}
-<h1><center>{{ project_name }}</center></h1>
+<h1>{{ project_name }}</h1>
 {% endblock %}
 
 {% block content %}
@@ -64,8 +64,20 @@
 {% endfor %}
 
 <h3>Project Management</h3>
+<table>
+  {% for u in user_list %}
+  <tr>
+    <td>{{u}}</td>
+  </tr>
+  {% endfor %}
+</table>
 
   <table>
+    <tr>
+      <td>Add user</td>
+      <td><input type="text" id="addUser"></td>
+      <td><button onclick="addUser();">Add</button></td>
+    </tr>
     <tr>
       <td>Rename project</td>
       <td style="vertical-align: middle;"><input type="text" id="inputRename"></td>
