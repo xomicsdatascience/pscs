@@ -1,7 +1,6 @@
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, url_for, Flask, session, current_app
 )
-
 from werkzeug.exceptions import abort
 from werkzeug.utils import secure_filename
 from pscs.auth import login_required
@@ -22,12 +21,10 @@ import json
 import hashlib
 import pathlib
 
-default_role = 'owner'
 bp = Blueprint('pscs', __name__)
 UPLOAD_FOLDER = 'upload/'
 ALLOWED_EXTENSIONS = {'csv', 'tsv'}
 PATH_KEYWORD = 'path'
-
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.join(UPLOAD_FOLDER, "{userid}")
@@ -116,11 +113,10 @@ def upload():
 @login_required
 def profile():
     db = get_db()
-    user_uploads = db.execute(
-        'SELECT file_path, file_hash FROM data WHERE'
-        ' id_user = ?',
-        (g.user['id_user'],)).fetchall()
-    return render_template('pscs/profile.html', data=user_uploads)
+    user_projects = db.execute("SELECT projects.name_project, projects.description, projects.num_members, projects.num_files "
+                               "FROM projects INNER JOIN projects_roles ON projects.id_project = projects_roles.id_project "
+                               "WHERE projects_roles.id_user = ?", (g.user["id_user"],)).fetchall()
+    return render_template('pscs/profile.html', projects=user_projects)
 
 
 @bp.route('/create_project', methods=['GET', 'POST'])
@@ -196,6 +192,10 @@ def add_user_to_project(id_user: str,
     values += ')'
     cmd += values
     db.execute(cmd, (id_user, id_project, role) + tuple(permissions.values()))
+
+    # Update number of users in project
+    project_members = db.execute("SELECT role FROM projects_roles WHERE id_project = ?", (id_project,)).fetchall()
+    db.execute("UPDATE projects SET num_members = ? WHERE id_project = ?", (len(project_members), id_project))
     db.commit()
     return
 

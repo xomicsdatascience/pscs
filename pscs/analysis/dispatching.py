@@ -7,9 +7,6 @@ from os.path import join, basename
 import json
 import tempfile
 import os
-pscs_config = {'REMOTE_USER': {'osp': ''}}
-pscs_config['REMOTE_URL'] = {'osp': ''}
-pscs_config['REMOTE_OUTDIR'] = {'osp': ''}
 
 
 def dispatch(pipeline_json: str,
@@ -117,8 +114,8 @@ def get_address(resource: str) -> str:
     str
         Address to use for resource
     """
-    remote_user = pscs_config['REMOTE_USER'][resource]
-    remote_url = pscs_config['REMOTE_URL'][resource]
+    remote_user = current_app.config["REMOTE_COMPUTING"][resource]["USER"]
+    remote_url = current_app.config["REMOTE_COMPUTING"][resource]["URL"]
     return f"{remote_user}@{remote_url}"
 
 

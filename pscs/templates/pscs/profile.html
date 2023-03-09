@@ -6,22 +6,18 @@
 
 {% block content %}
 <a class="action" href="{{ url_for('pscs.upload') }}">Upload Data</a>  -- <a href="{{ url_for('pscs.analysis') }}">Analysis</a>
-<h2>Data Summary:</h2>
+<h2>Project Summary:</h2>
 <table>
     <tr>
-        <th>File</th>
-        <th>Samples</th>
-        <th>Genes</th>
-        <th></th>
-<!--        <th></th>-->
+        <th>Project Name</th>
+        <th>Description</th>
+        <th>Number of members</th>
     </tr>
-    {% for datum in data %}
+    {% for project in projects %}
     <tr>
-        <td>{{ datum['file_path'] }}</td>
-        <td>{{ datum['sample_count'] }}</td>
-        <td>{{ datum['gene_count'] }}</td>
-        <td><form><input type="submit" name="delete" value="Remove" onclick="return confirm('Confirm removal?'"></form></td>
-<!--        <td><a href="{{ url_for('pscs.analysis') }}">Analysis</a></td>-->
+        <td>{{ project['name_project'] }}</td>
+        <td>{{ project['description'] }}</td>
+        <td>{{ project['num_members'] }}</td>
     </tr>
     {% endfor %}
 </table>

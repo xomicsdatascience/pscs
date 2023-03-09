@@ -22,8 +22,9 @@
 
     <label for="passwordConfirm">Confirm Password</label>
     <input type="password" name="passwordConfirm" id="passwordConfirm" style="width: 300px;">
+    {% if recaptcha_enabled %}
     <div class="g-recaptcha" data-sitekey="6Lc9-DskAAAAAH5yHqx0Ar2W8_VwPgwuGWQGWr4w"></div>
-
+    {% endif %}
     <label for="noPHI" style="font-weight: normal">I agree that any data sent to PSCS has had <a href="https://www.dhcs.ca.gov/dataandstats/data/Pages/ListofHIPAAIdentifiers.aspx">Personal Health Information</a> removed and that I will report any datasets I find that contain any.
     <input type="checkbox" id="noPHI" style="float: left;">
     </label>

@@ -2,8 +2,13 @@
 This file contains the server-side validation for user registration.
 '''
 from pscs.db import get_db
+from flask import current_app
 import requests
 import json
+from itsdangerous.url_safe import URLSafeTimedSerializer
+from itsdangerous.exc import SignatureExpired, BadSignature
+from typing import Optional
+import subprocess
 min_password_length = 12
 
 
@@ -139,17 +144,98 @@ def validate_recaptcha(recaptcha: str,
         return response["success"], ""
 
 
-def send_user_confirmation_email(username: str) -> bool:
+def send_user_confirmation_email(id_user: str,
+                                 user_email: str,
+                                 name_user: str) -> bool:
     """
     Sends new user an email to confirm their address.
     Parameters
     ----------
-    username : str
-        User's username.
+    id_user : str
+        User's ID.
+    user_email : str
+        User's email address.
+    name_user : tuple
+        Optional. Tuple of (First Name, Last Name) to use in email. If not used, those parts of the email are dropped.
 
     Returns
     -------
     bool
         Whether mail was sent successfully.
     """
-    return True
+    url_signer = URLSafeTimedSerializer(secret_key=current_app.config["SECRET_KEY"], salt="confirmation")
+    token = url_signer.dumps(id_user)
+    url = "https://" + current_app.config["CURRENT_URL"] + f"/auth/confirmation/{token}"
+    message_contents = f"This email is to confirm the registration of user {name_user} with PSCS. Clicking the " \
+                       f"<a href=\"{url}\">link</a> will confirm that you intended to register with PSCS. The link" \
+                       f" will expire 12h from when it was issued.<br><br>"
+    message_contents += "If you have received this message in error, no further action is needed on your part.<br><br>"
+    message_contents += "- PSCS"
+    return send_email(user_email, "PSCS confirmation", message_contents)
+
+
+def send_email(email_address: str,
+               subject: str,
+               body: str) -> bool:
+    """
+    Send email body to address.
+    Parameters
+    ----------
+    email_address : str
+        Destination.
+    subject : str
+        Text to include in Subject line
+    body : str
+        Content of the message.
+
+    Returns
+    -------
+    bool
+        Whether mail was sent successfully.
+    """
+    msg = f"To: {email_address}\n"
+    msg += f"Subject: {subject}\n"
+    msg += "From: pscs@pscs.xods.org\n"
+    msg += "MIME-Version: 1.0\n"
+    msg += "Content-Type: text/html\n\n"  # multipart/alternative;
+    msg += "<html>\n<body>\n"
+    msg += body
+    msg += "</body>\n</html>\n"
+    sendmail_cmd = f"echo \"{msg}\" | sendmail {email_address}"
+    return subprocess.run(sendmail_cmd, shell=True, capture_output=True)
+
+
+def decode_token(token: str,
+                 context: str,
+                 max_age: Optional[int] = None) -> (bool, str):
+    """
+    Takes a token and verifies that it is valid with the specified context.
+    Parameters
+    ----------
+    token : str
+        Token to verify.
+    context : str
+        Context of the token. Used as salt with the most recent key.
+    max_age : int, optional
+        Maximum age in seconds that the token can be.
+    Returns
+    -------
+    bool
+        Whether the token is valid.
+    object
+        Data stored in the token.
+    str
+        Reason for invalid token, if any.
+    """
+    url_signer = URLSafeTimedSerializer(secret_key=current_app.config["SECRET_KEY"], salt=context)
+    valid_token = False
+    invalid_reason = None
+    token_data = None
+    try:
+        token_data = url_signer.loads(token, max_age=max_age)
+        valid_token = True
+    except SignatureExpired:
+        invalid_reason = "The token has expired."
+    except BadSignature:
+        invalid_reason = ""  # ignore the token
+    return valid_token, token_data, invalid_reason

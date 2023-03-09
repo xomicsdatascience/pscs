@@ -1,13 +1,29 @@
 import setuptools
-
+import version
+import os
 
 def readfile(filename):
     with open(filename, 'r+') as f:
         return f.read()
 
+
+def get_version():
+    """Gets the version from pscs.__init__ without importing it"""
+    here_dir = os.path.dirname(__file__)
+    pscs_init = os.path.join(here_dir, 'pscs', '__init__.py')
+    init_contents = readfile(pscs_init).split('\n')
+    version = "unknwon"
+    for line in init_contents:
+        if "__version__" in line:
+            version = line.split('=')[1].replace('"', '').strip()
+            break
+    print(version)
+    return version
+
+
 setuptools.setup(
     name="pscs",
-    version="0.0.4",
+    version=get_version(),
     author="Meyer Lab",
     author_email="",
     description="",
@@ -24,6 +40,7 @@ setuptools.setup(
     python_requires='>=3.10',
     license="MIT",
     install_requires=[
+        'wheel',
         'pyteomics>=4.4.1',
         'matplotlib<3.7',
         'numba>=0.53.1',

@@ -1,7 +1,10 @@
-__version__ = '0.0.1'
+__version__ = "0.0.5"
 
 import os
 from flask import Flask
+import os
+import json
+
 
 def create_app(test_config=None) -> Flask:
     """
@@ -17,19 +20,10 @@ def create_app(test_config=None) -> Flask:
         An instance of the Flask app.
     """
     app = Flask(__name__, instance_relative_config=True)
-    # Recaptcha settings
-    recaptcha_client_file = open(os.path.join(app.instance_path, 'recaptcha_client'), 'r')
-    recaptcha_client_token = recaptcha_client_file.read().strip()
-    recaptcha_client_file.close()
-    recaptcha_server_file = open(os.path.join(app.instance_path, 'recaptcha_server'), 'r')
-    recaptcha_server_token = recaptcha_server_file.read().strip()
-    recaptcha_server_file.close()
+    env_dict = parse_env()
     app.config.from_mapping(
-        SECRET_KEY='dev',
         DATABASE=os.path.join(app.instance_path, 'pscs.sqlite'),
-        RECAPTCHA_CLIENT=recaptcha_client_token,
-        RECAPTCHA_SERVER=recaptcha_server_token)
-
+        **env_dict)
     if test_config is None:
         # Load instance
         app.config.from_pyfile('config.py', silent=True)
@@ -38,6 +32,7 @@ def create_app(test_config=None) -> Flask:
 
     # Make sure path exists
     os.makedirs(app.instance_path, exist_ok=True)
+    print(f"Instance path: {app.instance_path}")
 
     from . import db
     db.init_app(app)
@@ -48,5 +43,33 @@ def create_app(test_config=None) -> Flask:
     from . import pscs
     app.register_blueprint(pscs.bp)
     app.add_url_rule('/', endpoint='index')
-
     return app
+
+
+def parse_env(env_file: str = '.env') -> dict:
+    """
+    Parses the environment file and returns the result as a dict.
+    Parameters
+    ----------
+    env_file : str
+        Path to the environment
+
+    Returns
+    -------
+    dict
+        Dictionary keyed with the environment variable name.
+    """
+    f = open(env_file)
+    env_dict = dict()
+    line = f.readline()
+    line_count = 0  # on the off chance that the problematic line contains the secret key, don't print contents
+    while len(line) > 0:
+        line_count += 1
+        idx_equal = line.index('=')
+        if idx_equal == -1:
+            raise ValueError(f"Environment file not correctly configured; see line {line_count} in .env file.")
+        key = line[:idx_equal]
+        env_dict[key] = json.loads(line[idx_equal+1:])
+        line = f.readline()
+    f.close()
+    return env_dict

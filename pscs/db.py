@@ -55,7 +55,7 @@ def init_db_command():
     """Clear existing data; create new tables."""
     init_db()
     click.echo('Database initialized.')
-    click.echo(f'{current_app.config["DATABASE"]}')
+    click.echo(f'Location: {current_app.config["DATABASE"]}')
     return
 
 

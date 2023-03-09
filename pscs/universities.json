@@ -118907,5 +118907,18 @@
       "ac-besancon.fr"
     ],
     "country": "France"
+  },
+  {
+    "web_pages": [
+      "https://www.cshs.org",
+      "https://www.cedars-sinai.org"
+    ],
+    "name": "Cedars-Sinai",
+    "alpha_two_code": "US",
+    "state-province": "California",
+    "domains": [
+      "cshs.org"
+    ],
+    "country": "United States"
   }
 ]

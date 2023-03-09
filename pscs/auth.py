@@ -7,8 +7,10 @@ from flask import (
 from werkzeug.security import check_password_hash, generate_password_hash
 from pscs.db import get_db, get_unique_value_for_field
 from authtools.validation.registration import validate_username, validate_password, validate_email, validate_recaptcha,\
-                                              send_user_confirmation_email
+                                              send_user_confirmation_email, decode_token
+
 bp = Blueprint('auth', __name__, url_prefix='/auth')
+
 
 @bp.route('/register', methods=('GET', 'POST'))
 def register():
@@ -17,20 +19,22 @@ def register():
         password = request.form['password']
         password_confirm = request.form['passwordConfirm']
         email = request.form['email']
-        recaptcha = request.form['g-recaptcha-response']
+
         user_ip = request.remote_addr
         db = get_db()
         try:
             # Generate uuid for user
-            uid = get_unique_value_for_field(db, 'id_user', 'users_auth')
+            id_user = get_unique_value_for_field(db, 'id_user', 'users_auth')
 
-            # If recaptcha is not valid, stop bothering the server
-            recaptcha_valid, recaptcha_msg = validate_recaptcha(recaptcha, current_app.config['RECAPTCHA_SERVER'], user_ip)
-            if not recaptcha_valid:
-                error = recaptcha_msg
-                # Error from recaptcha is relatively useless; just tell user that there was a problem
-                flash("Error with reCAPTCHA token.")
-                return render_template("auth/register.html")
+            if current_app.config["RECAPTCHA_ENABLED"]:  # check that recaptcha is enabled
+                recaptcha = request.form['g-recaptcha-response']
+                recaptcha_valid, recaptcha_msg = validate_recaptcha(recaptcha, current_app.config['RECAPTCHA_SERVER'], user_ip)
+                # If recaptcha is not valid, stop bothering the server
+                if not recaptcha_valid:
+                    error = recaptcha_msg
+                    # Error from recaptcha is relatively useless; just tell user that there was a problem
+                    flash("Error with reCAPTCHA token.")
+                    return render_template("auth/register.html")
 
             uname_valid, uname_msg = validate_username(username, db)
             password_valid, password_msg = validate_password(password, password_confirm)
@@ -49,17 +53,48 @@ def register():
             else:
                 db.execute(
                 "INSERT INTO users_auth (id_user, name_user, password, email, ip) VALUES (?, ?, ?, ?, ?)",
-                    (uid, username, generate_password_hash(password), email, user_ip))
+                    (id_user, username, generate_password_hash(password), email, user_ip))
                 db.commit()
 
                 # Send mail to user to verify.
+                send_user_confirmation_email(id_user, email, username)
+                user_login(username, password)
+                flash(f"Email confirmation sent to {email}; please click the verification link.")
+
         except db.IntegrityError:
             error = f"User {username} is already registered."
         else:
-            return redirect(url_for("auth.login"))
+            return redirect(url_for("index"))
 
         flash(error)
-    return render_template("auth/register.html")
+    return render_template("auth/register.html", recaptcha_enabled=current_app.config["RECAPTCHA_ENABLED"])
+
+
+@bp.route('/confirmation/<token>')
+def user_confirmation(token):
+    valid_token, token_data, invalid_reason = decode_token(token,
+                                                           "confirmation",
+                                                           current_app.config["CONFIRMATION_TIMEOUT_SECONDS"])
+    if not valid_token:  # Invalid token; exit
+        if len(invalid_reason) > 0:
+            flash(invalid_reason)
+    else:
+        # token_data contains id_user; check whether user exists & needs confirming
+        db = get_db()
+        user_needs_confirmation = db.execute("SELECT confirmed, name_user "
+                                             "FROM users_auth "
+                                             "WHERE id_user = ?", (token_data,)).fetchone()
+        if user_needs_confirmation is None:
+            flash("User doesn't exist. Please contact PSCS admins.")
+        if user_needs_confirmation['confirmed'] == 0:
+            db.execute("UPDATE users_auth "
+                       "SET confirmed = 1, confirmed_datetime = CURRENT_TIMESTAMP "
+                       "WHERE id_user = ?", (token_data,))
+            db.commit()
+            flash(f"User account for {user_needs_confirmation['name_user']} confirmed! Welcome to PSCS.")
+        elif user_needs_confirmation['confirmed'] == 1:
+            flash("User account has already been confirmed.")
+    return redirect(url_for('index'))
 
 
 @bp.route('login', methods=('GET', 'POST'))
@@ -67,26 +102,43 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
+        user_login(username=username, password=password)
 
-        db = get_db()
-        error = None
-        user = db.execute(
-            'SELECT id_user, name_user, password FROM users_auth WHERE name_user = ?', (username,)
-        ).fetchone()
-
-        if user is None:
-            error = 'Incorrect username.'
-        elif not check_password_hash(user['password'], password):
-            error = "Incorrect password."
-
-        if error is None:
-            session.clear()
-            session['id_user'] = user['id_user']
-            return redirect(url_for('index'))
-        flash(error)
     return render_template('auth/login.html')
 
 
+def user_login(username: str,
+          password: str):
+    """
+    Checks whether the submitted password is valid for the username, and logs the user into the website.
+    Parameters
+    ----------
+    username : str
+        Username of the account
+    password : str
+        Password connected to the account
+
+    Returns
+    -------
+    None
+    """
+    db = get_db()
+    error = None
+    user = db.execute(
+        'SELECT id_user, name_user, password FROM users_auth WHERE name_user = ?', (username,)
+    ).fetchone()
+
+    if user is None:
+        error = 'Incorrect username.'
+    elif not check_password_hash(user['password'], password):
+        error = "Incorrect password."
+
+    if error is None:
+        session.clear()
+        session['id_user'] = user['id_user']
+    else:
+        flash(error)
+    return
 @bp.before_app_request
 def load_logged_in_user():
     user_id = session.get('id_user')
