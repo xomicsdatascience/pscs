@@ -365,9 +365,7 @@ function createPscsNode(idNum, processName, module, params, pscsType, img){
         let params = {};
         for (let i=0, row; row = tbl.rows[i]; i++){
             for (let j=0, cell; cell = row.cells[j]; j++){
-                if(cell.children.length>0){console.log(cell.children[0].id)};
                 if (cell.children.length > 0 && cell.children[0].id.includes(PARAMNAME)){  // only select boxes of this class
-                    console.log("HERE!");
                     let txtBox = cell.children[0];
                     let param = txtBox.id.substring(PARAMNAME.length + 1, txtBox.id.length);
                     if (txtBox.value.length > 0){
@@ -606,7 +604,7 @@ function connectorMaker(event){
     event.preventDefault();
     const targetArea = event.target;
     let connector = createConnector(targetArea.id);
-    connector.grab();
+    connector.grab(event);
 
 }
 
