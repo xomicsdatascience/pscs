@@ -4,8 +4,6 @@
 function isPasswordMatch(){
   password = document.getElementById('password');
   confirmation = document.getElementById('passwordConfirm');
-  console.log(password.value);
-  console.log(confirmation.value);
   if(password.value != confirmation.value){
     return false;
   }
@@ -28,8 +26,6 @@ function validateUsername(){
   usernameEl = document.getElementById('username');
   username = usernameEl.value;
   firstChar = username.substr(0,1);
-  console.log(firstChar);
-  console.log(username);
 //  alert(firstChar);
   if(username.length == 0){  // check for empty field
     usernameEl.setCustomValidity('Username is required.');

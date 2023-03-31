@@ -161,7 +161,7 @@ def get_remote_project_dir(id_project: str,
     str
         Path on remote resource.
     """
-    remote_outdir = join(pscs_config['REMOTE_OUTDIR'][resource], id_project, id_analysis)
+    remote_outdir = join(current_app.config["REMOTE_COMPUTING"][resource]["OUTDIR"], id_project, id_analysis)
     return remote_outdir
 
 

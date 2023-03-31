@@ -21,24 +21,49 @@ nav ul li a, nav ul li span, header .action { display: block; padding: 0.5rem; }
 .content textarea { min-height: 12em; resize: vertical; }
 input.danger { color: #cc2f2e; }
 input[type=submit] { align-self: start; min-width: 10em; }
+input,textarea{min-width:200px; width:20%;display:block}
 table, th, td {border: 1px solid; }
 img {max-width:1600px;}
-.dragged {position: absolute;cursor: move; z-index: 2; }
-.connector {background: #aaaaaa; width: 5px; position: absolute; z-index: 1; transform-origin: 50% 0%; }
+.pscs {position:absolute; cursor: grab; z-index:2;}
+.pscsLabel {user-select: none; cursor: grab}
+.pscsParamPanel {position: absolute;
+    background-color: rgba(200,180,200,0.4);
+    right: 0px;
+    z-index: 3;}
+.exportPanel {
+    position: absolute;
+    background-color: rgba(200,200,200,1);
+    z-index: 3;
+}
+.connector {background-color: #aaaaaa; width: 5px; height: 0px; position: absolute; z-index: 1; transform-origin: 50% 0%;}
 .hoverdot {background-color: #0000bb; border-radius: 50%; height: 25px; width: 25px; opacity: 0; position:absolute; transition-property: opacity; transition-duration: 0.3s}
+
 .sidebar-closed, .sidebar-open {
     height: 100%;
-    width: 0px;
+    width: 250px;
+    left: -250px;
     position: fixed;
     z-index: 2;
     top: 0;
-    left: 0;
     background-color: #222222;
     overflow-x: hidden;
     transition: 0.2s;
     padding-top: 60px;
+    color: #999999;
     }
-.sidebar-open {width: 250px;}
-.sidebar-closed p {color: #999999;}
-.dragtext {position: absolute;}
-.panel {position: absolute; background-color: rgba(200,180,200,0.4);}
+.sidebar-open {left: 0px;}
+.sidebar-toggle {
+    position: absolute;
+    top: 50%;
+    left: 0px;
+    transition: 0.2s;}
+.panel {position: absolute;
+        background-color: rgba(200,180,200,0.4);
+        right: 0px;}
+.container {
+    position: relative;
+    background-color: rgba(255,255,255,1);
+    width: 95%;
+    height: 30em;
+    border: 1px solid black;
+    }

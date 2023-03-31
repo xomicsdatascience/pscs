@@ -7,7 +7,11 @@
 <nav>
     <h1><a href="{{ url_for('pscs.index') }}">PSCS - Platform for Single Cell Science</a></h1>
     <ul>
+        {% if session["is_admin"] %}
+            <li><a href="pscs.xods.org">Admin</a></li>
+        {% endif %}
         {% if g.user %}
+            <li><a href="{{ url_for('pscs.profile') }}">My Projects</a>
             <li><a href="{{ url_for('pscs.profile') }}">{{ g.user['name_user'] }}</a>
             <li><a href="{{ url_for('auth.logout') }}">Log Out</a>
         {% else %}
@@ -24,6 +28,6 @@
     <div class="flash">{{ message }}</div>
     {% endfor %}
     <body>
-    {% block content %}{% endblock %}
+        {% block content %}{% endblock %}
     </body>
 </section>

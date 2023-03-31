@@ -1,5 +1,5 @@
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, url_for, Flask, session, current_app
+    Blueprint, flash, g, redirect, render_template, request, url_for, Flask, session, current_app, send_from_directory
 )
 from werkzeug.exceptions import abort
 from werkzeug.utils import secure_filename
@@ -21,31 +21,28 @@ import json
 import hashlib
 import pathlib
 
-bp = Blueprint('pscs', __name__)
+bp = Blueprint("pscs", __name__)
 UPLOAD_FOLDER = 'upload/'
 ALLOWED_EXTENSIONS = {'csv', 'tsv'}
 PATH_KEYWORD = 'path'
 
 app = Flask(__name__)
 app.config['UPLOAD_FOLDER'] = os.path.join(UPLOAD_FOLDER, "{userid}")
-app.config['PROJECTS_DIRECTORY'] = os.path.join("pscs", "static", "projects", "{id_project}")
+app.config['PROJECTS_DIRECTORY'] = os.path.join("pscs", "projects", "{id_project}")
 app.config['RESULTS_DIRECTORY'] = os.path.join(app.config['PROJECTS_DIRECTORY'], "results", "{id_analysis}")
 app.config['DELETION_DIRECTORY'] = os.path.join("deletion", "{id_project}")
 
+app.add_url_rule('/upload/<name>', endpoint='download_file', build_only=True)
 
 @bp.route('/')
 def index():
     db = get_db()
-    if g.user is not None:
-        # Get project meta data to list for user
-        user_projects = db.execute("SELECT projects.name_project, projects.description, projects.num_files, "
-                                   "projects.id_project, projects.num_members, projects_roles.role "
-                                   "FROM projects INNER JOIN projects_roles "
-                                   "ON projects.id_project=projects_roles.id_project "
-                                   "AND projects_roles.id_user=?", (g.user['id_user'],))
-        return render_template('pscs/index.html', projects=user_projects)
-    else:
-        return render_template('pscs/index.html', projects=None)
+    # Get project metadata to list for user
+    posts = db.execute("SELECT title, body "
+                               "FROM posts "
+                               "ORDER BY date_created DESC "
+                               "LIMIT 5").fetchall()
+    return render_template("pscs/index.html", posts=posts)
 
 
 def allowed_file(filename):
@@ -113,10 +110,14 @@ def upload():
 @login_required
 def profile():
     db = get_db()
-    user_projects = db.execute("SELECT projects.name_project, projects.description, projects.num_members, projects.num_files "
-                               "FROM projects INNER JOIN projects_roles ON projects.id_project = projects_roles.id_project "
-                               "WHERE projects_roles.id_user = ?", (g.user["id_user"],)).fetchall()
-    return render_template('pscs/profile.html', projects=user_projects)
+    if g.user is not None:
+        # Get project meta data to list for user
+        user_projects = db.execute("SELECT projects.name_project, projects.description, projects.num_files, "
+                                   "projects.id_project, projects.num_members, projects_roles.role "
+                                   "FROM projects INNER JOIN projects_roles "
+                                   "ON projects.id_project=projects_roles.id_project "
+                                   "AND projects_roles.id_user=?", (g.user['id_user'],))
+        return render_template('pscs/profile.html', projects=user_projects)
 
 
 @bp.route('/create_project', methods=['GET', 'POST'])
@@ -465,6 +466,7 @@ def pipeline_designer():
         db = get_db()
         analyses = db.execute("SELECT analysis.id_analysis, analysis.analysis_name "
                               "FROM analysis INNER JOIN projects_roles "
+                              "ON analysis.id_project=projects_roles.id_project "
                               "WHERE projects_roles.id_user = ? AND projects_roles.analysis_read = 1",
                               (g.user['id_user'],)).fetchall()
         return render_template("pscs/pipeline.html", node_json=node_json, modules=modules, proj_dests=proj_dests,
@@ -592,9 +594,6 @@ def get_unique_values_for_key(d: dict, key) -> list:
     return sorted(unique_values)
 
 
-app.add_url_rule('/upload/<name>', endpoint='download_file', build_only=True)
-
-
 def calc_hash_of_file(file: str) -> str:
     """
     Calculates the SHA256 hash of a file by loading 1kB at a time.
@@ -615,3 +614,15 @@ def calc_hash_of_file(file: str) -> str:
         sha.update(dat)
         dat = f.read(1024)
     return sha.hexdigest()
+
+
+@bp.route('/projects/<id_project>/<path:filename>')
+@login_required
+def get_project_file(id_project, filename):
+    # Check if
+    has_perm = check_user_permission("data_read", 1, id_project)
+    if has_perm:
+        filename = secure_filename(filename)
+        filepath = app.config["PROJECTS_DIRECTORY"].format(id_project=id_project)
+        return send_from_directory(app.config["PROJECTS_DIRECTORY"].format(id_project=id_project), filename)
+    return

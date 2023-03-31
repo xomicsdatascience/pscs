@@ -28,10 +28,10 @@ class FilterCellValues(PipelineNode):
             Maximum value of the sum of all proteins in a cell for a cell to be retained (equality is retained).
         """
         super().__init__()
-        self.minimum_unique_protein = minimum_unique_protein
-        self.maximum_unique_protein = maximum_unique_protein
-        self.minimum_total_protein = minimum_total_protein
-        self.maximum_total_protein = maximum_total_protein
+        self.minimum_unique_protein = int(minimum_unique_protein)
+        self.maximum_unique_protein = int(maximum_unique_protein)
+        self.minimum_total_protein = float(minimum_total_protein)
+        self.maximum_total_protein = float(maximum_total_protein)
         self.effect = ["~obs['obs_keep']"]
         return
 
@@ -89,10 +89,10 @@ class FilterGeneValues(PipelineNode):
             that are found in overall high quantities.
         """
         super().__init__()
-        self.minimum_cell_presence = minimum_cell_presence
-        self.maximum_cell_presence = maximum_cell_presence
-        self.minimum_cell_amount = minimum_cell_amount
-        self.maximum_cell_amount = maximum_cell_amount
+        self.minimum_cell_presence = int(minimum_cell_presence)
+        self.maximum_cell_presence = int(maximum_cell_presence)
+        self.minimum_cell_amount = float(minimum_cell_amount)
+        self.maximum_cell_amount = float(maximum_cell_amount)
         self.effect = ["~var['var_keep']"]
         return
 

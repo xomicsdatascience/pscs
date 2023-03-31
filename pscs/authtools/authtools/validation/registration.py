@@ -166,6 +166,7 @@ def send_user_confirmation_email(id_user: str,
     url_signer = URLSafeTimedSerializer(secret_key=current_app.config["SECRET_KEY"], salt="confirmation")
     token = url_signer.dumps(id_user)
     url = "https://" + current_app.config["CURRENT_URL"] + f"/auth/confirmation/{token}"
+    print(url)
     message_contents = f"This email is to confirm the registration of user {name_user} with PSCS. Clicking the " \
                        f"<a href=\"{url}\">link</a> will confirm that you intended to register with PSCS. The link" \
                        f" will expire 12h from when it was issued.<br><br>"

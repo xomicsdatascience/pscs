@@ -13,7 +13,7 @@
 <!--Data-->
 <script>
   function color(id, color = 'rgba(255,255,255,0.2)'){
-    elem = document.getElementById(id);
+    let elem = document.getElementById(id);
     elem.style.backgroundColor = color;
   }
 </script>
@@ -40,10 +40,12 @@
 <!-- Create dropdown of analyses -->
 <script>
   function parseAndCreateTable(sel){
-    analysis_nodes = {{analysis_nodes | tojson}}
+    let analysis_nodes = {{analysis_nodes | tojson}}
     createTable({{files | tojson}}, analysis_nodes[sel.value]);
   }
 </script>
+
+<a class="action" href="{{ url_for('pscs.pipeline_designer') }}">Create Analysis</a><br>
 <select name="analysis" id="analysis" autocomplete="off" onchange="parseAndCreateTable(this);">
   <option value="def" selected disabled>Select analysis pipeline...</option>
 <!--    Go through each available analysis -->
@@ -64,12 +66,13 @@
 {% endfor %}
 
 <h3>Project Management</h3>
+Users associated with this project:
 <table>
-  {% for u in user_list %}
   <tr>
+  {% for u in user_list %}
     <td>{{u}}</td>
-  </tr>
   {% endfor %}
+  </tr>
 </table>
 
   <table>

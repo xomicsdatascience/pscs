@@ -6,8 +6,8 @@ from flask import (
 
 from werkzeug.security import check_password_hash, generate_password_hash
 from pscs.db import get_db, get_unique_value_for_field
-from authtools.validation.registration import validate_username, validate_password, validate_email, validate_recaptcha,\
-                                              send_user_confirmation_email, decode_token
+from pscs.authtools.authtools.validation.registration import validate_username, validate_password, validate_email, \
+                                                             validate_recaptcha, send_user_confirmation_email, decode_token
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -57,9 +57,14 @@ def register():
                 db.commit()
 
                 # Send mail to user to verify.
-                send_user_confirmation_email(id_user, email, username)
+                if current_app.config["REGISTRATION_REQUIRES_CONFIRMATION"]:
+                    send_user_confirmation_email(id_user, email, username)
+                    flash(f"Email confirmation sent to {email}; please click the verification link.")
+                else:  # email confirmation disabled
+                    confirm_user(id_user)
                 user_login(username, password)
-                flash(f"Email confirmation sent to {email}; please click the verification link.")
+                # return render_template("pscs/index.html")
+                return redirect(url_for("pscs.index"))
 
         except db.IntegrityError:
             error = f"User {username} is already registered."
@@ -87,15 +92,19 @@ def user_confirmation(token):
         if user_needs_confirmation is None:
             flash("User doesn't exist. Please contact PSCS admins.")
         if user_needs_confirmation['confirmed'] == 0:
-            db.execute("UPDATE users_auth "
-                       "SET confirmed = 1, confirmed_datetime = CURRENT_TIMESTAMP "
-                       "WHERE id_user = ?", (token_data,))
-            db.commit()
+            confirm_user(token_data)
             flash(f"User account for {user_needs_confirmation['name_user']} confirmed! Welcome to PSCS.")
         elif user_needs_confirmation['confirmed'] == 1:
             flash("User account has already been confirmed.")
     return redirect(url_for('index'))
 
+def confirm_user(id_user):
+    db = get_db()
+    db.execute("UPDATE users_auth "
+               "SET confirmed = 1, confirmed_datetime = CURRENT_TIMESTAMP "
+               "WHERE id_user = ?", (id_user,))
+    db.commit()
+    return
 
 @bp.route('login', methods=('GET', 'POST'))
 def login():
@@ -103,12 +112,12 @@ def login():
         username = request.form['username']
         password = request.form['password']
         user_login(username=username, password=password)
-
+        return redirect(url_for('pscs.index'))
     return render_template('auth/login.html')
 
 
 def user_login(username: str,
-          password: str):
+               password: str):
     """
     Checks whether the submitted password is valid for the username, and logs the user into the website.
     Parameters
@@ -136,9 +145,17 @@ def user_login(username: str,
     if error is None:
         session.clear()
         session['id_user'] = user['id_user']
+        # check if user is admin
+        is_admin = db.execute("SELECT id_user FROM admin_user WHERE id_user = ?", (user["id_user"],)).fetchone()
+        if is_admin is not None:
+            session["is_admin"] = True
+        else:
+            session["is_admin"] = False
     else:
         flash(error)
     return
+
+
 @bp.before_app_request
 def load_logged_in_user():
     user_id = session.get('id_user')

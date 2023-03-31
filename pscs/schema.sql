@@ -23,6 +23,8 @@ DROP TABLE IF EXISTS results_deletion;
 DROP TABLE IF EXISTS analysis_deletion;
 DROP TABLE IF EXISTS analysis_author_deletion;
 DROP TABLE IF EXISTS analysis_inputs_deletion;
+DROP TABLE IF EXISTS posts;
+DROP TABLE IF EXISTS admin_user;
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE users_auth (
@@ -44,6 +46,11 @@ CREATE TABLE users_affiliation (
     CONSTRAINT affiliation_key
      PRIMARY KEY (id_user, affiliation),
      FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
+);
+
+CREATE TABLE admin_user (
+    id_user TEXT NOT NULL,  -- admin users;
+    FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
 );
 
 CREATE TABLE projects (
@@ -212,4 +219,13 @@ CREATE TABLE university_domains(
   university_domain TEXT NOT NULL,
   FOREIGN KEY (id_university) REFERENCES universities(id_university) ON DELETE CASCADE,
   CONSTRAINT university_key PRIMARY KEY (id_university, university_domain)
+);
+
+CREATE TABLE posts(
+  id_post TEXT UNIQUE NOT NULL PRIMARY KEY,
+  id_user TEXT NOT NULL,
+  title TEXT NOT NULL,
+  body TEXT NOT NULL,
+  date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  FOREIGN KEY (id_user) REFERENCES users_auth(id_user)
 );

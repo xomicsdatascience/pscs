@@ -4,6 +4,7 @@ import os
 from flask import Flask
 import os
 import json
+from waitress import serve
 
 
 def create_app(test_config=None) -> Flask:
@@ -19,7 +20,7 @@ def create_app(test_config=None) -> Flask:
     Flask
         An instance of the Flask app.
     """
-    app = Flask(__name__, instance_relative_config=True)
+    app = Flask(__name__, instance_relative_config=True, template_folder="templates")
     env_dict = parse_env()
     app.config.from_mapping(
         DATABASE=os.path.join(app.instance_path, 'pscs.sqlite'),
@@ -42,9 +43,12 @@ def create_app(test_config=None) -> Flask:
 
     from . import pscs
     app.register_blueprint(pscs.bp)
+
+    from pscs.blueprints import homepage
+    app.register_blueprint(homepage.bp)
+
     app.add_url_rule('/', endpoint='index')
     return app
-
 
 def parse_env(env_file: str = '.env') -> dict:
     """

@@ -1,32 +1,51 @@
 {% extends 'base.html' %}
 {% block header %}
-<h2 class="bottomarea">Pipeline Designer</h2>
-
+<h2 class="bottomarea">Pipeline Designer</h2><br>
 {% endblock %}
 
+
 {% block content %}
-<script src="static/js/dragging.js"></script>
+<p id="textInstructions">Click on nodes in the panel to add them to the pipeline.<br>
+    Drag connections from the output of a node (orange) to the input (blue) to connect two nodes.
+</p>
+
+<button id="sideToggle" class="sidebar-toggle" onclick="toggleSidebar()" style="height:100px">&rarr;</button>
+<script src="static/js/pipeline.js"></script>
 <script src="static/js/pipelineSidebar.js"></script>
 
 <!--<button type="button" onclick="createDraggable();">Insert node</button>-->
+<!--<div id="panel">-->
+<!--  <button id="toggle" onclick="togglePanel()">Open Panel</button>-->
+<!--  &lt;!&ndash; content of the panel goes here &ndash;&gt;-->
+<!--</div>-->
+
 
 <div id="sidebar" class="sidebar-closed">
+    <button type="button" onclick="openSavePanel( &quot;{{ proj_dests }}&quot;, &quot;{{user_dests}}&quot; )">Save Pipeline</button>
+    <select name="analyses" id="analyses" autocomplete="off">
+        <option value="def" selected disabled>Load analysis pipeline</option>
+        {% for an in analyses %}
+          <option value="{{an['id_analysis']}}">{{an["analysis_name"]}}</option>
+        {% endfor %}
+    </select>
+
+    <button id="analysis_load" onclick="loadAnalysis();">Load</button>
     {% for m in modules %}
       <h2>{{ m[0].upper() + m[1:] }}</h2>
       {% for j in node_json %}
         {% if j['module'] == m %}
           {% if j['num_inputs'] == 0 %}
-              <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/input.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters'] }}&quot;, 'input')">{{ j['name'] }}
+            <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createPscsNode(null, &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters'] }}&quot;, 'input', 'static/nodes/input2.png')", >{{ j['name'] }}
               <img width="20px" height="20px" src="static/nodes/input.png">
           </p>
           {% elif j['num_outputs'] == 0 %}
-              <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/output.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;, 'output')">{{ j['name'] }}
+            <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createPscsNode(null, &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;, 'output', 'static/nodes/output2.png')">{{ j['name'] }}
               <img width="20px" height="20px" src="static/nodes/output.png">
           {% elif j['num_inputs'] == 1 %}
-              <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/simo.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;, 'simo')">{{ j['name'] }}
+            <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createPscsNode(null, &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;, 'simo', 'static/nodes/simo2.png')">{{ j['name'] }}
               <img width="20px" height="20px" src="static/nodes/simo.png">
           {% else %}
-              <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createDraggable('static/nodes/mimo.png', &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;, 'mimo')">{{ j['name'] }}
+            <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createPscsNode(null, &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;, 'mimo', 'static/nodes/mimo.png')">{{ j['name'] }}
               <img width="20px" height="20px" src="static/nodes/mimo.png">
           {% endif %}
         {% endif %}
@@ -34,16 +53,11 @@
     {% endfor %}
 </div>
 
-<button type="button" onclick="toggleSidebar()">&#9776;</button>
-<button type="button" onclick="openSavePanel( &quot;{{ proj_dests }}&quot;, &quot;{{user_dests}}&quot; )">Save Pipeline</button>
-<p></p>
-<!--Create list-->
-<select name="analyses" id="analyses" autocomplete="off">
-    <option value="def" selected disabled>Load analysis pipeline</option>
-    {% for an in analyses %}
-      <option value="{{an['id_analysis']}}">{{an["analysis_name"]}}</option>
-    {% endfor %}
-</select>
-<button id="analysis_load" onclick="getAnalysis();">Load</button>
+<div id="nodeContainer" class="container">
 
+</div>
+
+<script>
+window.addEventListener('load', function () {toggleSidebar();})
+</script>
 {% endblock %}
