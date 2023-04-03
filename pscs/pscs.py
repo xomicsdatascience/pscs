@@ -1,6 +1,7 @@
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, url_for, Flask, session, current_app, send_from_directory
 )
+from markdown import markdown
 from werkzeug.exceptions import abort
 from werkzeug.utils import secure_filename
 from pscs.auth import login_required
@@ -33,7 +34,6 @@ app.config['RESULTS_DIRECTORY'] = os.path.join(app.config['PROJECTS_DIRECTORY'],
 app.config['DELETION_DIRECTORY'] = os.path.join("deletion", "{id_project}")
 
 app.add_url_rule('/upload/<name>', endpoint='download_file', build_only=True)
-
 @bp.route('/')
 def index():
     db = get_db()
@@ -42,7 +42,15 @@ def index():
                                "FROM posts "
                                "ORDER BY date_created DESC "
                                "LIMIT 5").fetchall()
-    return render_template("pscs/index.html", posts=posts)
+    posts_markdown = []
+    for p in posts:
+        print(p["title"])
+        print(p["body"])
+        post = {"title": p["title"]}
+        post["body"] = markdown(p["body"])
+        posts_markdown.append(post)
+        # posts_markdown.append({p["title"]: markdown(p["body"])})
+    return render_template("pscs/index.html", posts=posts_markdown)
 
 
 def allowed_file(filename):

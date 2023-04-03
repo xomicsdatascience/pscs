@@ -10,11 +10,14 @@
 {% endblock %}
 
 {% block content %}
+
+<!--{{mkd_text |safe}}-->
+
 {% for post in posts %}
 <table align="center">
-    <tr><th style="border:none">{{post["title"]}}</th></tr>
+    <tr><th style="border:none">{{post["title"]|safe}}</th></tr>
     <tr>
-        <td style="border:none">{{post["body"]}}</td>
+        <td style="border:none">{{post["body"]|safe}}</td>
     </tr>
 </table>
 <br>
