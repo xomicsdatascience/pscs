@@ -2,6 +2,7 @@ import setuptools
 import version
 import os
 
+
 def readfile(filename):
     with open(filename, 'r+') as f:
         return f.read()
@@ -19,6 +20,12 @@ def get_version():
             break
     print(version)
     return version
+
+
+def get_requirements():
+    """Loads the contents of requirements.txt and returns them as a list."""
+    here_dir = os.path.dirname(__file__)
+    return readfile(os.path.join(here_dir, 'requirements.txt')).splitlines()
 
 
 setuptools.setup(
@@ -39,19 +46,5 @@ setuptools.setup(
     include_package_data=True,
     python_requires='>=3.10',
     license="MIT",
-    install_requires=[
-        'wheel',
-        'pyteomics>=4.4.1',
-        'matplotlib<3.7',
-        'numba>=0.53.1',
-        'numpy>=1.20.1',
-        'pandas>=1.2.2',
-        'Bio>=0.4.1',
-        'PyQt5>=5.15.4',
-        'lxml>=4.6.2',
-        'flask',
-        'anndata',
-        'scanpy',
-        'plotly'
-    ],
+    install_requires=get_requirements(),
 )
