@@ -180,3 +180,12 @@ def login_required(view):
             return redirect(url_for('auth.login'))
         return view(**kwargs)
     return wrapped_view
+
+
+def admin_required(view):
+    @functools.wraps(view)
+    def wrapped_view(**kwargs):
+        if "is_admin" in session.keys() and not session["is_admin"]:
+            return redirect(url_for("pscs.index"))
+        return view(**kwargs)
+    return wrapped_view

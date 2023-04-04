@@ -47,6 +47,9 @@ def create_app(test_config=None) -> Flask:
     from pscs.blueprints import homepage
     app.register_blueprint(homepage.bp)
 
+    from pscs.blueprints import posts
+    app.register_blueprint(posts.bp)
+
     app.add_url_rule('/', endpoint='index')
     return app
 

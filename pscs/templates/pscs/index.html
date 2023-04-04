@@ -1,9 +1,9 @@
 {% extends 'base.html' %}
 
 {% block header %}
-{% if g.user %}
 <h1>{% block title %}{% endblock %}</h1>
-<p style="text-align:center">Welcome, {{ g.user['name_user'] }}!</p>
+{% if g.user %}
+    <p>Welcome, {{ g.user['name_user'] }}!</p>
 {% else %}
     <p>Log in to view options.</p>
 {% endif %}

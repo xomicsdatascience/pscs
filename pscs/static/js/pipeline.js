@@ -984,7 +984,7 @@ async function loadAnalysis(){
     let nodeObject = {};
     let nodesWithoutDepth = [];
     for(let idx=0; idx<nodes.length; idx++){
-        node = nodes[idx];
+        let node = nodes[idx];
         let load_params = {};
         let paramName, paramType, paramValue;
         for(let param_idx=0; param_idx<node["params"].length; param_idx++){
