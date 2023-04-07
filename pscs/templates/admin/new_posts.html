@@ -1,0 +1,20 @@
+{% extends 'base.html' %}
+
+{% block header %}
+{% endblock %}
+
+{% block content %}
+<form method="post" id="postForm">
+    <label for="title">Post Title</label>
+    <input name="title" id="title" placeholder="Title" required>
+    <label for="content">Post markdown</label>
+    <textarea name="content" id="content" placeholder="Content"></textarea>
+    <input type="submit" value="Commit">
+</form>
+<label for="previewTitle">Post Preview</label>
+<!--<input name="previewTitle" id="previewTitle" disabled="true"></textarea>-->
+<div id="previewTitle"></div>
+<div id="previewContent"></div>
+<!--<textarea name="previewContent" id="previewContent" disabled="true"></textarea>-->
+<script src="/static/js/posts.js"></script>
+{% endblock %}

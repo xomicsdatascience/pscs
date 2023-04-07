@@ -1,0 +1,74 @@
+DATA USE AGREEMENT
+
+This Data Use Agreement (“Agreement”) is made between [User Name] (“User”) and [Company Name] (“Company”) with respect to the use of User’s data uploaded on Company’s platform.
+
+    Data Lifecycle
+    This section describes the expected lifecycle of data uploaded by a user to the platform.
+a. Data is uploaded by the user.
+b. Data is processed using an analysis made available through PSCS.
+c. Data is marked for publication.
+d. Data is published.
+e. Data is accessible for others to use, on condition that the following are cited:
+1) the related publication as specified by the user
+2) the data's Digital Object Identifier as provided by PSCS.
+
+    Data Privacy
+
+a. By default, data uploaded by the User is private and will not be accessed, other than:
+1) by other users explicitly approved by the User (e.g., project collaborators),
+2) by other users explicitly approved by users empowered to do so by the User (e.g., collaborators added by project administrators) or those similarly-derived (e.g., collaborators added by a chain of approved project administrators),
+3) for automated data handling operations (e.g., extracting metadata, compression, encryption),
+4) for processing as requested by the User (e.g., data analysis).
+
+b. Company shall take appropriate technical and organizational measures to ensure the security, confidentiality, and integrity of the User’s data.
+
+    Data Deletion
+a. Data that is deleted is removed from the server hosting the data.
+b. Metadata related to the data will be temporarily retained for internal use.
+c. Depending on the system's backup schedule, data marked for deletion could be retained in system backups.
+d. In the event of a system restore where a previous version of the database is used instead of the latest version, the retained metadata is used to ensure that deleted data is not later restored.
+e. Once all system backups are certain to not contain data marked for deletion, the retained metadata is deleted.
+
+    Publication
+
+a. Once the User marks the data for publication, it will be held for 3 days. During this period, the User can revoke the data's publication status.
+
+b. If the User does not revoke the data's publication status during the 3-day period, it will be published, and the User surrenders the right to delete the data.
+
+    Modification
+
+a. Once the data is published, the User is allowed to modify the data for updates or corrections. All modifications will be publicly visible, and the original data will be retained.
+
+b. The User acknowledges that the modifications made by them will not impact any third party rights or breach any applicable laws.
+
+    Intellectual Property
+
+a. The User retains all ownership and intellectual property rights in the data uploaded on the platform.
+
+b. The User grants Company a non-exclusive, transferable, sublicensable, royalty-free, worldwide license to use, copy, modify, create derivative works based on, distribute, publicly display, publicly perform, and otherwise exploit the data uploaded on the platform for any purpose, including but not limited to, marketing, advertising, and product development.
+
+    Term and Termination
+
+a. This Agreement shall commence on the date the User uploads the data on the platform and shall continue until terminated by either party.
+
+b. The User may terminate this Agreement by deleting the uploaded data from the platform before the data is published.
+
+c. Company may terminate this Agreement with immediate effect if the User breaches any of its obligations under this Agreement.
+
+    Governing Law and Jurisdiction
+
+a. This Agreement shall be governed by and construed in accordance with the laws of [State/Country].
+
+b. Any dispute arising out of or in connection with this Agreement shall be finally settled by arbitration in accordance with the [Arbitration Rules]. The place of arbitration shall be [City], and the language of the arbitration shall be [Language].
+
+    Miscellaneous
+
+a. This Agreement constitutes the entire agreement between the parties and supersedes all prior or contemporaneous agreements or understandings, whether written or oral, relating to the subject matter of this Agreement.
+
+b. The failure of either party to enforce any provision of this Agreement shall not be construed as a waiver or limitation of that party’s right to subsequently enforce and compel strict compliance with every provision of this Agreement.
+
+c. If any provision of this Agreement is held to be invalid or unenforceable, such provision shall be struck and the remaining provisions shall be enforced.
+
+d. In the event that the data is found to include Personal Health Information (as defined by https://www.dhcs.ca.gov/dataandstats/data/Pages/ListofHIPAAIdentifiers.aspx), the data will be made inaccessible and reported to the relevant authorities.
+
+By clicking “I Agree,” the User represents and warrants that they have read, understood, and agreed to the terms and conditions of this Agreement.
