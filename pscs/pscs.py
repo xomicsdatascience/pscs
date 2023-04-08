@@ -44,8 +44,6 @@ def index():
                                "LIMIT 5").fetchall()
     posts_markdown = []
     for p in posts:
-        print(p["title"])
-        print(p["body"])
         post = {"title": p["title"]}
         post["body"] = markdown(p["body"])
         posts_markdown.append(post)
