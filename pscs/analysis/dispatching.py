@@ -1,7 +1,7 @@
 # This file contains code for dispatching processing pipelines to different computational resources.
 import sqlite3
 import subprocess
-from pscs.db import get_db
+from pscs.db import get_db, get_unique_value_for_field
 from flask import current_app
 from os.path import join, basename
 import json
@@ -10,7 +10,8 @@ import os
 
 
 def dispatch(pipeline_json: str,
-             file_ids: dict,
+             id_user: str,
+             file_info: dict,
              id_project: str,
              id_analysis: str,
              resource: str = 'osp'):
@@ -20,8 +21,11 @@ def dispatch(pipeline_json: str,
     ----------
     pipeline_json : str
         Path to the JSON file containing the node information.
-    file_ids : dict
-        Dict of {node_id: file_path} containing the input files to use for the input nodes specified in pipeline_json.
+    id_user : str
+        User id of the submitter.
+    file_info : dict
+        Dict of {node_id: {"id" : id_data, "file_path": file_path}} containing the input files to use for the input nodes
+         specified in pipeline_json.
     id_project : str
         ID of the project for which the analysis is being run.
     id_analysis : str
@@ -32,7 +36,13 @@ def dispatch(pipeline_json: str,
     -------
     None
     """
+    file_ids = dict()
+    file_paths = dict()
+    for k, v in file_info.items():
+        file_ids[k] = file_info[k]["id"]
+        file_paths[k] = file_info[k]["file_path"]
     # Make destination
+
     remote_proj_dir = get_remote_project_dir(id_project=id_project, id_analysis=id_analysis, resource=resource)
     remote_mkdir(remote_dir=remote_proj_dir, resource=resource)
     remote_results = join(remote_proj_dir, 'results')
@@ -40,10 +50,10 @@ def dispatch(pipeline_json: str,
 
     # Transfer files
     transfer_file(pipeline_json, remote_dir=remote_proj_dir, resource=resource)
-    transfer_files(local_files=list(file_ids.values()), remote_dir=remote_proj_dir, resource=resource)
+    transfer_files(local_files=list(file_paths.values()), remote_dir=remote_proj_dir, resource=resource)
 
     # Create and transfer dictionary for new filepaths on remote machine
-    remote_paths = remap_filepaths(file_ids, remote_dir=remote_proj_dir)
+    remote_paths = remap_filepaths(file_paths, remote_dir=remote_proj_dir)
     remap_filename = save_filepath_remap(remote_paths)
     transfer_file(remap_filename, remote_dir=remote_proj_dir, resource=resource)
 
@@ -54,8 +64,48 @@ def dispatch(pipeline_json: str,
                                                    output_dir=remote_results)
     transfer_file(htcondor_script, remote_proj_dir, resource=resource)
     cmd = f"condor_submit {os.path.join(remote_proj_dir, basename(htcondor_script))}"
-    remote_cmd(cmd)
+    print(file_info)
+    print(cmd)
+    server_response = remote_cmd(cmd)
+
+    # Log into db
+    resource_job_id = get_job_id(server_response, resource)
+    db = get_db()
+    pscs_job_id = get_unique_value_for_field(db, "id_job", "submitted_jobs")
+    db.execute("INSERT INTO submitted_jobs "
+               "(id_job, submitted_resource, resource_job_id, id_user, id_project, id_analysis, server_response) "
+               "VALUES (?,?,?,?,?,?,?)", (pscs_job_id, resource, resource_job_id, id_user, id_project, id_analysis, server_response))
+    db.commit()
     return
+
+
+# 1 job(s) submitted to cluster 36045774
+def get_job_id(response: str,
+               resource: str) -> str:
+    """
+    Extracts the job ID on the remote resource.
+    Parameters
+    ----------
+    response : str
+        Response from the server containing the job ID.
+    resource : str
+        Resource to which the job was submitted
+    Returns
+    -------
+    str
+        Job ID.
+    """
+    job_id = ""
+    if resource == "osp":
+        job_id = get_osp_job_id(response)
+    return job_id
+
+
+def get_osp_job_id(response: str) -> str:
+    """Extracts the job ID from OSP's response"""
+    # Format: "Submitting job(s).\nN jo(s) submitted to cluster JOB_ID
+    split_response = response.split(' ')
+    return split_response[-1].split(".")[0]
 
 
 def save_filepath_remap(remote_paths: dict) -> str:
@@ -78,13 +128,13 @@ def save_filepath_remap(remote_paths: dict) -> str:
     return filename
 
 
-def remap_filepaths(file_ids: dict,
+def remap_filepaths(file_paths: dict,
                     remote_dir: str) -> dict:
     """
     Converts the input file paths to paths on the remote resource.
     Parameters
     ----------
-    file_ids : dict
+    file_paths : dict
         Dict of {node_id: file_path} containing the input files to use for the input nodes specified in pipeline_json.
     remote_dir : str
         Path on the remote resource.
@@ -95,7 +145,7 @@ def remap_filepaths(file_ids: dict,
         Dict of {node_id: file_path} with the file_path updated to reflect the path on the remote resource.
     """
     remote_paths = {}
-    for node_id, file_path in file_ids.items():
+    for node_id, file_path in file_paths.items():
         # remote_paths[node_id] = join(remote_dir, basename(file_path))
         remote_paths[node_id] = basename(file_path)
     return remote_paths

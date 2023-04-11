@@ -420,12 +420,17 @@ def run_analysis():
                                                             id_analysis=pipeline_specs['id_analysis'])
         pathlib.Path(output_dir).mkdir(exist_ok=True)
         file_ids = pipeline_specs['file_paths']
+        file_info = dict()
         for node_id, file_id in file_ids.items():
             buf = db.execute('SELECT file_path FROM data WHERE id_data = ?', (file_id,)).fetchall()[0]
-            file_ids[node_id] = buf['file_path']
+            file_info[node_id] = dict()
+            file_info[node_id]["file_path"] = buf["file_path"]
+            file_info[node_id]["id"] = file_id
+
         # Dispatch to OSP
         dispatch(pipeline_json=pipeline_json,
-                 file_ids=file_ids,
+                 id_user=g.user['id_user'],
+                 file_info=file_info,
                  id_project=id_project,
                  id_analysis=id_analysis,
                  resource='osp')

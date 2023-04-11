@@ -15,6 +15,6 @@ transfer_input_files = {input_files}
 transfer_output_files = {output_top}
 Requirements = HAS_SINGULARITY == TRUE && SINGULARITY_CAN_USE_SIF == TRUE
 +ProjectName = "CedarsSinai_Meyer"
-+SingularityImage = "stash:///osgconnect/protected/ahutton/pscs_sing-0.0.5.sif"
++SingularityImage = "stash:///osgconnect/protected/ahutton/pscs_sing-0.0.8.sif"
 
 queue 1

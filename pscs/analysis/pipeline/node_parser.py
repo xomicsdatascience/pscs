@@ -249,11 +249,11 @@ def identify_connections(node: dict) -> (str, list, list):
     node_id_dst = -1
     srcs = []
     dsts = []
-    for s in node['src_lines']:
+    for s in node["srcConnectors"]:
         ssplit = s.split('-')
         srcs.append(ssplit[2])
         node_id_src = ssplit[1]
-    for d in node['dst_lines']:
+    for d in node['dstConnectors']:
         dsplit = d.split('-')
         dsts.append(dsplit[1])
         node_id_dst = dsplit[2]

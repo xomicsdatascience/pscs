@@ -6,7 +6,7 @@ from flask import (
 
 from werkzeug.security import check_password_hash, generate_password_hash
 from pscs.db import get_db, get_unique_value_for_field
-from pscs.authtools.authtools.validation.registration import validate_username, validate_password, validate_email, \
+from pscs.authtools.validation.registration import validate_username, validate_password, validate_email, \
                                                              validate_recaptcha, send_user_confirmation_email, decode_token
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')

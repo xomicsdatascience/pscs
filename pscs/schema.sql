@@ -25,6 +25,11 @@ DROP TABLE IF EXISTS analysis_author_deletion;
 DROP TABLE IF EXISTS analysis_inputs_deletion;
 DROP TABLE IF EXISTS posts;
 DROP TABLE IF EXISTS admin_user;
+DROP TABLE IF EXISTS submitted_jobs;
+DROP TABLE IF EXISTS submitted_jobs_deletion;
+DROP TABLE IF EXISTS submitted_data;
+DROP TABLE IF EXISTS submitted_data_deletion;
+
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE users_auth (
@@ -229,3 +234,42 @@ CREATE TABLE posts(
   date_created TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   FOREIGN KEY (id_user) REFERENCES users_auth(id_user)
 );
+
+CREATE TABLE submitted_jobs(  -- logging submitted jobs
+  id_job TEXT UNIQUE NOT NULL PRIMARY KEY,  -- unique id for job
+  submitted_resource TEXT NOT NULL,  -- computing resource to which the job was submitted
+  resource_job_id TEXT NOT NULL,  -- job id on the resource
+  id_user TEXT NOT NULL,  -- submitter
+  id_project TEXT NOT NULL,  -- project for which this was submitted
+  id_analysis TEXT NOT NULL,  -- analysis that was submitted
+  server_response TEXT,  -- text response from the server
+  date_submitted TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+CREATE TABLE submitted_jobs_deletion AS SELECT * FROM submitted_jobs;
+ALTER TABLE submitted_jobs_deletion ADD deletion_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+CREATE TRIGGER stage_submitted_jobs_deletion
+  BEFORE DELETE ON submitted_jobs
+  FOR EACH ROW
+  BEGIN
+    INSERT INTO submitted_jobs_deletion(id_job, submitted_resource, resource_id, id_user, id_analysis, date_submitted)
+    VALUES(OLD.id_job, OLD.submitted_resource, OLD.resource_id, OLD.id_user, OLD.id_analysis, OLD.date_submitted);
+  END;
+
+CREATE TABLE submitted_data(  -- for knowing which data was submitted with a job
+  id_job TEXT NOT NULL,
+  id_data TEXT NOT NULL,
+  FOREIGN KEY (id_job) REFERENCES submitted_jobs(id_job),
+  FOREIGN KEY (id_data) REFERENCES data(id_data) ON DELETE CASCADE,
+  CONSTRAINT submitted_data_key PRIMARY KEY (id_job, id_data)
+);
+
+CREATE TABLE submitted_data_deletion AS SELECT * FROM submitted_data;
+ALTER TABLE submitted_data_deletion ADD deletion_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+CREATE TRIGGER stage_submitted_data_deletion
+    BEFORE DELETE ON submitted_data
+    FOR EACH ROW
+    BEGIN
+        INSERT INTO submitted_data_deletion(id_job, id_data)
+        VALUES(OLD.id_job, OLD.id_data);
+    END;

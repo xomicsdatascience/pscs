@@ -1057,7 +1057,7 @@ async function loadAnalysis(){
     while(nodesWithoutDepth.length > 0){
         let spliceIdxList = [];
         for(let spliceIdx = 0; spliceIdx < nodesWithoutDepth.length; spliceIdx++){
-            node = nodesWithoutDepth[spliceIdx];
+            let node = nodesWithoutDepth[spliceIdx];
             // examine previous nodes; if they all have depth, assign max depth+1 to this node
             maxDepth = -1;
             doBreak = false;
