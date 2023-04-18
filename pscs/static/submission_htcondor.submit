@@ -1,9 +1,18 @@
+notify_user = {osf_user_email}
+notification = always
+
+
 executable = test.py
 arguments = {node_json} {input_json} {output_directory}
 # Locations for std outputs
-error = stderr/singtest-$(Process).error
-output = stdout/singtest-$(Process).output
-log = logs/singtest-$(Process).log
+
+error = stderr/{pscs_job_id}.error
+output = stdout/{pscs_job_id}.output
+log = logs/pscs_latest.log
+
+#error = stderr/singtest-$(Process).error
+#output = stdout/singtest-$(Process).output
+#log = logs/singtest-$(Process).log
 
 # Request resources
 request_cpus = 1
@@ -14,7 +23,8 @@ request_disk = 128 MB
 transfer_input_files = {input_files}
 transfer_output_files = {output_top}
 Requirements = HAS_SINGULARITY == TRUE && SINGULARITY_CAN_USE_SIF == TRUE
-+ProjectName = "CedarsSinai_Meyer"
-+SingularityImage = "stash:///osgconnect/protected/ahutton/pscs_sing-0.0.8.sif"
++ProjectName = "{osf_project_name}"
++JobBatchName = "{pscs_job_id}"
++SingularityImage = "osdf:///osgconnect/protected/ahutton/pscs_sing-0.0.8.2.sif"
 
 queue 1

@@ -9,7 +9,7 @@ class ScatterPlot(OutputNode):
     def __init__(self,
                  x_gene: str = None,
                  y_gene: str = None,
-                 output_name: str = None):
+                 output_name: str = "scatter.png"):
         super().__init__()
         self.x = x_gene
         self.y = y_gene

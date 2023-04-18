@@ -8,7 +8,7 @@
 
 <!--Data summary-->
 <h3>Data Summary</h3>
-<a class="action" href="{{ url_for('pscs.upload') }}">Upload Data</a>
+<a class="linkbutton" href="{{ url_for('pscs.upload') }}">Upload Data</a>
 
 <!--Data-->
 <script>
@@ -45,7 +45,7 @@
   }
 </script>
 
-<a class="action" href="{{ url_for('pscs.pipeline_designer') }}">Create Analysis</a><br>
+<a class="linkbutton" href="{{ url_for('pscs.pipeline_designer') }}">Create Analysis</a><br>
 <select name="analysis" id="analysis" autocomplete="off" onchange="parseAndCreateTable(this);">
   <option value="def" selected disabled>Select analysis pipeline...</option>
 <!--    Go through each available analysis -->
@@ -58,10 +58,12 @@
 <!--Results-->
 <h3>Results</h3>
 {% for f in results %}
-<div>
-<p align="center"><b>{{f['title']}}</b></p>
-<p align="center"><img src="{{f['file_path']}}"></p>
-  <p align="center">{{f['description']}}</p>
+<div style="text-align:center">
+<!--<p><b>{{f['title']}}</b>-->
+  <br>
+  <img src="/{{f['file_path']}}">
+  <br>
+<!--  {{f['description']}}</p>-->
 </div>
 {% endfor %}
 

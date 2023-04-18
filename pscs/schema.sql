@@ -243,7 +243,10 @@ CREATE TABLE submitted_jobs(  -- logging submitted jobs
   id_project TEXT NOT NULL,  -- project for which this was submitted
   id_analysis TEXT NOT NULL,  -- analysis that was submitted
   server_response TEXT,  -- text response from the server
-  date_submitted TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+  remote_results_directory TEXT NOT NULL, -- directory where results are stored
+  date_submitted TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  is_complete BIT DEFAULT 0,
+  date_completed TIMESTAMP
 );
 
 CREATE TABLE submitted_jobs_deletion AS SELECT * FROM submitted_jobs;
@@ -252,8 +255,8 @@ CREATE TRIGGER stage_submitted_jobs_deletion
   BEFORE DELETE ON submitted_jobs
   FOR EACH ROW
   BEGIN
-    INSERT INTO submitted_jobs_deletion(id_job, submitted_resource, resource_id, id_user, id_analysis, date_submitted)
-    VALUES(OLD.id_job, OLD.submitted_resource, OLD.resource_id, OLD.id_user, OLD.id_analysis, OLD.date_submitted);
+    INSERT INTO submitted_jobs_deletion(id_job, submitted_resource, resource_job_id, id_user, id_project, id_analysis, server_response, remote_results_directory, date_submitted, is_complete, date_completed)
+    VALUES(OLD.id_job, OLD.submitted_resource, OLD.resource_job_id, OLD.id_user, OLD.id_analysis, OLD.date_submitted, OLD.is_complete, OLD.date_completed);
   END;
 
 CREATE TABLE submitted_data(  -- for knowing which data was submitted with a job

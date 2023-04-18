@@ -234,7 +234,6 @@ def remote_mkdir(remote_dir: str,
     return
 
 
-
 def transfer_file(local_file: str,
                   remote_dir: str,
                   resource: str = 'osp'):

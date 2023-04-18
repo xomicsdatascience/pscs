@@ -28,10 +28,10 @@ class FilterCellValues(PipelineNode):
             Maximum value of the sum of all proteins in a cell for a cell to be retained (equality is retained).
         """
         super().__init__()
-        self.minimum_unique_protein = int(minimum_unique_protein)
-        self.maximum_unique_protein = int(maximum_unique_protein)
-        self.minimum_total_protein = float(minimum_total_protein)
-        self.maximum_total_protein = float(maximum_total_protein)
+        self.minimum_unique_protein = None if minimum_unique_protein is None else int(minimum_unique_protein)
+        self.maximum_unique_protein = None if maximum_unique_protein is None else int(maximum_unique_protein)
+        self.minimum_total_protein = None if minimum_total_protein is None else float(minimum_total_protein)
+        self.maximum_total_protein = None if maximum_total_protein is None else float(maximum_total_protein)
         self.effect = ["~obs['obs_keep']"]
         return
 
@@ -89,10 +89,10 @@ class FilterGeneValues(PipelineNode):
             that are found in overall high quantities.
         """
         super().__init__()
-        self.minimum_cell_presence = int(minimum_cell_presence)
-        self.maximum_cell_presence = int(maximum_cell_presence)
-        self.minimum_cell_amount = float(minimum_cell_amount)
-        self.maximum_cell_amount = float(maximum_cell_amount)
+        self.minimum_cell_presence = None if minimum_cell_presence is None else int(minimum_cell_presence)
+        self.maximum_cell_presence = None if maximum_cell_presence is None else int(maximum_cell_presence)
+        self.minimum_cell_amount = None if minimum_cell_amount is None else float(minimum_cell_amount)
+        self.maximum_cell_amount = None if maximum_cell_amount is None else float(maximum_cell_amount)
         self.effect = ["~var['var_keep']"]
         return
 
