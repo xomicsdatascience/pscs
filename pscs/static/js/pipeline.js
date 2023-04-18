@@ -509,12 +509,12 @@ function dotHandler(event){
     let area_coords = area.coords;
     let areaId = extractIdNums(area.id);
     let areaInOut = areaId[0][0];
-    let areaRect = area.getBoundingClientRect();
+    let areaRect = getAreaBoundingClientRect(area);
     let mapX = areaRect.left;  // these coords are for the image map
     let mapY = areaRect.top;
-    area_coords = parseCoords(area_coords);
-    mapX += (area_coords[0] + area_coords[2])/2;  // these move the top-left of the span to the center of the area
-    mapY += (area_coords[1] + area_coords[3])/2;
+    mapX += areaRect.width/2;
+    mapY += areaRect.height/2;
+
     let xOffset;
     if(areaInOut === "in"){
     xOffset = -5;
@@ -532,6 +532,29 @@ function dotHandler(event){
     let dotElRect = dotEl.getBoundingClientRect();
 
     dotEl.move(-dotElRect.width/2, -dotElRect.height/2);
+}
+
+function getAreaBoundingClientRect(area) {
+    const img = document.querySelector(`img[usemap="#${area.parentNode.id}"]`);
+    const imgRect = img.getBoundingClientRect();
+    const coords = area.coords.split(',').map(Number);
+    let areaRect;
+    areaRect = {
+        x: imgRect.x + coords[0],
+        y: imgRect.y + coords[1],
+        width: coords[2] - coords[0],
+        height: coords[3] - coords[1],
+    };
+    return {
+        x: areaRect.x,
+        y: areaRect.y,
+        width: areaRect.width,
+        height: areaRect.height,
+        top: areaRect.y,
+        right: areaRect.x + areaRect.width,
+        bottom: areaRect.y + areaRect.height,
+        left: areaRect.x,
+    };
 }
 
 function parseCoords(s){
