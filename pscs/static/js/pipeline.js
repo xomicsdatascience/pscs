@@ -669,18 +669,24 @@ function createConnector(srcAreaId){
       }
       else{
           let tentativeId = formatConnectorId(srcAreaId, nearestArea.id);
-          let otherConnector = document.getElementById(tentativeId);
-          if(otherConnector == null) {
-              // attach dst to the area
-              connector.id = tentativeId;
-              const [centerX, centerY] = getCenterOfArea(nearestArea);
-              // add connector to dstNode
-              connector.connect(srcAreaId, false);
-              connector.connect(nearestArea.id);
-              connector.dstPos = [centerX, centerY];
-              connector.update_pos();
+          if(connectsToSelf(tentativeId)){
+              connector.del();
           }
-          else{connector.del()}
+          else {
+              let otherConnector = document.getElementById(tentativeId);
+              if (otherConnector == null) {
+                  // attach dst to the area
+                  connector.id = tentativeId;
+                  const [centerX, centerY] = getCenterOfArea(nearestArea);
+                  // add connector to dstNode
+                  connector.connect(srcAreaId, false);
+                  connector.connect(nearestArea.id);
+                  connector.dstPos = [centerX, centerY];
+                  connector.update_pos();
+              } else {
+                  connector.del()
+              }
+          }
       }
       document.onmousemove = null;
       document.onmouseup = null;
@@ -738,6 +744,16 @@ function createConnector(srcAreaId){
       connector.style.transform = "rotate(" + degAngle.toString() + "deg)";
   }
 }
+
+function connectsToSelf(connectorId){
+    let connectorSplit = connectorId.split(SEP);
+    let firstNode = connectorSplit[1].split(FIELDSEP)[0];
+    let secondNode = connectorSplit[2].split(FIELDSEP)[0];
+    return firstNode === secondNode;
+
+
+}
+
 
 function getNearestInputArea(posX, posY){
     // Returns the image area closest to the input x,y position
