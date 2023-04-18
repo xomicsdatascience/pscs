@@ -23,7 +23,7 @@ nav ul li a, nav ul li span, header .action { display: block; padding: 0.5rem; }
             padding: 5px 5px;
             color: #222222;
             text-decoration: none;
-            border: 2px solid;
+            border: 1px solid;
             border-radius: 5px;
 }
 .linkbutton:hover {

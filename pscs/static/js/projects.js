@@ -77,7 +77,7 @@ function executePipeline(){
       "Content-Type": "application/json"},
     body: JSON.stringify(pipelineSummary)
     });
-
+  alert("Job submitted! Check back in a few minutes for the results.")
 }
 
 function startDeletion(id_data, name_data){

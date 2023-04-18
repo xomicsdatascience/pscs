@@ -7,7 +7,7 @@ from os.path import join, basename
 import json
 import tempfile
 import os
-
+import time
 
 def dispatch(pipeline_json: str,
              id_user: str,
@@ -58,10 +58,14 @@ def dispatch(pipeline_json: str,
     transfer_file(remap_filename, remote_dir=remote_proj_dir, resource=resource)
 
     # Submission script
+    db = get_db()
+    pscs_job_id = get_unique_value_for_field(db, "id_job", "submitted_jobs")
     htcondor_script = generate_htcondor_submission(pipeline_json=pipeline_json,
                                                    remapped_input_json=remap_filename,
                                                    remote_project_dir=remote_proj_dir,
-                                                   output_dir=remote_results)
+                                                   output_dir=remote_results,
+                                                   id_user=id_user,
+                                                   pscs_job_id=pscs_job_id)
     transfer_file(htcondor_script, remote_proj_dir, resource=resource)
     cmd = f"condor_submit {os.path.join(remote_proj_dir, basename(htcondor_script))}"
     print(file_info)
@@ -70,11 +74,9 @@ def dispatch(pipeline_json: str,
 
     # Log into db
     resource_job_id = get_job_id(server_response, resource)
-    db = get_db()
-    pscs_job_id = get_unique_value_for_field(db, "id_job", "submitted_jobs")
     db.execute("INSERT INTO submitted_jobs "
-               "(id_job, submitted_resource, resource_job_id, id_user, id_project, id_analysis, server_response) "
-               "VALUES (?,?,?,?,?,?,?)", (pscs_job_id, resource, resource_job_id, id_user, id_project, id_analysis, server_response))
+               "(id_job, submitted_resource, resource_job_id, id_user, id_project, id_analysis, server_response, remote_results_directory) "
+               "VALUES (?,?,?,?,?,?,?,?)", (pscs_job_id, resource, resource_job_id, id_user, id_project, id_analysis, server_response, remote_results))
     db.commit()
     return
 
@@ -284,6 +286,8 @@ def generate_htcondor_submission(pipeline_json: str,
                                  remapped_input_json: str,
                                  remote_project_dir: str,
                                  output_dir: str,
+                                 id_user: str,
+                                 pscs_job_id: str,
                                  ) -> str:
     """
     Creates a .submit script for resources using HTCondor.
@@ -298,6 +302,10 @@ def generate_htcondor_submission(pipeline_json: str,
         Path to the project directory on the remote resource.
     output_dir : str
         Path
+    id_user : str
+        Submitter's id
+    pscs_job_id : str
+        Job id given by PSCS
     Returns
     -------
     str
@@ -309,7 +317,7 @@ def generate_htcondor_submission(pipeline_json: str,
     f = open(remapped_input_json, 'r')
     input_files = json.load(f)
     f.close()
-    input_paths = ','.join([join(remote_project_dir,str(s)) for s in input_files.values()])
+    input_paths = ','.join([join(remote_project_dir, str(s)) for s in input_files.values()])
 
     # need to include other files in input_paths
     input_paths += ',' + join(remote_project_dir, basename(pipeline_json))
@@ -322,12 +330,22 @@ def generate_htcondor_submission(pipeline_json: str,
     sep_idx = remote_project_dir.index(os.sep, start_idx)
     output_top = remote_project_dir[:sep_idx]
 
+    # Get log id (new log every 5 days)
+    five_days_in_seconds = 5*24*60*60
+    current_time = time.time()
+    log_label = str(round(current_time - (current_time % five_days_in_seconds)))
     htcondor_proj = htcondor_template.format(node_json=basename(pipeline_json),
                                              input_json=basename(remapped_input_json),
                                              remote_project_dir=remote_project_dir,
                                              input_files=input_paths,
                                              output_directory=output_dir,
-                                             output_top=output_top)
+                                             output_top=output_top,
+                                             log_label=log_label,
+                                             pscs_job_id=pscs_job_id,
+                                             osf_user_email=current_app.config["REMOTE_COMPUTING_MISC"]["osp"]["NOTIFICATION_EMAIL"],
+                                             osf_project_name=current_app.config["REMOTE_COMPUTING_MISC"]["osp"]["PROJECT_NAME"],
+                                             sif_path=current_app.config["REMOTE_COMPUTING_MISC"]["osp"]["SIF_PATH"]
+                                             )
     ht_file = os.fdopen(ht_fd, 'w')
     ht_file.write(htcondor_proj)
     ht_file.close()

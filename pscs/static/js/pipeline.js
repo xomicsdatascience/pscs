@@ -231,13 +231,7 @@ function createPscsNode(idNum, processName, module, params, pscsType, img){
         document.onmousemove = null;
         movingNode = false;  // signal that node is no longer being moved
         // expand container / prevent shrinking
-        let container = document.getElementById("nodeContainer");
-        let containerOffset = getContainerOffset();
-        let pageElRect = pageEl.getBoundingClientRect();
-        let minWidth = pageElRect.right - containerOffset[0]+IAREA_MARGIN;
-        let minHeight = pageElRect.bottom - containerOffset[1]+IAREA_MARGIN*2;
-        container.style.minWidth = (minWidth).toString() + "px";
-        container.style.minHeight = (minHeight).toString() + "px";
+        updateContainerSize();
     }
     function drag(event){
     // signals that the element should be moved to follow cursor
@@ -350,10 +344,6 @@ function createPscsNode(idNum, processName, module, params, pscsType, img){
         lastOpenPanel = panel;
     }
     function closePanel(panelId){
-        // close panel; ignore any modifications
-        // let btn = event.target;
-        // let panel = document.getElementById(btn.panelId);
-        // panel.remove();
         let panel = document.getElementById(panelId);
         panel.remove();
     }
@@ -396,6 +386,22 @@ function createPscsNode(idNum, processName, module, params, pscsType, img){
         pageEl.label.update(pageEl.labelText);
     }
     return pageEl;
+}
+
+function updateContainerSize(){
+    let container = getContainer();
+    // get maximum position of nodes
+    let nodes = document.querySelectorAll("[id^=" + NODE + "]");
+    let maxRight = 0;
+    let maxBottom = 0;
+    nodes.forEach(node => {
+        let rect = node.getBoundingClientRect();
+        maxRight = Math.max(rect.right + NODE_WIDTH/4, maxRight);
+        maxBottom = Math.max(rect.bottom + NODE_HEIGHT/4, maxBottom);
+    });
+    let containerOffset = getContainerOffset();
+    container.style.minWidth = (maxRight - containerOffset[0]).toString() + "px";
+    container.style.minHeight = (maxBottom - containerOffset[1]).toString() + "px";
 }
 
 function getNumInputOutputs(nodeEl){
@@ -774,6 +780,10 @@ function computeDistanceToArea(area, posX, posY){
     return Math.sqrt(distance);
 }
 
+function getContainer(containerId = "nodeContainer"){
+    return document.getElementById(containerId);
+}
+
 function getContainerOffset(containerId = "nodeContainer"){
     let container = document.getElementById(containerId);
     let containerRect = container.getBoundingClientRect();
@@ -900,6 +910,7 @@ async function exportPipeline(inputNameElement, pipelineDestination, panel) {
                         body: JSON.stringify(pipelineSummary)
                     });
     panel.remove();
+    alert("Pipeline saved!");
 }
 
 function openSavePanel(projDestsJSON) {

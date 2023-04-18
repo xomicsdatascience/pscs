@@ -13,7 +13,7 @@ import os
 import uuid
 import numpy as np
 from pscs.analysis import single_cell
-from pscs.analysis.dispatching import dispatch
+from pscs.transfers.dispatching import dispatch
 from flask import send_from_directory
 import plotly.express as px
 import plotly
@@ -300,7 +300,7 @@ def project(id_project):
             project_data_summary = db.execute('SELECT id_data, file_path, data_type, file_hash, data_uploaded_time FROM data WHERE id_project = ?', (id_project,)).fetchall()
 
             # Get results
-            results_rows = db.execute("SELECT file_path, title, description FROM results WHERE id_project == ?", (id_project,)).fetchall()
+            results_rows = db.execute("SELECT file_path, title, description FROM results WHERE id_project = ?", (id_project,)).fetchall()
             results_files = results_rows
 
             # Get users associated with project
@@ -627,13 +627,11 @@ def calc_hash_of_file(file: str) -> str:
     return sha.hexdigest()
 
 
-@bp.route('/projects/<id_project>/<path:filename>')
+@bp.route('/projects/<id_project>/results/<id_analysis>/<path:filename>', methods=['GET'])
 @login_required
-def get_project_file(id_project, filename):
-    # Check if
+def projects(filename, id_project, id_analysis):
     has_perm = check_user_permission("data_read", 1, id_project)
-    if has_perm:
-        filename = secure_filename(filename)
-        filepath = app.config["PROJECTS_DIRECTORY"].format(id_project=id_project)
-        return send_from_directory(app.config["PROJECTS_DIRECTORY"].format(id_project=id_project), filename)
-    return
+    if not has_perm:
+        return
+    res_dir = os.path.join("projects", id_project, "results", id_analysis)
+    return send_from_directory(res_dir, filename)

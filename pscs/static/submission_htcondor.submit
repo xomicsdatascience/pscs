@@ -25,6 +25,6 @@ transfer_output_files = {output_top}
 Requirements = HAS_SINGULARITY == TRUE && SINGULARITY_CAN_USE_SIF == TRUE
 +ProjectName = "{osf_project_name}"
 +JobBatchName = "{pscs_job_id}"
-+SingularityImage = "osdf:///osgconnect/protected/ahutton/pscs_sing-0.0.8.2.sif"
++SingularityImage = "{sif_path}"
 
 queue 1
