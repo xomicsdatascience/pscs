@@ -52,7 +52,7 @@ function createDataDropdown(files){
   return drop;
 }
 
-function executePipeline(){
+async function executePipeline(){
   query = 'select[id^=' + INPUTDROPDOWNPREFIX + ']';
   inputFiles = document.querySelectorAll(query);
   var filePaths = new Object();
@@ -67,17 +67,29 @@ function executePipeline(){
   selectAnalysis = document.getElementById('analysis');
   idAnalysis = selectAnalysis.value;
 
-  var pipelineSummary = new Object();
+  let pipelineSummary = new Object();
   pipelineSummary['id_analysis'] = idAnalysis;
   pipelineSummary['file_paths'] = filePaths;
-  fetch("/run_analysis", {
+
+  await fetch("/run_analysis", {
     method: "POST",
     headers: {
       "Accept": "application/json",
       "Content-Type": "application/json"},
     body: JSON.stringify(pipelineSummary)
-    });
-  alert("Job submitted! Check back in a few minutes for the results.")
+    }).then(response => {
+      let data = response.json();
+      return data;
+    })
+      .then(data => {
+        console.log(data);
+        if(data.hasOwnProperty("submit_success") && data.submit_success === 0){
+          alert("Job submission failed: " + data.submit_status);
+        }
+        else{
+          alert("Job submitted!");
+        }
+      });
 }
 
 function startDeletion(id_data, name_data){

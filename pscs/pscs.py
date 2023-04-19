@@ -1,5 +1,6 @@
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, url_for, Flask, session, current_app, send_from_directory
+    Blueprint, flash, g, redirect, render_template, request, url_for, Flask, session, current_app, send_from_directory,
+    jsonify
 )
 from markdown import markdown
 from werkzeug.exceptions import abort
@@ -409,6 +410,18 @@ def run_analysis():
         id_analysis = pipeline_specs['id_analysis']
         # Get analysis json
         db = get_db()
+
+        # Check whether user has already submitted a job
+        id_user = g.user['id_user']
+        submitted_jobs = db.execute("SELECT id_job "
+                                    "FROM submitted_jobs "
+                                    "WHERE id_user = ? AND is_complete = 0", (id_user,)).fetchone()
+        if submitted_jobs is not None:
+            # TODO: this is a hard-coding of one job at a time per user. Implment job balancing
+            return_url = url_for('pscs.project', id_project=session['CURRENT_PROJECT'])
+            submit_status = "You already have a submitted job; wait for that one to complete."
+            return jsonify({"url": return_url, "submit_status": submit_status, "submit_success": 0})
+
         # TODO: need to confirm that current user can access this analysis
         pipeline_json = db.execute('SELECT node_file FROM analysis WHERE id_analysis = ?',
                                    (pipeline_specs['id_analysis'],)).fetchall()[0]['node_file']
