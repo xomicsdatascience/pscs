@@ -850,12 +850,9 @@ function getCenterOfArea(area, containerOffset = true){
     if(typeof(area) == 'string'){
         area = document.getElementById(area);
     }
-    let areaRect = area.getBoundingClientRect();
-    let area_coords = parseCoords(area.coords);
-    let mapX = areaRect.left;
-    let mapY = areaRect.top;
-    mapX += (area_coords[2] + area_coords[0])/2;
-    mapY += (area_coords[3] + area_coords[1])/2;
+    let areaRect = getAreaBoundingClientRect(area);
+    let mapX = areaRect.left + areaRect.width/2;
+    let mapY = areaRect.top + areaRect.height/2;
     if(containerOffset){
         const [contX, contY] = getContainerOffset()
         return [mapX-contX, mapY-contY]

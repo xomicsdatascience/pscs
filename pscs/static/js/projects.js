@@ -87,7 +87,6 @@ async function executePipeline(){
       return data;
     })
       .then(data => {
-        console.log(data);
         if(data.hasOwnProperty("submit_success") && data.submit_success === 0){
           alert("Job submission failed: " + data.submit_status);
         }
