@@ -53,6 +53,11 @@ function createDataDropdown(files){
 }
 
 async function executePipeline(){
+  // change cursor to wait
+  let btn = document.getElementById("buttonRun");
+  btn.disabled = true;
+  let start_cursor = document.body.style.cursor
+  document.body.style.cursor = "wait";
   query = 'select[id^=' + INPUTDROPDOWNPREFIX + ']';
   inputFiles = document.querySelectorAll(query);
   var filePaths = new Object();
@@ -90,6 +95,8 @@ async function executePipeline(){
           alert("Job submitted!");
         }
       });
+  btn.disabled = false;
+  document.body.style.cursor = start_cursor;
 }
 
 function startDeletion(id_data, name_data){

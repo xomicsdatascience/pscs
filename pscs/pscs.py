@@ -14,7 +14,7 @@ import os
 import uuid
 import numpy as np
 from pscs.analysis import single_cell
-from pscs.transfers.dispatching import dispatch
+from pscs.transfers.dispatching import dispatch, can_user_submit
 from flask import send_from_directory
 import plotly.express as px
 import plotly
@@ -401,6 +401,7 @@ def check_user_permission(permission_name: str,
         return False
     return role_info[permission_name] == permission_value
 
+
 @bp.route('/run_analysis', methods=['POST'])
 @login_required
 def run_analysis():
@@ -413,14 +414,12 @@ def run_analysis():
 
         # Check whether user has already submitted a job
         id_user = g.user['id_user']
-        submitted_jobs = db.execute("SELECT id_job "
-                                    "FROM submitted_jobs "
-                                    "WHERE id_user = ? AND is_complete = 0", (id_user,)).fetchone()
-        if submitted_jobs is not None:
-            # TODO: this is a hard-coding of one job at a time per user. Implment job balancing
+        file_ids = pipeline_specs['file_paths']
+
+        submit_ok, reason = can_user_submit(id_user, id_project, id_analysis, file_ids, return_reason=True)
+        if not submit_ok:
             return_url = url_for('pscs.project', id_project=session['CURRENT_PROJECT'])
-            submit_status = "You already have a submitted job; wait for that one to complete."
-            return jsonify({"url": return_url, "submit_status": submit_status, "submit_success": 0})
+            return jsonify({"url": return_url, "submit_status": reason, "submit_success": 0})
 
         # TODO: need to confirm that current user can access this analysis
         pipeline_json = db.execute('SELECT node_file FROM analysis WHERE id_analysis = ?',
@@ -447,7 +446,9 @@ def run_analysis():
                  id_project=id_project,
                  id_analysis=id_analysis,
                  resource='osp')
-        return redirect(url_for('pscs.project', id_project=session['CURRENT_PROJECT']))
+        response_json = {"url": url_for('pscs.project', id_project=session['CURRENT_PROJECT']),
+                         "redirect": True}
+        return jsonify(response_json)
 
 
 # @bp.route('/project/delete_data', methods=['POST'])

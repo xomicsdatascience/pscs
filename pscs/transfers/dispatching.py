@@ -68,8 +68,6 @@ def dispatch(pipeline_json: str,
                                                    pscs_job_id=pscs_job_id)
     transfer_file(htcondor_script, remote_proj_dir, resource=resource)
     cmd = f"condor_submit {os.path.join(remote_proj_dir, basename(htcondor_script))}"
-    print(file_info)
-    print(cmd)
     server_response = remote_cmd(cmd)
 
     # Log into db
@@ -77,6 +75,11 @@ def dispatch(pipeline_json: str,
     db.execute("INSERT INTO submitted_jobs "
                "(id_job, submitted_resource, resource_job_id, id_user, id_project, id_analysis, server_response, remote_results_directory) "
                "VALUES (?,?,?,?,?,?,?,?)", (pscs_job_id, resource, resource_job_id, id_user, id_project, id_analysis, server_response, remote_results))
+    # Store submitted data in db
+    for id_node, id_data in file_ids.items():
+        db.execute("INSERT INTO submitted_data "
+                   "(id_job, id_data, node_name) "
+                   "VALUES (?, ?, ?)", (pscs_job_id, id_data, id_node))
     db.commit()
     return
 
@@ -350,3 +353,122 @@ def generate_htcondor_submission(pipeline_json: str,
     ht_file.write(htcondor_proj)
     ht_file.close()
     return ht_name
+
+
+def can_user_submit(id_user: str,
+                    id_project: str,
+                    id_analysis: str,
+                    file_info: dict,
+                    return_reason: bool = False) -> bool:
+    """
+    Checks whether a user is allowed to submit another job.
+    Parameters
+    ----------
+    id_user : str
+        ID of the user to check.
+    id_project : str
+        ID of the project for which the job is being submitted.
+    id_analysis : str
+        Id of the analysis that is being submitted.
+    file_info : dict
+        Dict of {node_id: {"id" : id_data}} containing the input files to use for the input nodes
+    return_reason : bool
+        In case the user can't submit, whether a reason should be returned.
+    Returns
+    -------
+    bool
+        Whether the user can submit another a job.
+    str
+        Only returned if return_reason is True. Gives a message explaining why the user can't submit.
+    """
+    db = get_db()
+    # Has the user submitted too many jobs?
+    submitted_jobs = get_number_jobs_submitted(id_user, db)
+    if submitted_jobs >= current_app.config["SUBMISSION_LIMIT"]:
+        if return_reason:
+            return False, "Maximum number of jobs already submitted."
+        return False
+
+    # Has an identical job already been run?
+    previously_submitted = check_identical_submitted(id_project, id_analysis, file_info, db)
+    if previously_submitted:
+        if return_reason:
+            return False, "Identical job has already been submitted."
+        return False
+    if return_reason:
+        return True, ""
+    else:
+        return True
+
+
+def get_number_jobs_submitted(id_user: str,
+                              db: sqlite3.Connection) -> int:
+    """
+    Returns the number of jobs currently submitted by the user.
+    Parameters
+    ----------
+    id_user : str
+        ID of the user to check
+    db : sqlite3.Connection
+        Database containing job info
+
+    Returns
+    -------
+    int
+        Number of jobs currently submitted
+    """
+    jobs = db.execute("SELECT id_job "
+                      "FROM submitted_jobs "
+                      "WHERE id_user = ? AND is_complete = 0", (id_user,)).fetchall()
+    return len(jobs)
+
+
+def check_identical_submitted(id_project: str,
+                              id_analysis: str,
+                              file_info: dict,
+                              db: sqlite3.Connection,
+                              ) -> bool:
+    """
+    Checks whether an identical job has been previously-submitted.
+    Parameters
+    ----------
+    id_project
+    id_analysis
+    file_info
+    db
+
+    Returns
+    -------
+    bool
+        Whether an identical job has been submitted.
+    """
+    # Convert file_info dict into list of tuples
+    file_tuples = []
+    for k, v in file_info.items():
+        file_tuples.append((k, v))
+
+    previous_jobs = db.execute("SELECT id_job "
+                               "FROM submitted_jobs  "
+                               "WHERE id_project = ? AND id_analysis = ?", (id_project, id_analysis)).fetchall()
+    # check that data + node is all there
+    if previous_jobs is None:  # no previous jobs
+        return False
+
+    # have previous jobs; check whether data + nodes match
+    # every tuple must have a corresponding entry, otherwise the analysis has changed
+    for prev_job in previous_jobs:
+        for file_tup in file_tuples:
+            print(f"Checking: {prev_job['id_job']}, {file_tup[1]}, {file_tup[0]}")
+            prev_data = db.execute("SELECT id_job "
+                                   "FROM submitted_data "
+                                   "WHERE id_job = ? AND id_data = ? AND node_name = ?",
+                                   (prev_job["id_job"], file_tup[1], file_tup[0])).fetchall()
+            if prev_data is None or len(prev_data) == 0:
+                # No match; no need to check the rest
+                break
+            print(prev_data)
+        else:
+            # Found match for every data; this is a match
+            print("Found match for every node/data")
+            return True
+    return False

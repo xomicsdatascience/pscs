@@ -262,9 +262,10 @@ CREATE TRIGGER stage_submitted_jobs_deletion
 CREATE TABLE submitted_data(  -- for knowing which data was submitted with a job
   id_job TEXT NOT NULL,
   id_data TEXT NOT NULL,
+  node_name TEXT NOT NULL,  -- node to which the data is submitted
   FOREIGN KEY (id_job) REFERENCES submitted_jobs(id_job),
   FOREIGN KEY (id_data) REFERENCES data(id_data) ON DELETE CASCADE,
-  CONSTRAINT submitted_data_key PRIMARY KEY (id_job, id_data)
+  CONSTRAINT submitted_data_key PRIMARY KEY (id_job, id_data, node_name)
 );
 
 CREATE TABLE submitted_data_deletion AS SELECT * FROM submitted_data;
@@ -273,6 +274,6 @@ CREATE TRIGGER stage_submitted_data_deletion
     BEFORE DELETE ON submitted_data
     FOR EACH ROW
     BEGIN
-        INSERT INTO submitted_data_deletion(id_job, id_data)
-        VALUES(OLD.id_job, OLD.id_data);
+        INSERT INTO submitted_data_deletion(id_job, id_data, node_name)
+        VALUES(OLD.id_job, OLD.id_data, OLD.node_name);
     END;
