@@ -30,7 +30,7 @@ def posts():
         # Put into database
         db = get_db()
         id_post = get_unique_value_for_field(db, "id_post", "posts")
-        db.execute("INSERT INTO posts (id_post, title, body) VALUES (?, ?, ?)", (id_post, post_title, post_content))
+        db.execute("INSERT INTO posts (id_post, title, body, id_user) VALUES (?, ?, ?, ?)", (id_post, post_title, post_content, g.user["id_user"]))
         db.commit()
         flash("Post submitted")
         return redirect(url_for("pscs.index"))
