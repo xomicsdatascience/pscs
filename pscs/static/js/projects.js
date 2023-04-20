@@ -60,7 +60,7 @@ async function executePipeline(){
   }
   // pause until we're done doing things
   pauseRun("buttonRun");
-  
+
   let query = 'select[id^=' + INPUTDROPDOWNPREFIX + ']';
   let inputFiles = document.querySelectorAll(query);
   let filePaths = new Object();

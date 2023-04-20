@@ -7,7 +7,8 @@ from flask import (
 from werkzeug.security import check_password_hash, generate_password_hash
 from pscs.db import get_db, get_unique_value_for_field
 from pscs.authtools.validation.registration import validate_username, validate_password, validate_email, \
-                                                             validate_recaptcha, send_user_confirmation_email, decode_token
+                                                   validate_recaptcha, send_user_confirmation_email, decode_token, \
+                                                   validate_PHI, validate_datause
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -19,6 +20,8 @@ def register():
         password = request.form['password']
         password_confirm = request.form['passwordConfirm']
         email = request.form['email']
+
+
 
         user_ip = request.remote_addr
         db = get_db()
@@ -39,21 +42,27 @@ def register():
             uname_valid, uname_msg = validate_username(username, db)
             password_valid, password_msg = validate_password(password, password_confirm)
             email_valid, email_msg = validate_email(email, db)
+            noPHI_valid, noPHI_msg = validate_PHI(request.form)
+            datause_valid, datause_msg = validate_datause(request.form)
             error = ''
             if not uname_valid:
-                error = uname_msg + ';'
+                error = uname_msg + "; "
             if not password_valid:
-                error += password_msg + ';'
+                error += password_msg + "; "
             if not email_valid:
-                error += email_msg + ';'
+                error += email_msg + "; "
+            if not noPHI_valid:
+                error += noPHI_msg + "; "
+            if not datause_valid:
+                error += datause_msg + "; "
             if len(error) > 0:
-                error = error[:-1]
+                error = error[:-2]
                 flash(error)
                 return render_template("auth/register.html")
             else:
                 db.execute(
-                "INSERT INTO users_auth (id_user, name_user, password, email, ip) VALUES (?, ?, ?, ?, ?)",
-                    (id_user, username, generate_password_hash(password), email, user_ip))
+                "INSERT INTO users_auth (id_user, name_user, password, email, ip, confirmed_phi, confirmed_datause) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                    (id_user, username, generate_password_hash(password), email, user_ip, noPHI_valid, datause_valid))
                 db.commit()
 
                 # Send mail to user to verify.

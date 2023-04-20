@@ -42,7 +42,7 @@ def validate_username(username: str, db=None) -> (bool, str):
     return (len(msg) == 0), msg
 
 
-def validate_email(email: str, db = None) -> (bool, str):
+def validate_email(email: str, db=None) -> (bool, str):
     """
     Checks that the email has the right form
     Parameters
@@ -240,3 +240,22 @@ def decode_token(token: str,
     except BadSignature:
         invalid_reason = ""  # ignore the token
     return valid_token, token_data, invalid_reason
+
+
+def validate_PHI(form) -> (bool, str):
+    """Checks whether PHI is 1"""
+    if "noPHI" not in form.keys():
+        return 0, "Agreeing to the PHI terms is required for registration."
+    elif form["noPHI"] == "on":
+        return 1, ""
+    else:
+        return 0, "Agreeing to the PHI terms is required for registration."
+
+def validate_datause(form) -> (bool, str):
+    """Checks whether datause is 1"""
+    if "dataUse" not in form.keys():
+        return 0, "Agreeing to the Data Use Agreement is required for registration."
+    elif form["dataUse"] == "on":
+        return 1, ""
+    else:
+        return 0, "Agreeing to the Data Use Agreement is required for registration."

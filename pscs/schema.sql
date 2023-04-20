@@ -9,10 +9,6 @@ DROP TABLE IF EXISTS data;
 DROP TABLE IF EXISTS projects_roles;
 DROP TABLE IF EXISTS projects;
 
-DROP TABLE IF EXISTS users_meta;
-DROP TABLE IF EXISTS users_affiliation;
-DROP TABLE IF EXISTS users_auth;
-
 DROP TABLE IF EXISTS universities;
 DROP TABLE IF EXISTS university_domains;
 
@@ -30,6 +26,9 @@ DROP TABLE IF EXISTS submitted_jobs_deletion;
 DROP TABLE IF EXISTS submitted_data;
 DROP TABLE IF EXISTS submitted_data_deletion;
 
+DROP TABLE IF EXISTS users_affiliation;
+DROP TABLE IF EXISTS users_auth;
+
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE users_auth (
@@ -37,6 +36,8 @@ CREATE TABLE users_auth (
     name_user TEXT UNIQUE NOT NULL,  -- username; visible to user
     password TEXT NOT NULL,  -- this contains hash method, salt, and pass hash
     email TEXT UNIQUE NOT NULL,
+    confirmed_phi BOOL DEFAULT 0,  -- unless otherwise specified, user has not accepted phi terms
+    confirmed_datause BOOL DEFAULT 0,  -- unless otherwise specified, user has not accepted datause terms
     name TEXT,  -- human name, "John Smith"
     orcid TEXT UNIQUE,  -- linked ORCID
     creation_time_user TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
@@ -48,9 +49,8 @@ CREATE TABLE users_auth (
 CREATE TABLE users_affiliation (
     id_user TEXT NOT NULL,
     affiliation TEXT NOT NULL,
-    CONSTRAINT affiliation_key
-     PRIMARY KEY (id_user, affiliation),
-     FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
+    CONSTRAINT affiliation_key PRIMARY KEY (id_user, affiliation),
+    FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
 );
 
 CREATE TABLE admin_user (
@@ -85,16 +85,16 @@ CREATE TRIGGER stage_project_deletion
 CREATE TABLE projects_roles (
     id_project TEXT,
     id_user TEXT NOT NULL,
-    role TEXT NOT NULL DEFAULT "member",
+    role TEXT NOT NULL DEFAULT 'member',
     data_read BIT DEFAULT 0,  -- whether user can read data uploaded to project
     data_write BIT DEFAULT 0,  -- whether user can upload new data
     analysis_read BIT DEFAULT 0,  -- whether user can load pipeline in editor
     analysis_write BIT DEFAULT 0,  -- whether user can add new pipelines to project
     analysis_execute BIT DEFAULT 0,  -- whether user can run pipelines on project data
     project_management BIT DEFAULT 0,  -- whether user can add users
-    CONSTRAINT proj_key PRIMARY KEY (id_project, id_user)
-      FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE,
-      FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
+    CONSTRAINT proj_key PRIMARY KEY (id_project, id_user),
+    FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE,
+    FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
 );
 CREATE TABLE projects_roles_deletion AS SELECT * FROM projects_roles;
 ALTER TABLE projects_roles_deletion ADD deletion_time_projects_roles TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
@@ -256,14 +256,14 @@ CREATE TRIGGER stage_submitted_jobs_deletion
   FOR EACH ROW
   BEGIN
     INSERT INTO submitted_jobs_deletion(id_job, submitted_resource, resource_job_id, id_user, id_project, id_analysis, server_response, remote_results_directory, date_submitted, is_complete, date_completed)
-    VALUES(OLD.id_job, OLD.submitted_resource, OLD.resource_job_id, OLD.id_user, OLD.id_analysis, OLD.date_submitted, OLD.is_complete, OLD.date_completed);
+    VALUES(OLD.id_job, OLD.submitted_resource, OLD.resource_job_id, OLD.id_user, OLD.id_project, OLD.id_analysis, OLD.server_response, OLD.remote_results_directory, OLD.date_submitted, OLD.is_complete, OLD.date_completed);
   END;
 
 CREATE TABLE submitted_data(  -- for knowing which data was submitted with a job
   id_job TEXT NOT NULL,
   id_data TEXT NOT NULL,
   node_name TEXT NOT NULL,  -- node to which the data is submitted
-  FOREIGN KEY (id_job) REFERENCES submitted_jobs(id_job),
+  FOREIGN KEY (id_job) REFERENCES submitted_jobs(id_job) ON DELETE CASCADE,
   FOREIGN KEY (id_data) REFERENCES data(id_data) ON DELETE CASCADE,
   CONSTRAINT submitted_data_key PRIMARY KEY (id_job, id_data, node_name)
 );
