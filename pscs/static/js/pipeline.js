@@ -431,10 +431,21 @@ function createLabel(nodeEl, labelText, xPos=0, yPos=0){
     labelEl.del = del;
     labelEl.update = update;
     addElementToContainer(labelEl);
+    let beingRemoved = false;
     return labelEl;
 
     function del(){
-        labelEl.remove();
+        // Deleting the node causes the label to be deleted, causing a stack overflow.
+        // This lets us get around it.
+        if(beingRemoved){
+            labelEl.remove();
+        }
+        else{
+            beingRemoved = true;
+            let attachedNode = getPscsNodeFromNum(nodeNum);
+            attachedNode.del();
+        }
+
     }
     function update(text){
         labelEl.innerHTML = text.toString();
