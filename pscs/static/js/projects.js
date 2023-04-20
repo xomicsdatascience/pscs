@@ -53,25 +53,29 @@ function createDataDropdown(files){
 }
 
 async function executePipeline(){
-  // change cursor to wait
-  let btn = document.getElementById("buttonRun");
-  btn.disabled = true;
-  let start_cursor = document.body.style.cursor
-  document.body.style.cursor = "wait";
-  query = 'select[id^=' + INPUTDROPDOWNPREFIX + ']';
-  inputFiles = document.querySelectorAll(query);
-  var filePaths = new Object();
-  for(var i=0; i<inputFiles.length; i++){
+  let selectAnalysis = document.getElementById('analysis');
+  let idAnalysis = selectAnalysis.value;
+  if(idAnalysis === "default"){
+    return
+  }
+  // pause until we're done doing things
+  pauseRun("buttonRun");
+  
+  let query = 'select[id^=' + INPUTDROPDOWNPREFIX + ']';
+  let inputFiles = document.querySelectorAll(query);
+  let filePaths = new Object();
+  for(let i=0; i<inputFiles.length; i++){
     // .value has data id
-    filePath = inputFiles[i].value;
+    let filePath = inputFiles[i].value;
+    if(filePath === ""){
+      // no data associated with node
+      unpauseRun("buttonRun");
+      return
+    }
     // .id contains the corresponding node's id
-    console.log(inputFiles[i].id);
-    nodeId = parseFileInputId(inputFiles[i].id);
+    let nodeId = parseFileInputId(inputFiles[i].id);
     filePaths[nodeId] = filePath;
   }
-  selectAnalysis = document.getElementById('analysis');
-  idAnalysis = selectAnalysis.value;
-
   let pipelineSummary = new Object();
   pipelineSummary['id_analysis'] = idAnalysis;
   pipelineSummary['file_paths'] = filePaths;
@@ -94,8 +98,23 @@ async function executePipeline(){
           alert("Job submitted!");
         }
       });
+  unpauseRun("buttonRun")
   btn.disabled = false;
   document.body.style.cursor = start_cursor;
+}
+
+let pauseStartCursor;
+function pauseRun(elementIdToDisable){
+  let disEl = document.getElementById(elementIdToDisable);
+  pauseStartCursor = document.body.style.cursor;
+  disEl.disable = true;
+  document.body.style.cursor = "wait";
+}
+
+function unpauseRun(elementIdToEnable){
+  let disEl = document.getElementById(elementIdToEnable);
+  disEl.disable = false;
+  document.body.style.cursor = pauseStartCursor;
 }
 
 function startDeletion(id_data, name_data){
