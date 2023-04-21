@@ -1,13 +1,14 @@
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, url_for, Flask, session, current_app, send_from_directory
 )
-from pscs.auth import admin_required
+from pscs.auth import admin_required, login_required
 from pscs.db import get_db, get_unique_value_for_field
 from markdown import markdown
 bp = Blueprint("admin", __name__, url_prefix="/admin")
 
 
 @bp.route("/post_creator", methods=["GET", "POST"])
+@login_required
 @admin_required
 def posts():
     """

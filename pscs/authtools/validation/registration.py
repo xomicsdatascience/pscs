@@ -8,7 +8,7 @@ import json
 from itsdangerous.url_safe import URLSafeTimedSerializer
 from itsdangerous.exc import SignatureExpired, BadSignature
 from typing import Optional
-import subprocess
+from pscs.messaging.mail import send_email
 min_password_length = 12
 
 
@@ -155,8 +155,8 @@ def send_user_confirmation_email(id_user: str,
         User's ID.
     user_email : str
         User's email address.
-    name_user : tuple
-        Optional. Tuple of (First Name, Last Name) to use in email. If not used, those parts of the email are dropped.
+    name_user : str
+        Optional. String with username to use in email. If not used, those parts of the email are dropped.
 
     Returns
     -------
@@ -165,45 +165,11 @@ def send_user_confirmation_email(id_user: str,
     """
     url_signer = URLSafeTimedSerializer(secret_key=current_app.config["SECRET_KEY"], salt="confirmation")
     token = url_signer.dumps(id_user)
-    url = "https://" + current_app.config["CURRENT_URL"] + f"/auth/confirmation/{token}"
-    print(url)
-    message_contents = f"This email is to confirm the registration of user {name_user} with PSCS. Clicking the " \
-                       f"<a href=\"{url}\">link</a> will confirm that you intended to register with PSCS. The link" \
-                       f" will expire 12h from when it was issued.<br><br>"
-    message_contents += "If you have received this message in error, no further action is needed on your part.<br><br>"
-    message_contents += "- PSCS"
-    return send_email(user_email, "PSCS confirmation", message_contents)
-
-
-def send_email(email_address: str,
-               subject: str,
-               body: str) -> bool:
-    """
-    Send email body to address.
-    Parameters
-    ----------
-    email_address : str
-        Destination.
-    subject : str
-        Text to include in Subject line
-    body : str
-        Content of the message.
-
-    Returns
-    -------
-    bool
-        Whether mail was sent successfully.
-    """
-    msg = f"To: {email_address}\n"
-    msg += f"Subject: {subject}\n"
-    msg += "From: pscs@pscs.xods.org\n"
-    msg += "MIME-Version: 1.0\n"
-    msg += "Content-Type: text/html\n\n"  # multipart/alternative;
-    msg += "<html>\n<body>\n"
-    msg += body
-    msg += "</body>\n</html>\n"
-    sendmail_cmd = f"echo \"{msg}\" | sendmail {email_address}"
-    return subprocess.run(sendmail_cmd, shell=True, capture_output=True)
+    url = "https://" + current_app.config["CURRENT_URL"] + f"/auth/confirmation/{token}"  # todo: replace with url_for
+    from pscs.templates.misc import confirmation_template  # importing here since this does file loading
+    confirmation_formatted = confirmation_template.format(name_user=name_user, url=url, user_email=user_email)
+    user_to = f"<{user_email}>"
+    return send_email([user_to], "PSCS Registration Confirmation", confirmation_formatted)
 
 
 def decode_token(token: str,
@@ -250,6 +216,7 @@ def validate_PHI(form) -> (bool, str):
         return 1, ""
     else:
         return 0, "Agreeing to the PHI terms is required for registration."
+
 
 def validate_datause(form) -> (bool, str):
     """Checks whether datause is 1"""

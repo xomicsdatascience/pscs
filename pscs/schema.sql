@@ -4,8 +4,6 @@ DROP TABLE IF EXISTS analysis_author;
 DROP TABLE IF EXISTS analysis_inputs;
 DROP TABLE IF EXISTS analysis;
 
-DROP TABLE IF EXISTS data;
-
 DROP TABLE IF EXISTS projects_roles;
 DROP TABLE IF EXISTS projects;
 
@@ -26,6 +24,7 @@ DROP TABLE IF EXISTS submitted_jobs_deletion;
 DROP TABLE IF EXISTS submitted_data;
 DROP TABLE IF EXISTS submitted_data_deletion;
 
+DROP TABLE IF EXISTS data;
 DROP TABLE IF EXISTS users_affiliation;
 DROP TABLE IF EXISTS users_auth;
 
