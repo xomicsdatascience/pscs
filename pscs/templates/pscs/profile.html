@@ -1,42 +1,29 @@
 {% extends 'base.html' %}
 
 {% block header %}
-{% if g.user %}
-<h1>{% block title %}{% endblock %}</h1>
+<h1>{% block title %}Profile for {{ user_info["name_user"] }}{% endblock %}</h1>
 
-{% else %}
-    <p>Log in to view options.</p>
-{% endif %}
+
 {% endblock %}
 
 {% block content %}
-{% if g.user %}
-<p style="text-align: center">Welcome, {{ g.user['name_user'] }}!</p>
-<!--<a class="action" href="{{ url_for('pscs.create_project') }}">Create Project</a>-->
-<a class="linkbutton" href="{{ url_for('pscs.create_project') }}">Create Project</a>
-<p></p>
 <table>
     <tr>
-        <th>Project Name</th>
-        <th>Role</th>
-        <th>Project Members</th>
-        <th>Number of Uploaded Files</th>
-        <th>Description</th>
+        <td>Email:</td>
+        <td>{{user_info["name_user"]}}</td>
     </tr>
-{% for p in projects %}
     <tr>
-        <td><a href="{{ url_for('pscs.project', id_project=p['id_project']) }}">{{ p['name_project'] }}</a></td>
-        <td>{{ p['role'] }}</td>
-        <td>{{ p['num_members'] }}</td>
-        <td>{{ p['num_files'] }}</td>
-        {% if p['description']|length > 50 %}
-        <td>{{ p['description'][:50] + '...'}}</td>
+        <td>Joined:</td>
+        <td>{{user_info["creation_time_user"]}}</td>
+    </tr>
+    <tr>
+        <td>Confirmed?</td>
+        {% if user_info["confirmed"] == 0 %}
+            <td>No.</td>
         {% else %}
-        <td>{{ p['description'] }}</td>
+            <td>Yes.</td>
         {% endif %}
     </tr>
-{% endfor %}
 </table>
 
-{% endif %}
 {% endblock %}

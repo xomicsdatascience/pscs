@@ -113,9 +113,9 @@ def upload():
     '''
 
 
-@bp.route('/profile', methods=['GET'])
+@bp.route('/projects_summary', methods=['GET'])
 @login_required
-def profile():
+def projects_summary():
     db = get_db()
     if g.user is not None:
         # Get project meta data to list for user
@@ -124,7 +124,22 @@ def profile():
                                    "FROM projects INNER JOIN projects_roles "
                                    "ON projects.id_project=projects_roles.id_project "
                                    "AND projects_roles.id_user=?", (g.user['id_user'],))
-        return render_template('pscs/profile.html', projects=user_projects)
+        return render_template('pscs/projects_summary.html', projects=user_projects)
+
+
+@bp.route('/profile', methods=['GET'])
+@login_required
+def profile():
+    if request.method == "GET":
+        # Get basic user info
+        id_user = g.user["id_user"]
+        db = get_db()
+        user_info = db.execute("SELECT name_user, email, creation_time_user, confirmed "
+                               "FROM users_auth "
+                               "WHERE id_user = ?", (id_user,)).fetchone()
+
+        return render_template("pscs/profile.html", user_info=user_info)
+    return render_template(url_for("pscs.index"))
 
 
 @bp.route('/create_project', methods=['GET', 'POST'])
@@ -155,8 +170,7 @@ def create_project():
             proj_dir.mkdir(exist_ok=True)
             results_dir = pathlib.Path(os.path.join(app.config['PROJECTS_DIRECTORY'], 'results').format(id_project=id_project))
             results_dir.mkdir(exist_ok=True)
-
-        return redirect(url_for('pscs.index'))
+            return redirect(url_for('pscs.project', id_project=id_project))
     return render_template("pscs/create.html")
 
 

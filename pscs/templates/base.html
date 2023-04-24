@@ -11,7 +11,7 @@
             <li><a href="{{ url_for('admin.posts') }}">Admin</a></li>
         {% endif %}
         {% if g.user %}
-            <li><a href="{{ url_for('pscs.profile') }}">My Projects</a>
+            <li><a href="{{ url_for('pscs.projects_summary') }}">My Projects</a>
             <li><a href="{{ url_for('pscs.profile') }}">{{ g.user['name_user'] }}</a>
             <li><a href="{{ url_for('auth.logout') }}">Log Out</a>
         {% else %}
