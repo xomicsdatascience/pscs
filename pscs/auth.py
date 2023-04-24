@@ -5,10 +5,13 @@ from flask import (
 )
 
 from werkzeug.security import check_password_hash, generate_password_hash
+from itsdangerous.url_safe import URLSafeTimedSerializer
 from pscs.db import get_db, get_unique_value_for_field
 from pscs.authtools.validation.registration import validate_username, validate_password, validate_email, \
                                                    validate_recaptcha, send_user_confirmation_email, decode_token, \
                                                    validate_PHI, validate_datause
+from pscs.authtools.validation.password_reset import send_reset_email
+
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -84,7 +87,7 @@ def register():
     return render_template("auth/register.html", recaptcha_enabled=current_app.config["RECAPTCHA_ENABLED"])
 
 
-@bp.route('/confirmation/<token>')
+@bp.route('/confirmation/<token>', methods=["GET"])
 def user_confirmation(token):
     valid_token, token_data, invalid_reason = decode_token(token,
                                                            "confirmation",
@@ -107,6 +110,41 @@ def user_confirmation(token):
             flash("User account has already been confirmed.")
     return redirect(url_for('index'))
 
+
+@bp.route('/reset/<token>', methods=["GET", "POST"])
+def password_reset(token):
+    if request.method == "GET":
+        valid_token, token_data, invalid_reason = decode_token(token, "reset", current_app.config["RESET_TIMEOUT_SECONDS"])
+        if not valid_token and token != "debug":
+            if len(invalid_reason) > 0:
+                flash(invalid_reason)
+                return redirect(url_for("pscs.index"))
+        elif valid_token or token == "debug":
+            # reset password
+            return render_template("auth/password_reset.html", id_user=token_data)
+    elif request.method == "POST":
+        data = request.form
+        password_valid, password_msg = validate_password(data["password"], data["passwordConfirm"])
+        if not password_valid:
+            flash(password_msg)
+            return redirect(request.url)
+        else:
+            valid_token, token_data, invalid_reason = decode_token(token, "reset",
+                                                                   current_app.config["RESET_TIMEOUT_SECONDS"])
+            if not valid_token:
+                flash(invalid_reason)
+                return redirect(url_for("pscs.index"))
+            elif valid_token:
+                logout()
+                db = get_db()
+                db.execute("UPDATE users_auth "
+                           "SET password = ? "
+                           "WHERE id_user = ?", (generate_password_hash(data["password"]), token_data))
+                db.commit()
+                flash("Password updated.")
+                return redirect(url_for("pscs.index"))
+
+
 def confirm_user(id_user):
     db = get_db()
     db.execute("UPDATE users_auth "
@@ -120,13 +158,17 @@ def login():
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
-        user_login(username=username, password=password)
-        return redirect(url_for('pscs.index'))
+        err = user_login(username=username, password=password)
+        if err is None:
+            return redirect(url_for('pscs.index'))
+        else:
+            flash(err)
+            redirect(url_for('auth.login'))
     return render_template('auth/login.html')
 
 
 def user_login(username: str,
-               password: str):
+               password: str) -> str:
     """
     Checks whether the submitted password is valid for the username, and logs the user into the website.
     Parameters
@@ -138,7 +180,8 @@ def user_login(username: str,
 
     Returns
     -------
-    None
+    str
+        Error message. None if no error.
     """
     db = get_db()
     error = None
@@ -160,9 +203,17 @@ def user_login(username: str,
             session["is_admin"] = True
         else:
             session["is_admin"] = False
-    else:
-        flash(error)
-    return
+    return error
+
+
+def check_password(id_user: str,
+                   password: str) -> bool:
+    """Checks the password against the DB"""
+    db = get_db()
+    user_pass = db.execute("SELECT password "
+                           "FROM users_auth "
+                           "WHERE id_user = ?", (id_user,))
+    return check_password_hash(user_pass["password"], password)
 
 
 @bp.before_app_request
@@ -198,3 +249,27 @@ def admin_required(view):
             return redirect(url_for("pscs.index"))
         return view(**kwargs)
     return wrapped_view
+
+
+@bp.route('/reset/', methods=["GET", "POST"])
+def reset_password_email():
+    """Sends a password reset email to the user."""
+    if request.method == "GET":
+        return render_template("auth/password_forgot.html")
+    if request.method == "POST":
+        data = request.json
+        id_user = None
+        if "id_user" in data.keys():
+            id_user = data["id_user"]
+        elif "name_user" in data.keys():
+            db = get_db()
+            id_user = db.execute("SELECT id_user "
+                                 "FROM users_auth "
+                                 "WHERE name_user = ?", (data["name_user"],)).fetchone()["id_user"]
+        if id_user is not None:
+            send_reset_email(id_user)
+            flash("Password reset sent.")
+            return redirect(url_for("pscs.index"))
+        else:
+            flash("There was a problem retrieving the user email. Please contact PSCS admin.")
+            return redirect(url_for("pscs.index"))

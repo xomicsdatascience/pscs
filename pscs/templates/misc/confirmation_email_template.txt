@@ -1,6 +1,6 @@
 This email is to confirm the registration of {name_user} with <a href="pscs.xods.org">PSCS</a>. Clicking the <a href="{url}">confirmation link</a> will confirm that you intended to register with the address {user_email}. The link will expire 12h from when it was issued.
 
-Note: PSCS is currently in early-release and is likely to undergo substantive change. If you encounter any problems, please let us know at <a href="mailto:pscs@xods.org>pscs@xods.org</a>.
+Note: PSCS is currently in early-release and is likely to undergo substantive change. If you encounter any problems, please let us know at <a href="mailto:pscs@xods.org">pscs@xods.org</a>.
 
 If you have received this message in error, no further action is needed on your part.
 

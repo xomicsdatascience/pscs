@@ -26,4 +26,22 @@
     </tr>
 </table>
 
+<h3>Password update</h3>
+<script>
+    async function resetPassword(){
+        let msg = {"name_user": "{{user_info["name_user"]}}"};
+        console.log("msg: ", msg);
+        await fetch("/auth/reset/", {
+            method: "POST",
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            },
+            body:JSON.stringify(msg)
+        }).then(response => {window.location.href = response.url});
+    }
+</script>
+Send yourself a password-reset email: <input type="button" value="Reset password" onclick="resetPassword()">
+
+
 {% endblock %}

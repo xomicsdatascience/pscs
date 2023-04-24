@@ -166,8 +166,8 @@ def send_user_confirmation_email(id_user: str,
     url_signer = URLSafeTimedSerializer(secret_key=current_app.config["SECRET_KEY"], salt="confirmation")
     token = url_signer.dumps(id_user)
     url = "https://" + current_app.config["CURRENT_URL"] + f"/auth/confirmation/{token}"  # todo: replace with url_for
-    from pscs.templates.misc import confirmation_template  # importing here since this does file loading
-    confirmation_formatted = confirmation_template.format(name_user=name_user, url=url, user_email=user_email)
+    from pscs.templates.misc import confirmation_email_template  # importing here since this does file loading
+    confirmation_formatted = confirmation_email_template.format(name_user=name_user, url=url, user_email=user_email)
     user_to = f"<{user_email}>"
     return send_email([user_to], "PSCS Registration Confirmation", confirmation_formatted)
 
