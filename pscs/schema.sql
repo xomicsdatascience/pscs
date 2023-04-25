@@ -69,8 +69,17 @@ CREATE TABLE projects (
     FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
 );
 
-CREATE TABLE projects_deletion AS SELECT * FROM projects;
-ALTER TABLE projects_deletion ADD deletion_time_projects TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+CREATE TABLE projects_deletion (
+    id_project TEXT UNIQUE NOT NULL,  -- id for this project
+    id_user TEXT NOT NULL,  -- owner of the project
+    name_project TEXT NOT NULL,  -- title of project, input by user
+    description TEXT,  -- description of project, input by user
+    num_files INT DEFAULT 0,
+    num_members INT DEFAULT 1,
+    creation_time_project TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_published BIT DEFAULT 0,
+    deletion_time_projects TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
 
 -- NOTE: This would be better done as a trigger that selects all columns automatically instead of listing them here.
 CREATE TRIGGER stage_project_deletion
@@ -95,8 +104,21 @@ CREATE TABLE projects_roles (
     FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE,
     FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
 );
-CREATE TABLE projects_roles_deletion AS SELECT * FROM projects_roles;
-ALTER TABLE projects_roles_deletion ADD deletion_time_projects_roles TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+
+CREATE TABLE projects_roles_deletion (
+    id_project TEXT,
+    id_user TEXT NOT NULL,
+    role TEXT NOT NULL DEFAULT 'member',
+    data_read BIT DEFAULT 0,  -- whether user can read data uploaded to project
+    data_write BIT DEFAULT 0,  -- whether user can upload new data
+    analysis_read BIT DEFAULT 0,  -- whether user can load pipeline in editor
+    analysis_write BIT DEFAULT 0,  -- whether user can add new pipelines to project
+    analysis_execute BIT DEFAULT 0,  -- whether user can run pipelines on project data
+    project_management BIT DEFAULT 0,  -- whether user can add users
+    deletion_time_projects_roles TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    CONSTRAINT proj_key PRIMARY KEY (id_project, id_user)
+);
+
 CREATE TRIGGER stage_project_roles_deletion
   BEFORE DELETE ON projects_roles
   FOR EACH ROW
@@ -118,8 +140,18 @@ CREATE TABLE data (
     FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE
 );
 
-CREATE TABLE data_deletion AS SELECT * FROM data;
-ALTER TABLE data_deletion ADD deletion_time_data TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+CREATE TABLE data_deletion (
+  id_data TEXT UNIQUE NOT NULL PRIMARY KEY,
+  id_user TEXT NOT NULL,  -- owner/uploader
+  id_project TEXT NOT NULL,  -- project that this data is associated with
+  file_path TEXT NOT NULL,  -- path of the data
+  data_type TEXT NOT NULL,
+  file_hash TEXT NOT NULL,  -- sha3-256 hash of the data
+  data_uploaded_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  is_published BIT DEFAULT 0,  -- whether this data has been published; prevents auto deletion
+  deletion_time_data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TRIGGER stage_data_deletion
   BEFORE DELETE ON data
   FOR EACH ROW
@@ -141,8 +173,19 @@ CREATE TABLE results(
     FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE
 );
 
-CREATE TABLE results_deletion AS SELECT * FROM results;
-ALTER TABLE results_deletion ADD deletion_time_results TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+CREATE TABLE results_deletion(
+    id_result TEXT UNIQUE NOT NULL PRIMARY KEY,  -- unique ID for each file produced by analysis
+    id_project TEXT NOT NULL,
+    id_analysis TEXT,  -- ID specific to analysis
+    file_path TEXT NOT NULL,  -- where the result can be found
+    result_type TEXT NOT NULL,
+    description TEXT,  -- description of result
+    title TEXT,
+    is_interactive BIT NOT NULL DEFAULT 0,
+    deletion_time_results TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+
 CREATE TRIGGER stage_results_deletion
   BEFORE DELETE ON results
   FOR EACH ROW
@@ -163,8 +206,18 @@ CREATE TABLE analysis(
     FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE
 );
 
-CREATE TABLE analysis_deletion AS SELECT * FROM analysis;
-ALTER TABLE analysis_deletion ADD deletion_time_analysis TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+CREATE TABLE analysis_deletion(
+  id_analysis TEXT UNIQUE NOT NULL PRIMARY KEY,  -- unique id for each pipeline
+  id_project TEXT NOT NULL,  -- project with which this pipeline is associated
+  analysis_name TEXT UNIQUE NOT NULL,  -- name used for display
+  node_file TEXT NOT NULL,  -- file containing node configuration
+  parameter_file TEXT NOT NULL,  -- file containing pipeline object
+  analysis_hash NOT NULL,  -- hash of the node_file + parameter_file, for checking if analysis has changed since validation
+  is_validated BIT NOT NULL DEFAULT 0,
+  initial_pscs_version TEXT NOT NULL DEFAULT 0,
+  deletion_time_analysis TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TRIGGER stage_analysis_deletion
   BEFORE DELETE ON analysis
   FOR EACH ROW
@@ -181,8 +234,12 @@ CREATE TABLE analysis_author(
     CONSTRAINT author_key PRIMARY KEY (id_user, id_analysis)
 );
 
-CREATE TABLE analysis_author_deletion AS SELECT * FROM analysis_author;
-ALTER TABLE analysis_author_deletion ADD deletion_time_analysis_author TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+CREATE TABLE analysis_author_deletion(
+    id_analysis TEXT UNIQUE NOT NULL,
+    id_user TEXT NOT NULL,
+    deletion_time_analysis_author TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TRIGGER stage_analysis_author_deletion
   BEFORE DELETE ON analysis_author
   FOR EACH ROW
@@ -199,8 +256,14 @@ CREATE TABLE analysis_inputs(  -- specifies and describes which nodes of an anal
     FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE
 );
 
-CREATE TABLE analysis_inputs_deletion AS SELECT * FROM analysis_inputs;
-ALTER TABLE analysis_inputs_deletion ADD deletion_time_analysis_inputs TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+CREATE TABLE analysis_inputs_deletion(  -- specifies and describes which nodes of an analysis are input
+    id_input TEXT UNIQUE NOT NULL PRIMARY KEY,  -- unique id for each input - not used
+    id_analysis TEXT NOT NULL,  -- analysis with which the input is associated
+    node_id TEXT NOT NULL,  -- id of the node within the pipeline, not within DB
+    node_name TEXT NOT NULL,  -- displayed name of the node
+    deletion_time_analysis_inputs TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TRIGGER stage_analysis_inputs_deletion
   BEFORE DELETE ON analysis_author
   FOR EACH ROW
@@ -248,8 +311,21 @@ CREATE TABLE submitted_jobs(  -- logging submitted jobs
   date_completed TIMESTAMP
 );
 
-CREATE TABLE submitted_jobs_deletion AS SELECT * FROM submitted_jobs;
-ALTER TABLE submitted_jobs_deletion ADD deletion_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+CREATE TABLE submitted_jobs_deletion(  -- logging submitted jobs
+   id_job TEXT UNIQUE NOT NULL PRIMARY KEY,  -- unique id for job
+   submitted_resource TEXT NOT NULL,  -- computing resource to which the job was submitted
+   resource_job_id TEXT NOT NULL,  -- job id on the resource
+   id_user TEXT NOT NULL,  -- submitter
+   id_project TEXT NOT NULL,  -- project for which this was submitted
+   id_analysis TEXT NOT NULL,  -- analysis that was submitted
+   server_response TEXT,  -- text response from the server
+   remote_results_directory TEXT NOT NULL, -- directory where results are stored
+   date_submitted TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+   is_complete BIT DEFAULT 0,
+   date_completed TIMESTAMP,
+   deletion_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
 CREATE TRIGGER stage_submitted_jobs_deletion
   BEFORE DELETE ON submitted_jobs
   FOR EACH ROW
@@ -267,8 +343,14 @@ CREATE TABLE submitted_data(  -- for knowing which data was submitted with a job
   CONSTRAINT submitted_data_key PRIMARY KEY (id_job, id_data, node_name)
 );
 
-CREATE TABLE submitted_data_deletion AS SELECT * FROM submitted_data;
-ALTER TABLE submitted_data_deletion ADD deletion_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP;
+CREATE TABLE submitted_data_deletion(  -- for knowing which data was submitted with a job
+   id_job TEXT NOT NULL,
+   id_data TEXT NOT NULL,
+   node_name TEXT NOT NULL,  -- node to which the data is submitted
+   deletion_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+   CONSTRAINT submitted_data_key PRIMARY KEY (id_job, id_data, node_name)
+);
+
 CREATE TRIGGER stage_submitted_data_deletion
     BEFORE DELETE ON submitted_data
     FOR EACH ROW
