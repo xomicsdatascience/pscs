@@ -3,7 +3,7 @@ import click
 from flask import current_app, g
 import json
 import uuid
-
+import os
 
 def get_db():
     """
@@ -32,6 +32,9 @@ def close_db(e=None):
 
 
 def init_db():
+    # Raise error if already exists; this is to avoid overwriting it
+    if os.path.exists(current_app.config["DATABASE"]):
+        raise ValueError(f"Database already exists at {current_app.config['DATABASE']}")
     db = get_db()
     with current_app.open_resource('schema.sql') as f:
         db.executescript(f.read().decode('utf8'))
@@ -63,6 +66,7 @@ def init_app(app):
     """Registers init db command"""
     app.teardown_appcontext(close_db)  # Call this function when shutting down
     app.cli.add_command(init_db_command)  # Add command to flask
+    return
 
 
 def get_unique_value_for_field(db, field: str, table: str) -> str:

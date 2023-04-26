@@ -253,10 +253,6 @@ def _poll_osp(env: dict) -> dict:
     cron_key = env["CRON_KEY"]
     history_bin = subprocess.check_output(["ssh", "-o", "IdentitiesOnly=yes", "-i", cron_key, login_str,
                                            "condor_history", "-userlog", "logs/pscs_latest.log"])
-
-    # history_bin = subprocess.check_output(
-    #     ["ssh", "-o", "IdentitiesOnly=yes", "-i", "/home/lex/.ssh/id_rsa_cron", f"{login_dict['USER']}@{login_dict['URL']}",
-    #      "condor_history", "-userlog", "logs/pscs_latest.log"])
     history = history_bin.decode("utf-8")
 
     history_split = history.split("\n")
@@ -320,8 +316,10 @@ def main(db, env, debug=False):
             print_debug(c_job, debug)
             continue
         print_debug("fetching!", debug)
-        results_path = os.path.join("/home", "lex", "projects", "pscs", "projects", job_info["id_project"], "results", job_info["id_analysis"])
+        results_path = os.path.join(env["INSTANCE_PATH"], "projects", "{id_project}", "results", "{id_analysis}")
+        results_path = results_path.format(id_project=job_info["id_project"], id_analysis=job_info["id_analysis"])
         Path(results_path).mkdir(exist_ok=True, parents=True)
+
         fetch_data(env["REMOTE_COMPUTING"][c_job[0]], job_info["remote_results_directory"], results_path)
         # register completion
         update_db_job_complete(db, c_job[0], c_job[1])
@@ -330,7 +328,7 @@ def main(db, env, debug=False):
             id_result = get_unique_value_for_field(db, "id_result", "results")
             file_path = os.path.join("projects", job_info["id_project"], "results", job_info["id_analysis"], result)
             result_type = "result"  # TODO
-            db.execute("INSERT INTO results "
+            db.execute("INSERT INTO results "       
                        "(id_result, id_project, id_analysis, file_path, result_type) "
                        "VALUES (?,?,?,?,?)", (id_result, job_info["id_project"], job_info["id_analysis"], file_path, result_type))
             db.commit()

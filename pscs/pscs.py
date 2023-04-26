@@ -22,19 +22,13 @@ import pandas as pd
 import json
 import hashlib
 import pathlib
+import sqlite3
 
 bp = Blueprint("pscs", __name__)
-UPLOAD_FOLDER = 'upload/'
 ALLOWED_EXTENSIONS = {'csv', 'tsv'}
 PATH_KEYWORD = 'path'
 
-app = Flask(__name__)
-app.config['UPLOAD_FOLDER'] = os.path.join(UPLOAD_FOLDER, "{userid}")
-app.config['PROJECTS_DIRECTORY'] = os.path.join("pscs", "projects", "{id_project}")
-app.config['RESULTS_DIRECTORY'] = os.path.join(app.config['PROJECTS_DIRECTORY'], "results", "{id_analysis}")
-app.config['DELETION_DIRECTORY'] = os.path.join("deletion", "{id_project}")
 
-app.add_url_rule('/upload/<name>', endpoint='download_file', build_only=True)
 @bp.route('/')
 def index():
     db = get_db()
@@ -59,7 +53,7 @@ def allowed_file(filename):
 @bp.route(f"/upload/<user>/<name>", methods=['GET'])
 @login_required
 def download_file(name, user):
-    return send_from_directory(app.config['UPLOAD_FOLDER'].format(username=user), name)
+    return send_from_directory(current_app.config['UPLOAD_FOLDER'].format(username=user), name)
 
 
 @bp.route('/upload', methods=['GET','POST'])
@@ -82,7 +76,7 @@ def upload():
                 flash("You do not have permission to upload files.")
                 return redirect(url_for("pscs.project", id_project=session["CURRENT_PROJECT"]))
             filename = secure_filename(file.filename)
-            out_path = app.config['UPLOAD_FOLDER'].format(userid=g.user['id_user'])
+            out_path = current_app.config['UPLOAD_FOLDER'].format(userid=g.user['id_user'])
             os.makedirs(out_path, exist_ok=True)
             out_file = os.path.join(out_path, filename)
             file.save(out_file)
@@ -166,9 +160,9 @@ def create_project():
                                 permissions={'data_read': 1, 'data_write': 1, 'project_management': 1,
                                              "analysis_read": 1, "analysis_write": 1, "analysis_execute": 1})
             db.commit()
-            proj_dir = pathlib.Path(app.config['PROJECTS_DIRECTORY'].format(id_project=id_project))
+            proj_dir = pathlib.Path(current_app.config['PROJECTS_DIRECTORY'].format(id_project=id_project))
             proj_dir.mkdir(exist_ok=True)
-            results_dir = pathlib.Path(os.path.join(app.config['PROJECTS_DIRECTORY'], 'results').format(id_project=id_project))
+            results_dir = pathlib.Path(os.path.join(current_app.config['PROJECTS_DIRECTORY'], 'results').format(id_project=id_project))
             results_dir.mkdir(exist_ok=True)
             return redirect(url_for('pscs.project', id_project=id_project))
     return render_template("pscs/create.html")
@@ -241,8 +235,8 @@ def analysis():
     if request.method == 'GET':
         return render_template(("pscs/analysis.html"), files=data)
     if request.method == 'POST':
-        file = os.path.join(app.config['UPLOAD_FOLDER'].format(userid=userid), request.form['analyze'])
-        res_dir = app.config['RESULTS_DIRECTORY'].format(userid=userid)
+        file = os.path.join(current_app.config['UPLOAD_FOLDER'].format(userid=userid), request.form['analyze'])
+        res_dir = current_app.config['RESULTS_DIRECTORY'].format(userid=userid)
         os.makedirs(res_dir, exist_ok=True)
         ann_data = single_cell.analyze(file, res_dir, 'test')
         results = os.listdir(res_dir)
@@ -277,7 +271,7 @@ def analysis():
 @bp.route('/results/<userid>/<filename>', methods=['GET'])
 @login_required
 def get_file(userid, filename):
-    return send_from_directory(app.config['RESULTS_DIRECTORY'].format(userid=userid), filename)
+    return send_from_directory(current_app.config['RESULTS_DIRECTORY'].format(userid=userid), filename)
 
 
 # We are mixing several levels of abstraction; the programmer is being RUDE.
@@ -315,14 +309,18 @@ def project(id_project):
             project_data_summary = db.execute('SELECT id_data, file_path, data_type, file_hash, data_uploaded_time FROM data WHERE id_project = ?', (id_project,)).fetchall()
 
             # Get results
-            results_rows = db.execute("SELECT file_path, title, description FROM results WHERE id_project = ?", (id_project,)).fetchall()
-            results_files = results_rows
+            results_rows = db.execute("SELECT file_path, title, description, id_analysis FROM results WHERE id_project = ?", (id_project,)).fetchall()
+            results_files = []
+            for r in results_rows:
+                rr = dict(r)
+                rr["file_name"] = os.path.basename(r["file_path"])
+                results_files.append(rr)
 
             # Get users associated with project
             users = db.execute("SELECT name_user "
                                "FROM users_auth INNER JOIN projects_roles "
                                "ON users_auth.id_user = projects_roles.id_user WHERE id_project = ?", (id_project,)).fetchall()
-
+            summary = {"id_project": id_project, "id_user": id_user}
             user_list = []
             for u in users:
                 user_list.append(u['name_user'])
@@ -333,7 +331,8 @@ def project(id_project):
                                    analysis_nodes=analysis_nodes,
                                    project_data_summary=project_data_summary,
                                    results=results_files,
-                                   user_list=user_list)
+                                   user_list=user_list,
+                                   summary=summary)
     elif request.method == 'POST':
         # Check for rename or delete
         if 'newName' in request.json:  # is rename
@@ -442,7 +441,7 @@ def run_analysis():
         # This next section gets the relevant paths for input and output.
         # Instead, it should create the output paths (as needed), gather the input files, and trigger for them to be
         # sent out to OSG.
-        output_dir = app.config['RESULTS_DIRECTORY'].format(id_project=session['CURRENT_PROJECT'],
+        output_dir = current_app.config['RESULTS_DIRECTORY'].format(id_project=session['CURRENT_PROJECT'],
                                                             id_analysis=pipeline_specs['id_analysis'])
         pathlib.Path(output_dir).mkdir(exist_ok=True)
         file_ids = pipeline_specs['file_paths']
@@ -547,9 +546,9 @@ def pipeline_designer():
         pipeline_id = id_analysis
 
         if is_dest_project:
-            pipeline_dir = app.config['PROJECTS_DIRECTORY'].format(id_project=id_project)
+            pipeline_dir = current_app.config['PROJECTS_DIRECTORY'].format(id_project=id_project)
         else:
-            pipeline_dir = app.config['UPLOAD_FOLDER'].format(userid=g['id_user'])
+            pipeline_dir = current_app.config['UPLOAD_FOLDER'].format(userid=g['id_user'])
 
         output_name = pipeline_id + '.json'
         pipeline_file = os.path.join(pipeline_dir, output_name)
@@ -657,9 +656,9 @@ def calc_hash_of_file(file: str) -> str:
 
 @bp.route('/projects/<id_project>/results/<id_analysis>/<path:filename>', methods=['GET'])
 @login_required
-def projects(filename, id_project, id_analysis):
+def results(filename, id_project, id_analysis):
     has_perm = check_user_permission("data_read", 1, id_project)
     if not has_perm:
         return
-    res_dir = os.path.join("projects", id_project, "results", id_analysis)
-    return send_from_directory(res_dir, filename)
+    res_dir = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=id_analysis)
+    return send_from_directory(res_dir, secure_filename(filename))

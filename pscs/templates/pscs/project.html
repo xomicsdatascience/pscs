@@ -61,11 +61,11 @@
 <h3>Results</h3>
 {% for f in results %}
 <div style="text-align:center">
-<!--<p><b>{{f['title']}}</b>-->
+
   <br>
-  <img src="/{{f['file_path']}}">
+  <img src="{{url_for('pscs.results', id_project=summary['id_project'], id_analysis=f['id_analysis'], filename=f['file_name'] )}}">
   <br>
-<!--  {{f['description']}}</p>-->
+
 </div>
 {% endfor %}
 
