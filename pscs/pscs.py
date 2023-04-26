@@ -493,7 +493,8 @@ def delete_data(id_data):
 @bp.route('/pipeline', methods=['GET', 'POST'])
 def pipeline_designer():
     if request.method == 'GET':
-        f = open("pscs/static/node_data.json", 'r')
+        static_path = current_app.config["STATIC_DIRECTORY"]
+        f = open(os.path.join(static_path, "node_data.json"), 'r')
         j = json.load(f)
         f.close()
         modules = get_unique_values_for_key(j, 'module')

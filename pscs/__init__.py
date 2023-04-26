@@ -38,17 +38,20 @@ def create_app(test_config=None) -> Flask:
     print(f"Instance path: {app.instance_path}")
     print(f"Making instance directories...")
 
+    app.config["STATIC_DIRECTORY"] = join(app.instance_path, "static")
+    _makedir_until_format(app.config["STATIC_DIRECTORY"])
+
     app.config['UPLOAD_FOLDER'] = join(app.instance_path, "upload", "{userid}")
-    _makedir_until_format(dirname(app.config['UPLOAD_FOLDER']))
+    _makedir_until_format(app.config['UPLOAD_FOLDER'])
 
     app.config["PROJECTS_DIRECTORY"] = join(app.instance_path, "projects", "{id_project}")
-    _makedir_until_format(dirname(app.config["PROJECTS_DIRECTORY"]))
+    _makedir_until_format(app.config["PROJECTS_DIRECTORY"])
 
     app.config["RESULTS_DIRECTORY"] = join(app.config["PROJECTS_DIRECTORY"], "results", "{id_analysis}")
-    _makedir_until_format(dirname(app.config["RESULTS_DIRECTORY"]))
+    _makedir_until_format(app.config["RESULTS_DIRECTORY"])
 
     app.config["DELETION_DIRECTORY"] = join(app.instance_path, "deletion", "{id_project}")
-    _makedir_until_format(dirname(app.config["DELETION_DIRECTORY"]))
+    _makedir_until_format(app.config["DELETION_DIRECTORY"])
 
     app.add_url_rule('/upload/<name>', endpoint='pscs.download_file', build_only=True)
 
