@@ -1,11 +1,11 @@
-__version__ = "0.0.17"
+__version__ = "0.0.18"
 
 import os
 from flask import Flask
 import os
 from os.path import join, dirname
 import json
-from waitress import serve
+import shutil
 
 
 def create_app(test_config=None) -> Flask:
@@ -22,8 +22,18 @@ def create_app(test_config=None) -> Flask:
         An instance of the Flask app.
     """
     env_dict = parse_env()
+    static_directory = join(env_dict["INSTANCE_PATH"], "static")
+    template_directory = join(env_dict["INSTANCE_PATH"], "templates")
+
+    # Copy pscs package resources to instance
+    this_dir = dirname(__file__)
+    template_source = join(this_dir, "templates")
+    static_source = join(this_dir, "static")
+    shutil.copytree(template_source, template_directory, dirs_exist_ok=True)
+    shutil.copytree(static_source, static_directory, dirs_exist_ok=True)
     app = Flask(__name__, instance_path=env_dict["INSTANCE_PATH"],
-                instance_relative_config=True, template_folder="templates")
+                instance_relative_config=True, template_folder=template_directory,
+                static_folder=static_directory)
     app.config.from_mapping(
         DATABASE=join(app.instance_path, 'pscs.sqlite'),
         **env_dict)
@@ -38,7 +48,7 @@ def create_app(test_config=None) -> Flask:
     print(f"Instance path: {app.instance_path}")
     print(f"Making instance directories...")
 
-    app.config["STATIC_DIRECTORY"] = join(app.instance_path, "static")
+    app.config["STATIC_DIRECTORY"] = static_directory
     _makedir_until_format(app.config["STATIC_DIRECTORY"])
 
     app.config['UPLOAD_FOLDER'] = join(app.instance_path, "upload", "{userid}")
@@ -62,8 +72,7 @@ def create_app(test_config=None) -> Flask:
     app.register_blueprint(auth.bp)
 
     from . import pscs
-    bp = pscs.bp
-    app.register_blueprint(bp)
+    app.register_blueprint(pscs.bp)
 
     from pscs.blueprints import homepage
     app.register_blueprint(homepage.bp)
