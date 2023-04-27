@@ -150,6 +150,7 @@ def confirm_user(id_user):
     db.execute("UPDATE users_auth "
                "SET confirmed = 1, confirmed_datetime = CURRENT_TIMESTAMP "
                "WHERE id_user = ?", (id_user,))
+    session["confirmed"] = 1
     db.commit()
     return
 
@@ -186,7 +187,7 @@ def user_login(username: str,
     db = get_db()
     error = None
     user = db.execute(
-        'SELECT id_user, name_user, password FROM users_auth WHERE name_user = ?', (username,)
+        'SELECT id_user, name_user, password, confirmed FROM users_auth WHERE name_user = ?', (username,)
     ).fetchone()
 
     if user is None:
@@ -197,6 +198,7 @@ def user_login(username: str,
     if error is None:
         session.clear()
         session['id_user'] = user['id_user']
+        session["confirmed"] = user["confirmed"]
         # check if user is admin
         is_admin = db.execute("SELECT id_user FROM admin_user WHERE id_user = ?", (user["id_user"],)).fetchone()
         if is_admin is not None:
@@ -238,6 +240,9 @@ def login_required(view):
     def wrapped_view(**kwargs):
         if g.user is None:
             return redirect(url_for('auth.login'))
+        elif current_app.config["REGISTRATION_REQUIRES_CONFIRMATION"] and ("confirmed" not in g.user.keys() or g.user["confirmed"] != 1):
+            flash("Email verification is required. Check your inbox for the verification link.")
+            return redirect(url_for('pscs.index'))
         return view(**kwargs)
     return wrapped_view
 
