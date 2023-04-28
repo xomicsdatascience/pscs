@@ -278,6 +278,8 @@ def login_required(view):
 
 def check_confirmation(user_conf_info: dict):
     """Checks whether it's okay to send another confirmation email."""
+    if user_conf_info is None:
+        return True
     cooldown = _get_confirmation_cooldown(user_conf_info["num_sent"])
     last_sent = user_conf_info["last_sent"]
     # Convert to epoch
