@@ -45,6 +45,13 @@ CREATE TABLE users_auth (
     confirmed_datetime TIMESTAMP
 );
 
+CREATE TABLE users_confirmation (  -- for keeping track of confirmation emails that have been sent out
+    id_user TEXT UNIQUE NOT NULL PRIMARY KEY,  -- id of user
+    num_sent INT DEFAULT 1,  -- number of times the confirmation email has been sent
+    last_sent TIMESTAMP DEFAULT CURRENT_TIMESTAMP,  -- last time the email was sent
+    FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
+);  -- don't bother keeping records of this table
+
 CREATE TABLE users_affiliation (
     id_user TEXT NOT NULL,
     affiliation TEXT NOT NULL,

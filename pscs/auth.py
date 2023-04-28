@@ -11,8 +11,9 @@ from pscs.authtools.validation.registration import validate_username, validate_p
                                                    validate_recaptcha, send_user_confirmation_email, decode_token, \
                                                    validate_PHI, validate_datause
 from pscs.authtools.validation.password_reset import send_reset_email
-
-
+import math
+import datetime
+import time
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
@@ -75,14 +76,9 @@ def register():
                 else:  # email confirmation disabled
                     confirm_user(id_user)
                 user_login(username, password)
-                # return render_template("pscs/index.html")
                 return redirect(url_for("pscs.index"))
-
         except db.IntegrityError:
             error = f"User {username} is already registered."
-        else:
-            return redirect(url_for("index"))
-
         flash(error)
     return render_template("auth/register.html", recaptcha_enabled=current_app.config["RECAPTCHA_ENABLED"])
 
@@ -109,6 +105,22 @@ def user_confirmation(token):
         elif user_needs_confirmation['confirmed'] == 1:
             flash("User account has already been confirmed.")
     return redirect(url_for('index'))
+
+
+@bp.route("/confirmation/resend/<token>", methods=["GET"])
+def resend_confirmation(token):
+    """Send confirmation email"""
+    valid_token, token_data, invalid_reason = decode_token(token, "resend")
+    if not valid_token:
+        return redirect(url_for("pscs.indx"))
+    db = get_db()
+    user_info = db.execute("SELECT name_user, email "
+                           "FROM users_auth "
+                           "WHERE id_user = ?", (token_data,)).fetchone()
+    if user_info is not None:
+        send_user_confirmation_email(id_user=token_data, user_email=user_info["email"], name_user=user_info["name_user"])
+    return redirect(url_for("pscs.index"))
+
 
 
 @bp.route('/reset/<token>', methods=["GET", "POST"])
@@ -153,6 +165,7 @@ def confirm_user(id_user):
     session["confirmed"] = 1
     db.commit()
     return
+
 
 @bp.route('login', methods=('GET', 'POST'))
 def login():
@@ -240,11 +253,49 @@ def login_required(view):
     def wrapped_view(**kwargs):
         if g.user is None:
             return redirect(url_for('auth.login'))
-        elif current_app.config["REGISTRATION_REQUIRES_CONFIRMATION"] and ("confirmed" not in g.user.keys() or g.user["confirmed"] != 1):
-            flash("Email verification is required. Check your inbox for the verification link.")
-            return redirect(url_for('pscs.index'))
+        elif current_app.config["REGISTRATION_REQUIRES_CONFIRMATION"]:
+            if "confirmed" not in session.keys() or session["confirmed"] != 1:
+                # Check whether email has timed out
+                db = get_db()
+                id_user = g.user["id_user"]
+                user_conf_info = db.execute("SELECT num_sent, last_sent "
+                                            "FROM users_confirmation "
+                                            "WHERE id_user = ?", (id_user,)).fetchone()
+                is_okay_to_send = check_confirmation(user_conf_info)
+
+                url_signer = URLSafeTimedSerializer(secret_key=current_app.config["SECRET_KEY"], salt="resend")
+                token = url_signer.dumps(id_user)
+                if is_okay_to_send:
+                    resend_url = url_for("auth.resend_confirmation", token=token)
+                    msg = f"Email verification is required. To send a new verification link, <a href='http://{current_app.config['CURRENT_URL']}{resend_url}'>click here</a>."
+                else:
+                    msg = "Email verification is required. Check your inbox for the confirmation email."
+                flash(msg, category="link")
+                return redirect(url_for('pscs.index'))
         return view(**kwargs)
     return wrapped_view
+
+
+def check_confirmation(user_conf_info: dict):
+    """Checks whether it's okay to send another confirmation email."""
+    cooldown = _get_confirmation_cooldown(user_conf_info["num_sent"])
+    last_sent = user_conf_info["last_sent"]
+    # Convert to epoch
+    last_sent_epoch = last_sent.strftime("%s")
+    last_sent_epoch = int(last_sent_epoch)
+    # Convert current time to utc
+    now_utc = int(datetime.datetime.now().astimezone(datetime.timezone.utc).strftime("%s"))
+    time_since_sent = now_utc - last_sent_epoch
+    return time_since_sent >= cooldown
+
+
+def _get_confirmation_cooldown(num_sent: int) -> int:
+    max_confirms = current_app.config["REGISTRATION_MAX_CONFIRMATION"]
+    cooldown_time_minutes = current_app.config["REGISTRATION_CONFIRMATION_COOLDOWN"]
+    if max_confirms > max_confirms:
+        return math.inf  # too many attempts; label as spam
+    else:
+        return cooldown_time_minutes[num_sent]
 
 
 def admin_required(view):

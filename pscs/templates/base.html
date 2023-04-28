@@ -24,8 +24,12 @@
     <header>
         {% block header %}{% endblock %}
     </header>
-    {% for message in get_flashed_messages() %}
-    <div class="flash">{{ message }}</div>
+    {% for category, message in get_flashed_messages(with_categories=true) %}
+        {% if category == "link" %}
+            <div class="flash">{{ message|safe}}</div>
+        {% else %}
+            <div class="flash">{{ message }}</div>
+        {% endif %}
     {% endfor %}
     <body>
         {% block content %}{% endblock %}

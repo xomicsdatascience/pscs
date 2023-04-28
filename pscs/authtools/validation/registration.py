@@ -2,7 +2,7 @@
 This file contains the server-side validation for user registration.
 '''
 from pscs.db import get_db
-from flask import current_app
+from flask import current_app, url_for
 import requests
 import json
 from itsdangerous.url_safe import URLSafeTimedSerializer
@@ -165,11 +165,28 @@ def send_user_confirmation_email(id_user: str,
     """
     url_signer = URLSafeTimedSerializer(secret_key=current_app.config["SECRET_KEY"], salt="confirmation")
     token = url_signer.dumps(id_user)
-    url = "https://" + current_app.config["CURRENT_URL"] + f"/auth/confirmation/{token}"  # todo: replace with url_for
+    url = "https://" + current_app.config["CURRENT_URL"] + url_for("auth.user_confirmation", token=token)
     from pscs.templates.misc import confirmation_email_template  # importing here since this does file loading
     confirmation_formatted = confirmation_email_template.format(name_user=name_user, url=url, user_email=user_email)
     user_to = f"<{user_email}>"
-    return send_email([user_to], "PSCS Registration Confirmation", confirmation_formatted)
+    send_result = send_email([user_to], "PSCS Registration Confirmation", confirmation_formatted)
+    # Save that the confirmation has been sent
+    db = get_db()
+    confirmation_record = db.execute("SELECT num_sent, last_sent "
+                                     "FROM users_confirmation "
+                                     "WHERE id_user = ?", (id_user,)).fetchone()
+    if confirmation_record is not None:
+        num_sent = confirmation_record["num_sent"]
+        db.execute("UPDATE users_confirmation "
+                   "SET num_sent = ?,"
+                   "    last_sent = CURRENT_TIMESTAMP"
+                   " WHERE id_user = ?", (num_sent+1, id_user))
+    else:
+        db.execute("INSERT INTO users_confirmation "
+                   "(id_user, num_sent, last_sent) "
+                   "VALUES (?,?,CURRENT_TIMESTAMP)", (id_user, 1))
+    db.commit()
+    return send_result
 
 
 def decode_token(token: str,
