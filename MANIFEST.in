@@ -2,6 +2,7 @@ include pscs/schema.sql
 include pscs/universities.json
 include pscs/templates/misc/*
 include pscs/static/pscs_logo2.svg
+include pscs/Data_Use_Agreement.txt
 
 global-include *.js
 global-include *.png

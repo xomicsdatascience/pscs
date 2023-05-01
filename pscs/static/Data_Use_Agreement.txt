@@ -1,6 +1,6 @@
 DATA USE AGREEMENT
 
-This Data Use Agreement (“Agreement”) is made between [User Name] (“User”) and [Company Name] (“Company”) with respect to the use of User’s data uploaded on Company’s platform.
+This Data Use Agreement (“Agreement”) is made between [User Name] (“User”) and the Platform for Single-Cell Science (“Company”) with respect to the use of User’s data uploaded on Company’s platform.
 
     Data Lifecycle
     This section describes the expected lifecycle of data uploaded by a user to the platform.
