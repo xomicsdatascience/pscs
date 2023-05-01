@@ -458,7 +458,6 @@ def check_identical_submitted(id_project: str,
     # every tuple must have a corresponding entry, otherwise the analysis has changed
     for prev_job in previous_jobs:
         for file_tup in file_tuples:
-            print(f"Checking: {prev_job['id_job']}, {file_tup[1]}, {file_tup[0]}")
             prev_data = db.execute("SELECT id_job "
                                    "FROM submitted_data "
                                    "WHERE id_job = ? AND id_data = ? AND node_name = ?",
@@ -466,9 +465,7 @@ def check_identical_submitted(id_project: str,
             if prev_data is None or len(prev_data) == 0:
                 # No match; no need to check the rest
                 break
-            print(prev_data)
         else:
             # Found match for every data; this is a match
-            print("Found match for every node/data")
             return True
     return False

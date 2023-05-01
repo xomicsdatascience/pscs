@@ -148,7 +148,8 @@ def validate_job_against_db(db: sqlite3.Connection,
 
 def fetch_data(remote_info: dict,
                remote_results_dir: str,
-               local_results_dir: str):
+               local_results_dir: str,
+               ssh_keypath: str):
     """
     Copies the data from the remote computing resource to the local resource.
     Parameters
@@ -159,13 +160,14 @@ def fetch_data(remote_info: dict,
         Location from which to copy the results.
     local_results_dir
         Location to which to copy the results.
-
+    ssh_keypath : str
+        Path to the ssh key to use as identity.
     Returns
     -------
     None
     """
     remote_user = f"{remote_info['USER']}@{remote_info['URL']}"
-    out = subprocess.check_output(["rsync", "-re", "ssh -i/home/lex/.ssh/id_rsa_cron", f"{remote_user}:{remote_results_dir}/", local_results_dir])
+    out = subprocess.check_output(["rsync", "-re", f"ssh -i{ssh_keypath}", f"{remote_user}:{remote_results_dir}/", local_results_dir])
     return
 
 
@@ -320,7 +322,7 @@ def main(db, env, debug=False):
         results_path = results_path.format(id_project=job_info["id_project"], id_analysis=job_info["id_analysis"])
         Path(results_path).mkdir(exist_ok=True, parents=True)
 
-        fetch_data(env["REMOTE_COMPUTING"][c_job[0]], job_info["remote_results_directory"], results_path)
+        fetch_data(env["REMOTE_COMPUTING"][c_job[0]], job_info["remote_results_directory"], results_path, ssh_keypath=env["CRON_KEY"])
         # register completion
         update_db_job_complete(db, c_job[0], c_job[1])
         for result in os.listdir(results_path):
