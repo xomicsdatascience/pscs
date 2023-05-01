@@ -13,13 +13,6 @@
 <script src="static/js/pipeline.js"></script>
 <script src="static/js/pipelineSidebar.js"></script>
 
-<!--<button type="button" onclick="createDraggable();">Insert node</button>-->
-<!--<div id="panel">-->
-<!--  <button id="toggle" onclick="togglePanel()">Open Panel</button>-->
-<!--  &lt;!&ndash; content of the panel goes here &ndash;&gt;-->
-<!--</div>-->
-
-
 <div id="sidebar" class="sidebar-closed">
     <button type="button" onclick="openSavePanel( &quot;{{ proj_dests }}&quot;, &quot;{{user_dests}}&quot; )">Save Pipeline</button>
     <select name="analyses" id="analyses" autocomplete="off">
@@ -29,7 +22,10 @@
         {% endfor %}
     </select>
 
-    <button id="analysis_load" onclick="loadAnalysis();">Load</button>
+    <button id="analysis_load" onclick="loadAnalysis();">Load</button><br>
+    {% if current_project is defined %}
+        <button type="button" onclick='location.href="{{current_project}}";'>Return to current project</button>
+    {% endif %}
     {% for m in modules %}
       <h2>{{ m[0].upper() + m[1:] }}</h2>
       {% for j in node_json %}
@@ -51,11 +47,10 @@
         {% endif %}
       {% endfor %}
     {% endfor %}
-</div>
-
-<div id="nodeContainer" class="container">
 
 </div>
+
+<div id="nodeContainer" class="container"></div>
 
 <script>
 window.addEventListener('load', function () {toggleSidebar();})

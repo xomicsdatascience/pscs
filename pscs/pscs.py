@@ -508,8 +508,12 @@ def pipeline_designer():
                               "ON analysis.id_project=projects_roles.id_project "
                               "WHERE projects_roles.id_user = ? AND projects_roles.analysis_read = 1",
                               (g.user['id_user'],)).fetchall()
-        return render_template("pscs/pipeline.html", node_json=node_json, modules=modules, proj_dests=proj_dests,
-                               user_dests=user_dests, analyses=analyses)
+        if "CURRENT_PROJECT" not in session.keys():
+            return render_template("pscs/pipeline.html", node_json=node_json, modules=modules, proj_dests=proj_dests,
+                                   user_dests=user_dests, analyses=analyses)
+        else:
+            return render_template("pscs/pipeline.html", node_json=node_json, modules=modules, proj_dests=proj_dests,
+                                   user_dests=user_dests, analyses=analyses, current_project=url_for("pscs.project", id_project=session["CURRENT_PROJECT"]))
     elif request.method == 'POST':
         if "loadAnalysis" in request.json:
             # Check user perm
