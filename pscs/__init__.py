@@ -1,4 +1,4 @@
-__version__ = "0.0.21"
+__version__ = "0.0.22"
 
 import os
 from flask import Flask
@@ -6,6 +6,7 @@ import os
 from os.path import join, dirname
 import json
 import shutil
+import click
 
 
 def create_app(test_config=None) -> Flask:
@@ -15,7 +16,6 @@ def create_app(test_config=None) -> Flask:
     ----------
     test_config : mapping
         Flask mapping for testing a configuration.
-
     Returns
     -------
     Flask
@@ -65,6 +65,7 @@ def create_app(test_config=None) -> Flask:
 
     app.add_url_rule('/upload/<name>', endpoint='pscs.download_file', build_only=True)
 
+    app.cli.add_command(update_flask_files)
     from . import db
     db.init_app(app)
 
@@ -82,6 +83,13 @@ def create_app(test_config=None) -> Flask:
 
     app.add_url_rule('/', endpoint='index')
     return app
+
+
+@click.command('update-flask')
+def update_flask_files():
+    # Placeholder. The static files are updated when the app is called from the command line. If you want to set up
+    # those files separately, move the relevant code here.
+    return
 
 
 def parse_env(env_file: str = '.env') -> dict:
