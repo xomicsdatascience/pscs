@@ -1092,9 +1092,9 @@ async function loadAnalysis(){
             dstAreaNum = parsedConnectorId[1][1];
 
             srcAreaId = formatId(IAREA_OUT, srcNodeNum, srcAreaNum);
-            srcCenter = getCenterOfArea(document.getElementById(srcAreaId), false);
+            srcCenter = getCenterOfArea(document.getElementById(srcAreaId), true);
             dstAreaId = formatId(IAREA_IN, dstNodeNum, dstAreaNum);
-            dstCenter = getCenterOfArea(document.getElementById(dstAreaId), false);
+            dstCenter = getCenterOfArea(document.getElementById(dstAreaId), true);
             connector = createConnector(srcAreaId);
             connector.id = formatConnectorId(srcAreaId, dstAreaId);
             connector.connect(srcAreaId, false);
