@@ -22,5 +22,4 @@ def send_reset_email(id_user):
     password_formatted = password_reset.format(name_user=user_info["name_user"],
                                                url=reset_url)
     send_email([user_info["email"]], "PSCS - Password reset", password_formatted)
-    flash("Password reset email sent.")
     return redirect("pscs.index")

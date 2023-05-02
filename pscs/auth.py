@@ -267,7 +267,7 @@ def login_required(view):
                 token = url_signer.dumps(id_user)
                 if is_okay_to_send:
                     resend_url = url_for("auth.resend_confirmation", token=token)
-                    msg = f"Email verification is required. To send a new verification link, <a href='http://{current_app.config['CURRENT_URL']}{resend_url}'>click here</a>."
+                    msg = f"Email verification is required. To send a new verification link, <a href='https://{current_app.config['CURRENT_URL']}{resend_url}'>click here</a>."
                 else:
                     msg = "Email verification is required. Check your inbox for the confirmation email."
                 flash(msg, category="link")
@@ -315,15 +315,15 @@ def reset_password_email():
     if request.method == "GET":
         return render_template("auth/password_forgot.html")
     if request.method == "POST":
-        data = request.json
+        data = request.form
         id_user = None
         if "id_user" in data.keys():
             id_user = data["id_user"]
-        elif "name_user" in data.keys():
+        elif "username" in data.keys():
             db = get_db()
             id_user = db.execute("SELECT id_user "
                                  "FROM users_auth "
-                                 "WHERE name_user = ?", (data["name_user"],)).fetchone()["id_user"]
+                                 "WHERE name_user = ?", (data["username"],)).fetchone()["id_user"]
         if id_user is not None:
             send_reset_email(id_user)
             flash("Password reset sent.")
