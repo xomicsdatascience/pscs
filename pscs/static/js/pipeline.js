@@ -232,6 +232,20 @@ function createPscsNode(idNum, processName, module, params, pscsType, img){
         movingNode = false;  // signal that node is no longer being moved
         // expand container / prevent shrinking
         updateContainerSize();
+        // limit node position to container
+        let containerOffset = getContainerOffset();
+        let pos = pageEl.getBoundingClientRect();
+        let moveX = 0;
+        let moveY = 0;
+        if(pos.left < containerOffset[0]){
+            moveX = containerOffset[0] - pos.left;
+        }
+        if(pos.top < containerOffset[1]){
+            moveY = containerOffset[1] - pos.top;
+        }
+        if(moveX != 0 || moveY != 0){
+            pageEl.moveAll(moveX, moveY);
+        }
     }
     function drag(event){
     // signals that the element should be moved to follow cursor
