@@ -391,7 +391,7 @@ function createPscsNode(idNum, processName, module, params, pscsType, img){
 function updateContainerSize(){
     let container = getContainer();
     // get maximum position of nodes
-    let nodes = document.querySelectorAll("[id^=" + NODE + "]");
+    let nodes = document.querySelectorAll("[id^=" + NODE + SEP + "]");
     let maxRight = 0;
     let maxBottom = 0;
     nodes.forEach(node => {
