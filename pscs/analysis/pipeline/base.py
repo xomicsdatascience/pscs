@@ -1,10 +1,6 @@
-import numpy as np
 from abc import ABC, abstractmethod
-import anndata
-from pscs.exceptions import PipeLineException, PreviousNodesNotRun, NodeRequirementsNotMet
+from pscs.exceptions import PreviousNodesNotRun, NodeRequirementsNotMet
 from copy import deepcopy
-import pandas as pd
-import os
 
 
 class PipelineNode(ABC):
@@ -152,7 +148,7 @@ class PipelineNode(ABC):
             cumul_effect.update(inp.cumulative_effect())
         req_set = set(self._requirements)
         unmet_reqs = req_set.difference(cumul_effect)
-        if len(unmet_req) > 0:
+        if len(unmet_reqs) > 0:
             # Not all _requirements have been met
             raise NodeRequirementsNotMet(unmet_reqs=list(unmet_reqs), reqs=list(req_set))
         return True
@@ -211,7 +207,6 @@ class Pipeline:
 
     def run(self):
         # Get how many are ready, how many are done
-        to_run = []
         ready_list = []
         for _, node in self.pipeline.items():
             if node.is_ready:

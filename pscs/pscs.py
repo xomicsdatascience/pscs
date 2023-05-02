@@ -13,7 +13,6 @@ from pscs.analysis.pipeline import node_parser
 import os
 import uuid
 import numpy as np
-from pscs.analysis import single_cell
 from pscs.transfers.dispatching import dispatch, can_user_submit
 from flask import send_from_directory
 import plotly.express as px
@@ -214,58 +213,6 @@ def add_user_to_project(id_user: str,
     db.execute("UPDATE projects SET num_members = ? WHERE id_project = ?", (len(project_members), id_project))
     db.commit()
     return
-
-
-@bp.route('/analysis', methods=['GET', 'POST'])
-@login_required
-def analysis():
-    # Page needs file list, project info
-    userid = g.user['id_user']
-    if 'CURRENT_PROJECT' in session.keys():
-        id_project = session['CURRENT_PROJECT']
-    else:
-        redirect(url_for('pscs.index'))
-    db = get_db()
-    # Get files associated with this user
-    data = db.execute("SELECT file_path FROM data WHERE id_user=(?) AND id_project = ?", (userid,id_project)).fetchall()
-    data_list = []
-    for d in data:
-        data_list.append(dict(d))
-        data_list[-1]['file_path_basename'] = os.path.basename(data_list[-1]['file_path'])
-    if request.method == 'GET':
-        return render_template(("pscs/analysis.html"), files=data)
-    if request.method == 'POST':
-        file = os.path.join(current_app.config['UPLOAD_FOLDER'].format(userid=userid), request.form['analyze'])
-        res_dir = current_app.config['RESULTS_DIRECTORY'].format(userid=userid)
-        os.makedirs(res_dir, exist_ok=True)
-        ann_data = single_cell.analyze(file, res_dir, 'test')
-        results = os.listdir(res_dir)
-        results = [os.path.join(res_dir, r) for r in results]
-        results.sort(key=os.path.getmtime)
-
-        results = db.execute('SELECT file_path, result_type, title, description FROM results WHERE id_project = ?', (id_project,)).fetchall()
-        results_list = []
-        for r in results:
-            results_list.append(dict(r))
-            results_list[-1]['file_load_path'] = r['file_path'].replace('pscs/', '')
-
-        plot_data = ann_data.obs
-        plot_data['UMAP1'] = ann_data.obsm['X_umap'][:, 0]
-        plot_data['UMAP2'] = ann_data.obsm['X_umap'][:, 1]
-        index_name = plot_data.index.name
-        plot_data.reset_index(inplace=True)
-        fig = px.scatter(plot_data, x='UMAP1',
-                         y='UMAP2',
-                         size='total_counts',
-                         hover_name=index_name,
-                         size_max=30,
-                         color=ann_data.obs['leiden'],
-                         width=800)
-
-        graph_json = json.dumps(fig, cls=plotly.utils.PlotlyJSONEncoder)
-        # Move to new page
-        return render_template("pscs/analysis.html", files=data_list, results=results_list, graph_json=graph_json)
-        # return render_template("pscs/analysis.html", files=data_list, results=results, graph_json=graph_json)
 
 
 @bp.route('/results/<userid>/<filename>', methods=['GET'])
