@@ -148,6 +148,11 @@ def create_project():
             flash(error)
         else:
             db = get_db()
+            # Check whether user is allowed to make more
+            can_create = below_project_limits(db, g.user["id_user"])
+            if not can_create:
+                flash("Project limits for user have been exceeded.")
+                return redirect("create_project")
             # Insert into projects table
             id_project = get_unique_value_for_field(db, field="id_project", table="projects")
 
@@ -165,6 +170,28 @@ def create_project():
             results_dir.mkdir(exist_ok=True)
             return redirect(url_for('pscs.project', id_project=id_project))
     return render_template("pscs/create.html")
+
+
+def below_project_limits(db, id_user: str) -> bool:
+    """
+    Checks whether project limits have been exceeded by the user.
+    Parameters
+    ----------
+    db : sqlite3.Connection
+        Database connection to check.
+    id_user : str
+        Id of the user to check.
+
+    Returns
+    -------
+    bool
+        Whether the user is below project limits
+    """
+    project_count = len(db.execute("SELECT id_project "
+                                   "FROM projects "
+                                   "WHERE id_user = ?", (id_user,)).fetchall())
+    below_count = project_count < current_app.config["PRIVATE_PROJECT_COUNT_LIMIT"]
+    return below_count
 
 
 def add_user_to_project(id_user: str,

@@ -176,7 +176,7 @@ function renameProject(){
 }
 
 function deleteProject(projectName){
-  confirmationText = "Delete project " + projectName
+  confirmationText = "Delete project " + projectName + "?"
   if(confirm(confirmationText)){
     var delete_spec = new Object();
     delete_spec['delete'] = true;
