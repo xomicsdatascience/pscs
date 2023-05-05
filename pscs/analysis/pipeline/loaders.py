@@ -51,7 +51,7 @@ class CSVLoadingNode(InputNode):
         """
         exception_str = []
         if not self.path.endswith('.tsv') or not self.path.endswith('.csv'):
-            exception_str.append(f"File {os.path.basename(path)} must be either .csv or .tsv")
+            exception_str.append(f"File {os.path.basename(self.path)} must be either .csv or .tsv")
         if len(exception_str) > 0:
             raise ValueError(exception_str)
         return

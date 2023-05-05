@@ -1126,8 +1126,11 @@ async function loadAnalysis(){
     // determine depth of each node
     let maxDepth = -1;
     let doBreak = false;
+    let spliceIdxList;
+    let hasChanged = true;
     while(nodesWithoutDepth.length > 0){
-        let spliceIdxList = [];
+        spliceIdxList = [];
+        hasChanged = false;
         for(let spliceIdx = 0; spliceIdx < nodesWithoutDepth.length; spliceIdx++){
             let node = nodesWithoutDepth[spliceIdx];
             // examine previous nodes; if they all have depth, assign max depth+1 to this node
@@ -1137,16 +1140,19 @@ async function loadAnalysis(){
                 // get num of previous node
                 let prevNum = extractIdNums(node.dstConnectors[previousNodeIdx])[0][0];
                 let prevNode = nodeObject[prevNum];
-                if(prevNode.depth === -1){
+                if(prevNode.depth === -1 && hasChanged){
                     doBreak = true;
                     break;
                 }
-                // has depth; compare to maxdepth
-                maxDepth = Math.max(maxDepth, prevNode.depth);
+                if(prevNode.depth !== -1){
+                    // has depth; compare to maxdepth
+                    maxDepth = Math.max(maxDepth, prevNode.depth);
+                }
             }
             if(doBreak){
-                break;
+                continue;
             }
+            hasChanged = true;
             node.depth = maxDepth + 1;
             spliceIdxList.push(spliceIdx);
         }
