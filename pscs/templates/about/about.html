@@ -1,0 +1,47 @@
+{% extends 'base.html' %}
+
+{% block header %}
+<h1>About PSCS</h1>
+{% endblock %}
+
+{% block content %}
+<p>The Platform for Single-Cell Science (PSCS, "pai-seez") is a system developed for methods related to Single Cell
+    with the following goals:
+<ul>
+    <li>Improving accessibility of analytical methods.</li>
+    <li>Ensuring reproducibility of results by making version control and containerization transparent.</li>
+    <li>Linking published results with results verified by a third party.</li>
+    <li>Facilitating multi-site collaboration with analyses that can be fully inspected.</li>
+    <li>Associating results with permanent DOI.</li>
+    <li>Providing data hosting for promoting science.</li>
+</ul>
+</p>
+
+<h2>Acknowledgement</h2>
+<p>PSCS is being developed by the <a href="https://github.com/xomicsdatascience/">XOmics Data Science Lab</a> headed by <a href="https://www.cedars-sinai.edu/research/labs/meyer.html">Dr. Jesse Meyer</a>.
+    The lab is associated with the department of <a href="https://www.cedars-sinai.edu/research/departments-institutes/computational-biomedicine.html">Computational Biomedicine</a> at Cedars Sinai.
+Distributed computation is made possible by services provided by the OSG Consortium [1,2,3], which is supported by the National Science Foundation awards #2030508 and #1836650.</p>
+
+<h3>Citing</h3>
+<p>If citing PSCS, please cite the relevant project and the following:</p>
+<h4>PSCS</h4>
+<p>Hutton, A., Meyer, J.G. <i>Platform for Single-Cell Science.</i> <a href="https://pscs.xods.org"><u>https://pscs.xods.org</u></a></p>
+<h4>Open Science Grid</h4>
+<ol>
+    <li>Pordes, R., Petravick, D., Kramer, B., Olson, D., Livny, M., Roy, A., Avery, P., Blackburn, K., Wenaus, T., Würthwein, F., Foster, I., Gardner, R., Wilde, M., Blatecky, A., McGee, J., & Quick, R. (2007). The open science grid. J. Phys. Conf. Ser., 78, 012057. https://doi.org/10.1088/1742-6596/78/1/012057</li>
+    <li>Sfiligoi, I., Bradley, D. C., Holzman, B., Mhashilkar, P., Padhi, S., & Wurthwein, F. (2009). The pilot way to grid resources using glideinWMS. 2009 WRI World Congress on Computer Science and Information Engineering, 2, 428–432. https://doi.org/10.1109/CSIE.2009.950</li>
+    <li>OSG. (2006). OSPool. OSG. https://doi.org/10.21231/906P-4D78</li>
+</ol>
+
+<!--<h2>Team</h2>-->
+<!--{% for member in team %}-->
+<!--    <table>-->
+<!--        <tr>-->
+<!--            <td><img src="{{member['image']}}"></td>-->
+<!--            <td>{{member["name"]}}</td>-->
+<!--            <td>{{member["role"]}}</td>-->
+<!--        </tr>-->
+<!--    </table>-->
+<!--{% endfor %}-->
+
+{% endblock %}

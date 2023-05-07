@@ -7,13 +7,14 @@
 <nav>
     <h1><a href="{{ url_for('pscs.index') }}" style="color: #C8383E">PSCS - Platform for Single Cell Science</a></h1>
     <ul>
-        {% if session["is_admin"] %}
-            <li><a href="{{ url_for('admin.posts') }}">Admin</a></li>
-        {% endif %}
+        <li><a href="{{url_for('pscs.about')}}">About</a></li>
         {% if g.user %}
             <li><a href="{{ url_for('pscs.projects_summary') }}">My Projects</a>
             <li><a href="{{ url_for('pscs.profile') }}">{{ g.user['name_user'] }}</a>
             <li><a href="{{ url_for('auth.logout') }}">Log Out</a>
+            {% if session["is_admin"] %}
+                <li><a href="{{ url_for('admin.posts') }}">Admin</a></li>
+            {% endif %}
         {% else %}
             <li><a href="{{ url_for('auth.register') }}">Register</a>
             <li><a href="{{ url_for('auth.login') }}">Log In</a>

@@ -555,6 +555,12 @@ def pipeline_designer():
         return render_template("pscs/pipeline.html")
 
 
+@bp.route("/about", methods=["GET"])
+def about():
+    if request.method == "GET":
+        return render_template("about/about.html")
+
+
 def get_save_destinations():
     # Get all projects that this user belongs to
     db = get_db()
