@@ -29,6 +29,7 @@ def create_app(test_config=None) -> Flask:
     this_dir = dirname(__file__)
     template_source = join(this_dir, "templates")
     static_source = join(this_dir, "static")
+    print(f"Copying from {template_source} into {template_directory}")
     shutil.copytree(template_source, template_directory, dirs_exist_ok=True)
     shutil.copytree(static_source, static_directory, dirs_exist_ok=True)
     app = Flask(__name__, instance_path=env_dict["INSTANCE_PATH"],
