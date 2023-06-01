@@ -22,25 +22,34 @@ class ScatterPlot(OutputNode):
         plt.xlabel(self.x)
         plt.ylabel(self.y)
         plt.savefig(self.output_name)  ## TODO: make sure this is sanitized before reaching this
-        # sc.pl.scatter(ann_data, x=self.x, y=self.y, color=self.color)
         return
 
-class HighestExpressed(OutputNode):
-    def __init__(self):
+
+class HighestExpressedGenes(OutputNode):
+    def __init__(self,
+                 n_top: int = 30,
+                 output_name: str = "highest_expressed.png"):
+        """
+        Fraction of counts assigned to each gene over all cells.
+        Computes, for each gene, the fraction of counts assigned to that gene within a cell. The n_top genes with the highest mean fraction over all cells are plotted as boxplots.
+        Parameters
+        ----------
+        n_top : int
+            Number of top-expressed genes to plot. Default: 30.
+        log : bool
+            Whether to plot the x-axis in log scale. Default: False.
+        output_name : str
+            Name of the output file.
+        """
         super().__init__()
+        self.n_top = n_top
+        self.output_name = output_name
         return
 
     def run(self):
-        raise NotImplementedError
-        return
-
-class Violin(OutputNode):
-    def __init__(self):
-        super().__init__()
-        return
-
-    def run(self):
-        raise NotImplementedError
+        ann_data = self._previous[0].result
+        sc.pl.highest_expr_genes(ann_data, n_top=self.n_top, show=False)
+        plt.savefig(self.output_name)
         return
 
 
