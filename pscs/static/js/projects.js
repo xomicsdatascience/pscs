@@ -63,7 +63,7 @@ async function executePipeline(){
 
   let query = 'select[id^=' + INPUTDROPDOWNPREFIX + ']';
   let inputFiles = document.querySelectorAll(query);
-  let filePaths = new Object();
+  let filePaths = {};
   for(let i=0; i<inputFiles.length; i++){
     // .value has data id
     let filePath = inputFiles[i].value;
@@ -87,8 +87,7 @@ async function executePipeline(){
       "Content-Type": "application/json"},
     body: JSON.stringify(pipelineSummary)
     }).then(response => {
-      let data = response.json();
-      return data;
+      return response.json();
     })
       .then(data => {
         if(data.hasOwnProperty("submit_success") && data.submit_success === 0){
@@ -99,11 +98,9 @@ async function executePipeline(){
         }
       });
   unpauseRun("buttonRun")
-  btn.disabled = false;
-  document.body.style.cursor = start_cursor;
 }
 
-let pauseStartCursor;
+let pauseStartCursor = null;
 function pauseRun(elementIdToDisable){
   let disEl = document.getElementById(elementIdToDisable);
   pauseStartCursor = document.body.style.cursor;
