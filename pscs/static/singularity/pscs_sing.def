@@ -2,7 +2,8 @@ Bootstrap: docker
 From: ubuntu:22.04
 
 %files
-pscs-latest.whl /pscs.whl
+pscs-latest-py3-none-any.whl /pscs-latest-py3-none-any.whl
+run_pscs_pipeline.py /run_pscs_pipeline.py
 
 %post
 su - root
@@ -23,10 +24,10 @@ apt-get install -y python3.10 python3.10-dev python3-pip
 apt-get install -y -q --no-install-recommends sudo wget
 
 pip install --upgrade pip
-pip install /pscs.whl
+pip install /pscs-latest-py3-none-any.whl
 
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 
 %runscript
-echo "running!"
+python

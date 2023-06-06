@@ -2,17 +2,13 @@ notify_user = {osf_user_email}
 notification = always
 
 
-executable = test.py
+executable = run_pscs_pipeline.py
 arguments = {node_json} {input_json} {output_directory}
-# Locations for std outputs
 
+# Locations for std outputs
 error = stderr/{pscs_job_id}.error
 output = stdout/{pscs_job_id}.output
 log = logs/pscs_latest.log
-
-#error = stderr/singtest-$(Process).error
-#output = stdout/singtest-$(Process).output
-#log = logs/singtest-$(Process).log
 
 # Request resources
 request_cpus = 1
