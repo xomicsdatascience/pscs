@@ -313,7 +313,7 @@ def main(db, env, debug=False):
         # Transfer data to local dir
         job_info = db.execute("SELECT id_project, id_analysis, remote_results_directory "
                               "FROM submitted_jobs "
-                              "WHERE submitted_resource = ? AND resource_job_id = ?", c_job).fetchone()
+                              "WHERE submitted_resource = ? AND resource_job_id = ? AND is_complete = 0", c_job).fetchone()
         if job_info is None:
             print_debug(c_job, debug)
             continue
