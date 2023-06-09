@@ -18,10 +18,12 @@ class ScatterPlot(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        plt.figure()
         plt.scatter(ann_data[:, self.x].X, ann_data[:, self.y].X)
         plt.xlabel(self.x)
         plt.ylabel(self.y)
-        plt.savefig(self.output_name)  ## TODO: make sure this is sanitized before reaching this
+        plt.savefig(self.output_name)
+        plt.close()
         return
 
 
