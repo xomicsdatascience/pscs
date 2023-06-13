@@ -1,0 +1,13 @@
+{% extends 'base.html' %}
+
+{% block header %}
+{% endblock %}
+
+{% block content %}
+<form method="post">
+  <label for="password">{{prompt_label}}</label>
+  <input id="password" type="password" name="password">
+  <input type="submit" value="Submit">
+</form>
+
+{% endblock %}

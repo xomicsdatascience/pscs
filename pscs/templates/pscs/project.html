@@ -55,7 +55,7 @@
     <option value="{{an}}">{{analyses[an]}}</option>
   {% endfor %}
 </select>
-<button onclick="executePipeline();" id="buttonRun" disabled="true">Run</button>
+<button onclick="executePipeline();" id="buttonRun" disabled="disabled">Run</button>
 
 <!--Results-->
 <h3>Results</h3>
@@ -84,6 +84,11 @@ Users associated with this project:
       <td>Add user</td>
       <td><input type="text" id="addUser"></td>
       <td><button onclick="addUser();">Add</button></td>
+    </tr>
+    <tr>
+      <td>Publish project</td>
+      <td></td>
+      <td><button onclick="window.location.href=window.location.href + '/publish'">Publishing options</button></td>
     </tr>
     <tr>
       <td>Rename project</td>

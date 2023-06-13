@@ -9,6 +9,7 @@ import tempfile
 import os
 import time
 
+
 def dispatch(pipeline_json: str,
              id_user: str,
              file_info: dict,
@@ -41,11 +42,14 @@ def dispatch(pipeline_json: str,
     for k, v in file_info.items():
         file_ids[k] = file_info[k]["id"]
         file_paths[k] = file_info[k]["file_path"]
-    # Make destination
 
+    db = get_db()
+    pscs_job_id = get_unique_value_for_field(db, "id_job", "submitted_jobs")
+
+    # Make destination
     remote_proj_dir = get_remote_project_dir(id_project=id_project, id_analysis=id_analysis, resource=resource)
     remote_mkdir(remote_dir=remote_proj_dir, resource=resource)
-    remote_results = join(remote_proj_dir, 'results')
+    remote_results = join(remote_proj_dir, 'results', pscs_job_id)
     remote_mkdir(remote_dir=remote_results, resource=resource)
 
     # Transfer files
@@ -58,8 +62,7 @@ def dispatch(pipeline_json: str,
     transfer_file(remap_filename, remote_dir=remote_proj_dir, resource=resource)
 
     # Submission script
-    db = get_db()
-    pscs_job_id = get_unique_value_for_field(db, "id_job", "submitted_jobs")
+
     htcondor_script = generate_htcondor_submission(pipeline_json=pipeline_json,
                                                    remapped_input_json=remap_filename,
                                                    remote_project_dir=remote_proj_dir,

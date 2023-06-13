@@ -1,11 +1,15 @@
+import random
+
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, url_for, Flask, session, current_app, send_from_directory,
     jsonify
 )
 from markdown import markdown
 from werkzeug.exceptions import abort
+import werkzeug.utils
 from werkzeug.utils import secure_filename
-from pscs.auth import login_required
+from werkzeug.security import check_password_hash, generate_password_hash
+from pscs.auth import login_required, is_logged_in
 import pscs.db
 from pscs.db import get_db, get_unique_value_for_field
 from pscs.metadata.metadata import get_metadata
@@ -14,6 +18,7 @@ import os
 import uuid
 import numpy as np
 from pscs.transfers.dispatching import dispatch, can_user_submit
+from pscs.messaging.mail import send_email
 from flask import send_from_directory
 import plotly.express as px
 import plotly
@@ -22,6 +27,9 @@ import json
 import hashlib
 import pathlib
 import sqlite3
+from collections import defaultdict as dd
+import secrets
+import string
 
 bp = Blueprint("pscs", __name__)
 ALLOWED_EXTENSIONS = {'csv', 'tsv'}
@@ -49,10 +57,10 @@ def allowed_file(filename):
     return '.' in filename and filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
 
-@bp.route(f"/upload/<user>/<name>", methods=['GET'])
+@bp.route(f"/upload/<id_project>/<name>", methods=['GET'])
 @login_required
-def download_file(name, user):
-    return send_from_directory(current_app.config['UPLOAD_FOLDER'].format(username=user), name)
+def download_file(id_project, name):
+    return send_from_directory(current_app.config['UPLOAD_FOLDER'].format(id_project=id_project), name)
 
 
 @bp.route('/upload', methods=['GET','POST'])
@@ -75,7 +83,7 @@ def upload():
                 flash("You do not have permission to upload files.")
                 return redirect(url_for("pscs.project", id_project=session["CURRENT_PROJECT"]))
             filename = secure_filename(file.filename)
-            out_path = current_app.config['UPLOAD_FOLDER'].format(userid=g.user['id_user'])
+            out_path = current_app.config['UPLOAD_FOLDER'].format(id_project=session["CURRENT_PROJECT"])
             os.makedirs(out_path, exist_ok=True)
             out_file = os.path.join(out_path, filename)
             file.save(out_file)
@@ -253,60 +261,7 @@ def get_file(userid, filename):
 @login_required
 def project(id_project):
     if request.method == 'GET':
-        db = get_db()
-        user_read = check_user_permission('data_read', 1, id_project)
-        user_write = check_user_permission('data_write', 1, id_project)
-        id_user = g.user['id_user']
-        if user_read:  # Check that user has read permission
-            # Display files for this project only
-            session['CURRENT_PROJECT'] = id_project
-            project_name = db.execute('SELECT name_project FROM projects WHERE id_project = ?', (id_project,)).fetchone()
-            project_name = project_name["name_project"]
-            # project_name = db.execute('SELECT name_project FROM projects WHERE id_project = ? and id_user = ?', (id_project, id_user)).fetchall()[0]['name_project']
-            # Get analyses
-            project_analyses = db.execute('SELECT id_analysis, analysis_name FROM analysis WHERE id_project = ?', (id_project,)).fetchall()
-            analyses = {}  # used to store analysis name, keyed by ID
-            analysis_nodes = {}
-            for an in project_analyses:
-                analyses[an['id_analysis']] = an['analysis_name']
-                # Get input nodes with analysis
-                project_inputs_db = db.execute('SELECT node_id, node_name FROM analysis_inputs WHERE id_analysis = ?', (an['id_analysis'],)).fetchall()
-                project_inps = {}
-                for inp in project_inputs_db:
-                    project_inps[inp['node_id']] = inp['node_name']
-                analysis_nodes[an['id_analysis']] = project_inps
-            # Get files associated with project
-            project_data = db.execute('SELECT id_data, file_path FROM data WHERE id_project = ? AND id_user = ?', (id_project, id_user)).fetchall()
-            files = {}
-            for project_file in project_data:
-                files[project_file['id_data']] = os.path.basename(project_file['file_path'])
-            project_data_summary = db.execute('SELECT id_data, file_path, data_type, file_hash, data_uploaded_time FROM data WHERE id_project = ?', (id_project,)).fetchall()
-
-            # Get results
-            results_rows = db.execute("SELECT file_path, title, description, id_analysis FROM results WHERE id_project = ?", (id_project,)).fetchall()
-            results_files = []
-            for r in results_rows:
-                rr = dict(r)
-                rr["file_name"] = os.path.basename(r["file_path"])
-                results_files.append(rr)
-
-            # Get users associated with project
-            users = db.execute("SELECT name_user "
-                               "FROM users_auth INNER JOIN projects_roles "
-                               "ON users_auth.id_user = projects_roles.id_user WHERE id_project = ?", (id_project,)).fetchall()
-            summary = {"id_project": id_project, "id_user": id_user}
-            user_list = []
-            for u in users:
-                user_list.append(u['name_user'])
-            return render_template("pscs/project.html",
-                                   project_name=project_name,
-                                   analyses=analyses,
-                                   files=files,
-                                   analysis_nodes=analysis_nodes,
-                                   project_data_summary=project_data_summary,
-                                   results=results_files,
-                                   user_list=user_list,
-                                   summary=summary)
+        return display_private_project(id_project)
     elif request.method == 'POST':
         # Check for rename or delete
         if 'newName' in request.json:  # is rename
@@ -358,8 +313,507 @@ def project(id_project):
             id_data = request.json["deleteData"]
             delete_data(id_data)
             return url_for("pscs.project", id_project=id_project)
-
     return redirect(url_for('pscs.index'))
+
+
+@bp.route('/project/<id_project>/public', methods=['GET', 'POST'])
+def public_project(id_project):
+    """
+    Displays the public version of the project.
+    Parameters
+    ----------
+    id_project : str
+        ID of the project to display
+
+    Returns
+    -------
+
+    """
+    if request.method == "GET":
+        # First check session if user has previously entered password
+        if "project_review" in session.keys() and id_project in session["project_review"]:
+            return display_public_project(id_project)  # password previously entered
+        # Check whether the project is under peer review or is public
+        db = get_db()
+        public_status = db.execute("SELECT is_published, is_peer_review "
+                                   "FROM projects "
+                                   "WHERE id_project = ?", (id_project,)).fetchone()
+        if public_status is None or (public_status["is_peer_review"] == 0 and public_status["is_published"] == 0):
+            flash("The specified project either does not exist or is private.")
+            return redirect(url_for("pscs.index"))
+        if public_status["is_peer_review"]:
+            # Prompt user for password
+            return render_template("auth/prompt.html", prompt_label="Peer review password")
+        elif public_status["is_published"]:
+            return display_public_project(id_project)
+        else:
+            return redirect(url_for("pscs.index"))
+
+    elif request.method == "POST":
+        submitted_password = request.form["password"]
+        db = get_db()
+        # Get passhash from db
+        project_passhash = db.execute("SELECT peer_password "
+                                      "FROM projects_peer_review "
+                                      "WHERE id_project = ?", (id_project,)).fetchone()
+        if project_passhash is None:
+            flash("There was an error with the project's password. Please contact PSCS admin.")
+            return redirect(url_for("pscs.index"))
+        project_passhash = project_passhash["peer_password"]
+        if check_password_hash(project_passhash, submitted_password):
+            # password is valid; display page
+            append_to_session("project_review", id_project)
+            return display_public_project(id_project)
+
+        else:
+            flash("Password is incorrect.")
+            return redirect(url_for("pscs.public_project", id_project=id_project))
+    return
+
+
+def display_public_project(id_project):
+    db = get_db()
+    project_summary = db.execute("SELECT id_project, name_project, description "
+                                 "FROM projects "
+                                 "WHERE id_project = ?", (id_project,)).fetchone()
+    # get results
+    results_rows = db.execute(
+        "SELECT file_path, title, description, id_analysis FROM results WHERE id_project = ?",
+        (id_project,)).fetchall()
+    results_files = []
+    for r in results_rows:
+        rr = dict(r)
+        rr["file_name"] = os.path.basename(r["file_path"])
+        results_files.append(rr)
+
+    return render_template("pscs/project_public.html",
+                           project_name=project_summary["name_project"],
+                           summary=project_summary,
+                           results=results_files)
+
+
+def append_to_session(session_key: str,
+                      value):
+    """
+    Appends `value` to the current session under the `session_key` list. If `session_key` is not defined, creates the
+    list.
+    Parameters
+    ----------
+    session_key : str
+        Key for the list to which to append `value`.
+    value
+        Value to store.
+
+    Returns
+    -------
+    None
+
+    Raises
+    ------
+    ValueError
+        If there is already a value under session_key and it is not a list.
+    """
+    if session_key not in session.keys():
+        session[session_key] = []
+    if not isinstance(session[session_key], list):
+        raise ValueError(f"{session_key} is already used to store non-list data.")
+    session[session_key].append(value)
+    return
+
+
+def display_private_project(id_project):
+    """
+    Renders the view for projects that have not yet been published.
+    Parameters
+    ----------
+    id_project : str
+        ID of the project to display
+
+    Returns
+    -------
+
+    """
+    db = get_db()
+    user_read = check_user_permission('data_read', 1, id_project)
+    user_write = check_user_permission('data_write', 1, id_project)
+    id_user = g.user['id_user']
+    if user_read:  # Check that user has read permission
+        # Display files for this project only
+        session['CURRENT_PROJECT'] = id_project
+        project_name = db.execute('SELECT name_project FROM projects WHERE id_project = ?', (id_project,)).fetchone()
+        project_name = project_name["name_project"]
+        # Get analyses
+        project_analyses = db.execute('SELECT id_analysis, analysis_name FROM analysis WHERE id_project = ?',
+                                      (id_project,)).fetchall()
+        analyses = {}  # used to store analysis name, keyed by ID
+        analysis_nodes = {}
+        for an in project_analyses:
+            analyses[an['id_analysis']] = an['analysis_name']
+            # Get input nodes with analysis
+            project_inputs_db = db.execute('SELECT node_id, node_name FROM analysis_inputs WHERE id_analysis = ?',
+                                           (an['id_analysis'],)).fetchall()
+            project_inps = {}
+            for inp in project_inputs_db:
+                project_inps[inp['node_id']] = inp['node_name']
+            analysis_nodes[an['id_analysis']] = project_inps
+        # Get files associated with project
+        project_data = db.execute('SELECT id_data, file_path FROM data WHERE id_project = ? AND id_user = ?',
+                                  (id_project, id_user)).fetchall()
+        files = {}
+        for project_file in project_data:
+            files[project_file['id_data']] = os.path.basename(project_file['file_path'])
+        project_data_summary = db.execute(
+            'SELECT id_data, file_path, data_type, file_hash, data_uploaded_time FROM data WHERE id_project = ?',
+            (id_project,)).fetchall()
+
+        # Get results
+        results_rows = db.execute("SELECT file_path, title, description, id_analysis FROM results WHERE id_project = ?",
+                                  (id_project,)).fetchall()
+        results_files = []
+        for r in results_rows:
+            rr = dict(r)
+            rr["file_name"] = os.path.basename(r["file_path"])
+            results_files.append(rr)
+
+        # Get users associated with project
+        users = db.execute("SELECT name_user "
+                           "FROM users_auth INNER JOIN projects_roles "
+                           "ON users_auth.id_user = projects_roles.id_user WHERE id_project = ?",
+                           (id_project,)).fetchall()
+        summary = {"id_project": id_project, "id_user": id_user}
+        user_list = []
+        for u in users:
+            user_list.append(u['name_user'])
+        return render_template("pscs/project.html",
+                               project_name=project_name,
+                               analyses=analyses,
+                               files=files,
+                               analysis_nodes=analysis_nodes,
+                               project_data_summary=project_data_summary,
+                               results=results_files,
+                               user_list=user_list,
+                               summary=summary)
+
+
+@bp.route('/project/<id_project>/publish', methods=["GET", "POST"])
+@login_required
+def project_publish(id_project):
+    if request.method == "GET":
+        has_perm = check_user_permission(permission_name='project_management',
+                                         permission_value=1,
+                                         id_project=id_project)
+        if not has_perm:
+            flash("You do not have permission to do this; contact the project owner.")
+            return redirect(url_for("pscs.project", id_project=id_project))
+        # Has permission to publish; display publication page
+        db = get_db()
+        project_info = db.execute("SELECT name_project, description "
+                                  "FROM projects "
+                                  "WHERE id_project = ?", (id_project,)).fetchone()
+        # Author info
+        authors, missing_name = _get_authors(id_project)
+
+        # Data
+        # List data associated with project
+        project_data = _get_data(id_project)
+
+        # Analyses & results
+        analyses, result, unrun_analyses = _get_analyses(id_project)
+        return render_template("pscs/project_publish.html",
+                               proj=project_info,
+                               authors=authors,
+                               missing_name=missing_name,
+                               project_data=project_data,
+                               analyses=analyses,
+                               results=result,
+                               unrun_analyses=unrun_analyses)
+    elif request.method == "POST":
+        # Publish project
+        # check perm
+        has_perm = check_user_permission(permission_name="project_management",
+                                         permission_value=1,
+                                         id_project=id_project)
+        if not has_perm:
+            # Users will only end up here if their permissions have been changed while trying to publish a project
+            # (or they're being rude)
+            flash("You do not have permission to publish this project.")
+            return redirect(url_for("pscs.index"))
+
+        # Verify that user has input the correct project name
+        db = get_db()
+        name_project = db.execute("SELECT name_project "
+                                  "FROM projects "
+                                  "WHERE id_project = ?", (id_project,)).fetchone()["name_project"]
+        user_submmited_name = request.json["confirmation"]
+        if name_project != user_submmited_name:
+            flash("The project name you entered did not match the project's actual name. Please try again.")
+            return redirect(url_for("pscs.project_publish", id_project=id_project))
+
+        # Checks have been passed; user is allowed and has entered the correct confirmation.
+        # Validate the user input.
+        publication_info = request.json
+        # Now need to check all data
+        # Four things are sent: publication_type, authorlist, analyses, data
+        # Validate publication type
+        valid_pubtype = validate_publication_type(publication_info["publication_type"])
+        valid_authors = validate_authorlist(publication_info["authorlist"], id_project=id_project)
+        valid_analyses = validate_analyses(publication_info["analyses"], id_project=id_project)
+        valid_data = validate_data(publication_info["data"], id_project=id_project)
+
+        # Get author names
+        if valid_pubtype and valid_authors and valid_analyses and valid_data:
+            # Fetch results associated with analyses
+            publication_info["results"] = {}
+            for an_id in publication_info["analyses"]:
+                publication_info["results"][an_id] = db.execute("SELECT id_result "
+                                                                "FROM results "
+                                                                "WHERE id_analysis = ? AND id_project = ?", (an_id, id_project))
+            if publication_info["publication_type"] == "peer":
+                publish_peer_review(id_project, project_summary=publication_info)
+                flash(f"Project {name_project} set for peer review.")
+            return_url = url_for('pscs.index')
+            response_json = {"url": return_url, "publish_success": 1, "success_message": ""}
+            return jsonify(response_json)
+    return redirect(url_for("pscs.index"))
+
+
+def validate_publication_type(pubtype: str) -> bool:
+    return pubtype in ["peer", "public"]
+
+
+def validate_authorlist(authorlist: list,
+                        id_project: str) -> bool:
+    """
+    Checks whether each of the user IDs are associated with the project.
+    Parameters
+    ----------
+    authorlist : list
+        List of user IDs related to the project.
+    id_project : str
+        ID of the project that is being published.
+
+    Returns
+    -------
+    bool
+        Whether the list of authors is valid.
+    """
+    authorset = set(authorlist)
+    # Get list of all authors associated with project; compare overlap
+    db = get_db()
+    authors = db.execute("SELECT id_user "
+                         "FROM projects_roles "
+                         "WHERE id_project = ?", (id_project,)).fetchall()
+    author_ids = set([a["id_user"] for a in authors])
+    return authorset == authorset.intersection(author_ids)
+
+
+def validate_analyses(analyses: list,
+                      id_project: str) -> bool:
+    """
+    Verifies that the analyses are associated with the project.
+    Parameters
+    ----------
+    analyses : list
+        List of IDs of the analyses to be published.
+    id_project : str
+        ID of the project being published.
+
+    Returns
+    -------
+    bool
+        Whether the analyses are valid.
+    """
+    # Check that analyses are part of project
+    analyses_set = set(analyses)
+    db = get_db()
+    analyses_db = db.execute("SELECT id_analysis "
+                             "FROM analysis "
+                             "WHERE id_project = ?", (id_project,)).fetchall()
+    analyses_db_set = set([adb["id_analysis"] for adb in analyses_db])
+    analyses_are_associated = analyses_set == analyses_set.intersection(analyses_db_set)
+
+    # Check that analyses have been run
+    results_db = db.execute("SELECT id_analysis "
+                            "FROM results "
+                            "WHERE id_project = ?", (id_project,)).fetchall()
+    results_db_set = set([rdb["id_analysis"] for rdb in results_db])
+    has_results = analyses_set.intersection(results_db_set) == analyses_set
+    return analyses_are_associated and has_results
+
+
+def validate_data(data: list,
+                  id_project: str) -> bool:
+    """
+    Verifies that the data are associated with the project.
+    Parameters
+    ----------
+    data : list
+        List of IDs of the data to be published.
+    id_project : str
+        ID of the project being published.
+
+    Returns
+    -------
+    bool
+        Whether the list of data is valid.
+    """
+    data_set = set(data)
+    db = get_db()
+    data_db = db.execute("SELECT id_data "
+                         "FROM data "
+                         "WHERE id_project = ?", (id_project,)).fetchall()
+    data_db_set = set([ddb["id_data"] for ddb in data_db])
+    return data_set == data_set.intersection(data_db_set)
+
+
+def _get_authors(id_project) -> (list, bool):
+    """Returns the list of authors, each instance containing the name_user and name of the user. If a user doesn't have
+    a name associated with their account, also returns True."""
+    db = get_db()
+    authors = db.execute("SELECT users_auth.name, users_auth.name_user, users_auth.id_user "
+                         "FROM users_auth INNER JOIN projects_roles "
+                         "ON users_auth.id_user = projects_roles.id_user "
+                         "WHERE projects_roles.id_project = ?", (id_project,)).fetchall()
+    missing_name = False
+    for a in authors:
+        if a["name"] is None or len(a["name"]) == 0:
+            missing_name = True
+            break
+    return authors, missing_name
+
+
+def _get_data(id_project) -> list:
+    """Returns the list of data that has been uploaded to the project."""
+    db = get_db()
+    return db.execute("SELECT id_data, file_path, data_uploaded_time "
+                      "FROM data "
+                      "WHERE id_project = ?", (id_project,)).fetchall()
+
+
+def _get_analyses(id_project):
+    """Gets the analyses and results associated with each. If there are any analyses that were not run, return them
+    separately."""
+    db = get_db()
+    # Get only analyses with results
+    analyses_with_results = db.execute("SELECT analysis.id_analysis, analysis.analysis_name, results.id_result, results.file_path  "
+                                       "FROM results INNER JOIN analysis "
+                                       "ON results.id_analysis = analysis.id_analysis "
+                                       "WHERE results.id_project = ?", (id_project,)).fetchall()
+    analyses_summary = []
+    results = dd(list)
+    id_analyses_with_results = set()
+    for awr in analyses_with_results:
+        id_an = awr["id_analysis"]
+        results[id_an].append({"id_result": awr["id_result"], "file_path": awr["file_path"]})
+        if id_an in id_analyses_with_results:
+            continue
+        analyses_summary.append(awr)
+        id_analyses_with_results.add(id_an)
+
+    # Get analyses without results
+    all_analyses = db.execute("SELECT id_analysis, analysis_name "
+                              "FROM analysis "
+                              "WHERE id_project = ?", (id_project,)).fetchall()
+    analyses_without_results_summary = []
+    for aa in all_analyses:
+        id_an = aa["id_analysis"]
+        if id_an in id_analyses_with_results:
+            continue
+        analyses_without_results_summary.append(aa)
+
+    return analyses_summary, results, analyses_without_results_summary
+
+
+def publish_peer_review(id_project: str,
+                        project_summary: dict):
+    """
+    Sets a project to peer review. Selected data, analyses, and results are placed behind a password prompt that does
+    not require login.
+    Parameters
+    ----------
+    id_project : str
+        ID of the project to be published.
+    project_summary : dict
+        Dict containing what from the project should be made available.
+    Returns
+    -------
+    None
+    """
+    # Need to do the following:
+    db = get_db()
+    # Mark project as under peer review
+    db.execute("UPDATE projects "
+               "SET is_peer_review = 1 "
+               "WHERE id_project = ?", (id_project,))
+
+    # Mark data to be under peer review.
+    for id_data in project_summary["data"]:
+        db.execute("UPDATE data "
+                   "SET is_peer_review = 1 "
+                   "WHERE id_data = ?", (id_data,))
+
+    # Mark analysis to be under peer review
+    for id_analysis in project_summary["analyses"]:
+        db.execute("UPDATE analysis "
+                   "SET is_peer_review = 1 "
+                   "WHERE id_analysis = ?", (id_analysis,))
+
+    # Mark results for each analysis to be under peer review.
+    for id_an, results_list in project_summary["results"].items():
+        for id_result in results_list:
+            db.execute("UPDATE results "
+                       "SET is_peer_review = 1 "
+                       "WHERE id_result = ?", (id_result))
+
+    # Store authors in order
+    author_addresses = []
+    for position, id_user in enumerate(project_summary["authorlist"]):
+        db.execute("INSERT INTO publication_authors "
+                   "(id_project, id_user, author_position) "
+                   "VALUES (?,?,?)", (id_project, id_user, position))
+        # Get author emails for later
+        author_addresses.append(db.execute("SELECT email "
+                                           "FROM users_auth "
+                                           "WHERE id_user = ?", (id_user,)).fetchone()["email"])
+
+    peer_review_password = generate_password()
+    # Enter password into db
+    pass_hash = generate_password_hash(peer_review_password)
+    # We're checking the table twice; it's expected to be a small table, so we're going to rationalize our bad habits
+    previous = db.execute("SELECT id_project "
+                          "FROM projects_peer_review "
+                          "WHERE id_project=?", (id_project,)).fetchone()
+    if previous is None:
+        db.execute("INSERT INTO projects_peer_review "
+                   "(id_project, peer_password) "
+                   "VALUES(?,?)", (id_project, pass_hash))
+    else:
+        # Overwrite previous record
+        db.execute("UPDATE projects_peer_review "
+                   "SET peer_password=? "
+                   "WHERE id_project=?", (pass_hash, id_project))
+    # Password is destined for HTML email; need to escape characters
+    peer_review_password_html = werkzeug.utils.escape(peer_review_password)
+    # Prepare email to notify user
+    from pscs.templates.misc import peer_review_password_email
+    project_info = db.execute("SELECT name_project, description "
+                              "FROM projects "
+                              "WHERE id_project = ?", (id_project,)).fetchone()
+    project_url = "https://" + current_app.config["CURRENT_URL"] +  url_for("pscs.public_project", id_project=id_project)
+    project_url = f"<a href='{project_url}'>{project_url}</a>"  # to make email content clickable
+    peer_email = peer_review_password_email.format(title=project_info["name_project"],
+                                                   description=project_info["description"],
+                                                   project_url=project_url,
+                                                   peer_review_password=peer_review_password_html)
+    send_email(author_addresses, subject="PSCS Project Set for Peer Review", body=peer_email)
+    db.commit()
+    return
+
+
+def generate_password(length: int = 32) -> str:
+    """Generates a password"""
+    charset = string.digits + string.ascii_letters + string.punctuation
+    return ''.join(random.SystemRandom().choice(charset) for _ in range(length))
 
 
 def check_user_permission(permission_name: str,
@@ -438,7 +892,6 @@ def run_analysis():
         return jsonify(response_json)
 
 
-# @bp.route('/project/delete_data', methods=['POST'])
 def delete_data(id_data):
     """
     Deletes the data specified by the POST request. Verifies that user has permission to do so.
@@ -526,8 +979,8 @@ def pipeline_designer():
 
         if is_dest_project:
             pipeline_dir = current_app.config['PROJECTS_DIRECTORY'].format(id_project=id_project)
-        else:
-            pipeline_dir = current_app.config['UPLOAD_FOLDER'].format(userid=g['id_user'])
+        # else:
+            # pipeline_dir = current_app.config['UPLOAD_FOLDER'].format(userid=g['id_user'])
 
         output_name = pipeline_id + '.json'
         pipeline_file = os.path.join(pipeline_dir, output_name)
@@ -640,10 +1093,41 @@ def calc_hash_of_file(file: str) -> str:
 
 
 @bp.route('/projects/<id_project>/results/<id_analysis>/<path:filename>', methods=['GET'])
-@login_required
 def results(filename, id_project, id_analysis):
-    has_perm = check_user_permission("data_read", 1, id_project)
-    if not has_perm:
+    # If logged in and has permission, don't need to check public
+    if is_logged_in() and check_user_permission("data_read", 1, id_project):
+        return private_results(filename, id_project, id_analysis)
+    db = get_db()
+    public_status = db.execute("SELECT is_published, is_peer_review "
+                               "FROM projects "
+                               "WHERE id_project = ?", (id_project,)).fetchone()
+    if public_status is None:
+        return  # Problem
+    if public_status["is_published"]:
+        return public_results(filename, id_project, id_analysis)
+    elif public_status["is_peer_review"]:
+        return review_results(filename, id_project, id_analysis)
+
+
+# @login_required
+def private_results(filename, id_project, id_analysis):
+    if is_logged_in():
+        has_perm = check_user_permission("data_read", 1, id_project)
+        if not has_perm:
+            return
+        res_dir = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=id_analysis)
+        return send_from_directory(res_dir, secure_filename(filename))
+    else:
         return
+
+
+def review_results(filename, id_project, id_analysis):
+    if "project_review" in session.keys() and id_project in session["project_review"]:
+        res_dir = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=id_analysis)
+        return send_from_directory(res_dir, secure_filename(filename))
+    return
+
+
+def public_results(filename, id_project, id_analysis):
     res_dir = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=id_analysis)
     return send_from_directory(res_dir, secure_filename(filename))

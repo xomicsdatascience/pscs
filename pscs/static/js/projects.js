@@ -104,7 +104,7 @@ let pauseStartCursor = null;
 function pauseRun(elementIdToDisable){
   let disEl = document.getElementById(elementIdToDisable);
   pauseStartCursor = document.body.style.cursor;
-  disEl.disable = true;
+  disEl.disabled = true;
   document.body.style.cursor = "wait";
 }
 

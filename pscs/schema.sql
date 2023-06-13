@@ -73,6 +73,7 @@ CREATE TABLE projects (
     num_members INT DEFAULT 1,
     creation_time_project TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_published BIT DEFAULT 0,
+    is_peer_review BIT DEFAULT 0,
     FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
 );
 
@@ -143,6 +144,7 @@ CREATE TABLE data (
     file_hash TEXT NOT NULL,  -- sha3-256 hash of the data
     data_uploaded_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_published BIT DEFAULT 0,  -- whether this data has been published; prevents auto deletion
+    is_peer_review BIT DEFAULT 0,  -- whether the data is under peer review
     FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE,
     FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE
 );
@@ -156,6 +158,7 @@ CREATE TABLE data_deletion (
   file_hash TEXT NOT NULL,  -- sha3-256 hash of the data
   data_uploaded_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
   is_published BIT DEFAULT 0,  -- whether this data has been published; prevents auto deletion
+  is_peer_review BIT DEFAULT 0,  -- whether the data is under peer review
   deletion_time_data TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -163,8 +166,8 @@ CREATE TRIGGER stage_data_deletion
   BEFORE DELETE ON data
   FOR EACH ROW
   BEGIN
-    INSERT INTO data_deletion(id_data, id_user, id_project, file_path, data_type, data_type, file_hash, data_uploaded_time, is_published)
-    VALUES(OLD.id_data, OLD.id_user, OLD.id_project, OLD.file_path, OLD.data_type, OLD.data_type, OLD.file_hash, OLD.data_uploaded_time, OLD.is_published);
+    INSERT INTO data_deletion(id_data, id_user, id_project, file_path, data_type, data_type, file_hash, data_uploaded_time, is_published, is_peer_review)
+    VALUES(OLD.id_data, OLD.id_user, OLD.id_project, OLD.file_path, OLD.data_type, OLD.data_type, OLD.file_hash, OLD.data_uploaded_time, OLD.is_published, OLD.is_peer_review);
   END;
 
 CREATE TABLE results(
@@ -176,6 +179,8 @@ CREATE TABLE results(
     description TEXT,  -- description of result
     title TEXT,
     is_interactive BIT NOT NULL DEFAULT 0,
+    is_published BIT DEFAULT 0,
+    is_peer_review BIT DEFAULT 0,
     FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE,
     FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE
 );
@@ -189,6 +194,8 @@ CREATE TABLE results_deletion(
     description TEXT,  -- description of result
     title TEXT,
     is_interactive BIT NOT NULL DEFAULT 0,
+    is_published BIT DEFAULT 0,
+    is_peer_review BIT DEFAULT 0,
     deletion_time_results TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -197,8 +204,8 @@ CREATE TRIGGER stage_results_deletion
   BEFORE DELETE ON results
   FOR EACH ROW
   BEGIN
-    INSERT INTO results_deletion(id_result, id_project, id_analysis, file_path, result_type, description, title, is_interactive)
-    VALUES(OLD.id_result, OLD.id_project, OLD.id_analysis, OLD.file_path, OLD.result_type, OLD.description, OLD.title, OLD.is_interactive);
+    INSERT INTO results_deletion(id_result, id_project, id_analysis, file_path, result_type, description, title, is_interactive, is_published, is_peer_review)
+    VALUES(OLD.id_result, OLD.id_project, OLD.id_analysis, OLD.file_path, OLD.result_type, OLD.description, OLD.title, OLD.is_interactive, OLD.is_published, OLD.is_peer_review);
   END;
 
 CREATE TABLE analysis(
@@ -210,6 +217,8 @@ CREATE TABLE analysis(
     analysis_hash NOT NULL,  -- hash of the node_file + parameter_file, for checking if analysis has changed since validation
     is_validated BIT NOT NULL DEFAULT 0,
     initial_pscs_version TEXT NOT NULL DEFAULT 0,
+    is_published BIT DEFAULT 0,
+    is_peer_review BIT DEFAULT 0,
     FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE
 );
 
@@ -222,6 +231,8 @@ CREATE TABLE analysis_deletion(
   analysis_hash NOT NULL,  -- hash of the node_file + parameter_file, for checking if analysis has changed since validation
   is_validated BIT NOT NULL DEFAULT 0,
   initial_pscs_version TEXT NOT NULL DEFAULT 0,
+  is_published BIT DEFAULT 0,
+  is_peer_review BIT DEFAULT 0,
   deletion_time_analysis TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -229,8 +240,8 @@ CREATE TRIGGER stage_analysis_deletion
   BEFORE DELETE ON analysis
   FOR EACH ROW
   BEGIN
-    INSERT INTO analysis_deletion(id_analysis, id_project, analysis_name, node_file, parameter_file, analysis_hash, is_validated, initial_pscs_version)
-    VALUES(OLD.id_analysis, OLD.id_project, OLD.analysis_name, OLD.node_file, OLD.parameter_file, OLD.analysis_hash, OLD.is_validated, OLD.initial_pscs_version);
+    INSERT INTO analysis_deletion(id_analysis, id_project, analysis_name, node_file, parameter_file, analysis_hash, is_validated, initial_pscs_version, is_peer_review, is_published)
+    VALUES(OLD.id_analysis, OLD.id_project, OLD.analysis_name, OLD.node_file, OLD.parameter_file, OLD.analysis_hash, OLD.is_validated, OLD.initial_pscs_version, OLD.is_peer_review, OLD.is_published);
   END;
 
 CREATE TABLE analysis_author(
@@ -365,3 +376,17 @@ CREATE TRIGGER stage_submitted_data_deletion
         INSERT INTO submitted_data_deletion(id_job, id_data, node_name)
         VALUES(OLD.id_job, OLD.id_data, OLD.node_name);
     END;
+
+CREATE TABLE projects_peer_review(
+    id_project TEXT NOT NULL,
+    peer_password TEXT NOT NULL,  -- password supplied to journal/reviewers
+    FOREIGN KEY id_project REFERENCES projects(id_project) ON DELETE CASCADE
+);
+
+CREATE TABLE publication_authors(
+    id_project TEXT NOT NULL,
+    id_user TEXT NOT NULL,
+    author_position INT NOT NULL,  -- 0-indexed position of the user in the author list
+    FOREIGN KEY id_project REFERENCES projects(id_project),
+    FOREIGN KEY id_user REFERENCES users_auth(id_user)
+)

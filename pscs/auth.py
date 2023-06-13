@@ -276,6 +276,17 @@ def login_required(view):
     return wrapped_view
 
 
+def is_logged_in():
+    """Checks whether the user is logged in and confirmed (if confirmation is required)"""
+    if g.user is None:
+        return False
+    elif current_app.config["REGISTRATION_REQUIRES_CONFIRMATION"]:
+        if "confirmed" not in session.keys() or session["confirmed"] != 1:
+            # Check whether email has timed out
+            return False
+    return True
+
+
 def check_confirmation(user_conf_info: dict):
     """Checks whether it's okay to send another confirmation email."""
     if user_conf_info is None:

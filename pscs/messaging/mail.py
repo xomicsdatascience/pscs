@@ -121,6 +121,5 @@ def send_email(recipients_to: list,
     credentials = get_credentials()
     service = build("gmail", "v1", credentials=credentials)
     message64 = {"raw": base64.urlsafe_b64encode(message.as_bytes()).decode()}
-#               (service.users().messages().send(userId="me", body=create_message).execute())
     sent_info = (service.users().messages().send(userId="me", body=message64).execute())
     return "SENT" in sent_info["labelIds"]

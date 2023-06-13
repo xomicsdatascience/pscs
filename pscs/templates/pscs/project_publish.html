@@ -1,0 +1,95 @@
+{% extends 'base.html' %}
+
+{% block header %}
+<h2 class="bottomarea">Project Publication</h2>
+{% endblock %}
+
+{% block content %}
+<p id="projectSpecs">This page manages the publication of the following project:</p>
+<p>Project Title: {{proj["name_project"]}}</p>
+<p>Project Description: {{proj["description"]}}</p>
+<p>By publishing the project, you assert that you have read, understood, and agreed to the
+  <a href="/static/Data_Use_Agreement.txt">Data Use Agreement</a> and that you have verified that no part associated
+  with the project contains <a href="https://www.dhcs.ca.gov/dataandstats/data/Pages/ListofHIPAAIdentifiers.aspx">Personal Health Information</a>.
+</p>
+
+<!--Author list-->
+<script src="/static/js/publish.js"></script>
+<h3>Author list</h3>
+<p>Author list will appear in the order below. Use the buttons to change the order of the authors.</p>
+<div>
+<select id="authorlist" size="5" style="display: inline-block">
+  {% for a in authors %}
+    {% if a["name"] is none or a["name"]|length == 0 %}
+      <option id="{{a['id_user']}}">{{a["name_user"]}}</option>
+    {% else %}
+      <option id="{{a['id_user']}}">{{a["name"]}}</option>
+    {% endif %}
+  {% endfor %}
+</select>
+  <table style="display: inline-block">
+    <tr><td><button onclick="moveUp('authorlist')" style="display: inline-block">&uarr;</button></td></tr>
+    <tr><td><button onclick="moveDown('authorlist')" style="display: inline-block">&darr;</button></td></tr>
+  </table>
+</div>
+{% if missing_name == 1 %}
+  <p>Warning: One or more author has not specified their name in their profile. Username will be used instead.</p>
+{% endif %}
+
+<h3>Analyses</h3>
+<table>
+  <tr>
+    <th style="width:10px; margin:0; padding:0">Publish</th>
+    <th>Name</th>
+    <th>ID</th>
+    <th>Results</th>
+  </tr>
+{% for an in analyses %}
+  <tr>
+    <td style="width:10px; margin:0; padding:0"><input class="analysisCheckbox" type="checkbox" id="{{an['id_analysis']}}"></td>
+    <td><b>{{an["analysis_name"]}}</b></td>
+    <td>{{an["id_analysis"]}}</td>
+    {% for r in results[an['id_analysis']] %}
+      <td>{{r["file_path"] | basename }}</td>
+    {% endfor %}
+  </tr>
+{% endfor %}
+</table>
+
+<h5>The following analyses cannot be published because they have not been executed:</h5>
+<table>
+  {% set max_width=5 %}
+  <tr>
+    {% for an in unrun_analyses %}
+      {% if loop.index0 != 0 and loop.index0 % max_width == 0 %}
+        </tr>
+        <tr>
+      {% endif %}
+    <td style="color:darkred">{{an["analysis_name"]}}</td>
+    {% endfor %}
+  </tr>
+</table>
+
+<h3>Data</h3>
+<p>Select the data to be published with the project.</p>
+<table>
+  <tr>
+    <th>Publish</th>
+    <th>Data filename</th>
+    <th>Date uploaded</th>
+  </tr>
+  {% for d in project_data %}
+  <tr>
+    <td><input class="dataCheckbox" type="checkbox" id="{{d['id_data']}}"></td>
+    <td>{{d['file_path'] | basename}}</td>
+    <td>{{d['data_uploaded_time']}}</td>
+  </tr>
+  {% endfor %}
+</table>
+
+
+<label for="peer">Confirm setting to peer review by entering the project title:</label>
+<input name="confirmation" id="peer" placeholder="Project Title">
+<button onclick="parsePublicationPage('peer')">Set project to peer review</button>
+
+{% endblock %}

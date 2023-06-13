@@ -1,0 +1,18 @@
+{% extends 'base.html' %}
+
+{% block header %}
+<h1>{{ project_name }}</h1>
+{% endblock %}
+
+{% block content %}
+<h3>Results</h3>
+{% for f in results %}
+<div style="text-align:center">
+
+  <br>
+  <img src="{{url_for('pscs.results', id_project=summary['id_project'], id_analysis=f['id_analysis'], filename=f['file_name'] )}}">
+  <br>
+
+</div>
+{% endfor %}
+{% endblock %}
