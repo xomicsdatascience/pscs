@@ -1,10 +1,11 @@
 {% extends 'base.html' %}
 
 {% block header %}
-<h2 class="bottomarea">Project Publication</h2>
+<h2>Project Publication</h2>
 {% endblock %}
 
 {% block content %}
+<h3 class="postline">Project Abstract</h3>
 <p id="projectSpecs">This page manages the publication of the following project:</p>
 <p>Project Title: {{proj["name_project"]}}</p>
 <p>Project Description: {{proj["description"]}}</p>
@@ -15,7 +16,7 @@
 
 <!--Author list-->
 <script src="/static/js/publish.js"></script>
-<h3>Author list</h3>
+<h3 class="postline">Author list</h3>
 <p>Author list will appear in the order below. Use the buttons to change the order of the authors.</p>
 <div>
 <select id="authorlist" size="5" style="display: inline-block">
@@ -36,7 +37,7 @@
   <p>Warning: One or more author has not specified their name in their profile. Username will be used instead.</p>
 {% endif %}
 
-<h3>Analyses</h3>
+<h3 class="postline">Analyses</h3>
 <table>
   <tr>
     <th style="width:10px; margin:0; padding:0">Publish</th>
@@ -56,7 +57,7 @@
 {% endfor %}
 </table>
 
-<h5>The following analyses cannot be published because they have not been executed:</h5>
+<b>The following analyses cannot be published because they have not been executed:</b>
 <table>
   {% set max_width=5 %}
   <tr>
@@ -70,7 +71,7 @@
   </tr>
 </table>
 
-<h3>Data</h3>
+<h3 class="postline">Data</h3>
 <p>Select the data to be published with the project.</p>
 <table>
   <tr>
@@ -87,9 +88,19 @@
   {% endfor %}
 </table>
 
-
-<label for="peer">Confirm setting to peer review by entering the project title:</label>
-<input name="confirmation" id="peer" placeholder="Project Title">
-<button onclick="parsePublicationPage('peer')">Set project to peer review</button>
+<h3 class="postline">Publishing</h3>
+{% if public_status == "private" %}
+  <h4>Peer Review</h4>
+  <p>Setting your project to peer review will make your project anonymously accessible by users with a password.</p>
+  <label for="peer">Confirm setting the project to peer review by entering the project title:</label>
+  <input name="confirmation" id="peer" placeholder="Project Title">
+  <button onclick="parsePublicationPage('peer')">Set project to peer review</button>
+{% endif %}
+{% if public_status == "private" or public_status == "peer review" %}
+  <h4>Public</h4>
+  <label for="peer">Confirm the publishing of the project by entering the project title:</label>
+  <input name="confirmation" id="public" placeholder="Project Title">
+  <button onclick="parsePublicationPage('public')">Publish project</button>
+{% endif %}
 
 {% endblock %}

@@ -1,18 +1,24 @@
 {% extends 'base.html' %}
 
 {% block header %}
-<h1>{{ project_name }}</h1>
+<h1>{{ project_summary["name_project"] }}</h1>
 {% endblock %}
 
 {% block content %}
-<h3>Results</h3>
-{% for f in results %}
-<div style="text-align:center">
-
-  <br>
-  <img src="{{url_for('pscs.results', id_project=summary['id_project'], id_analysis=f['id_analysis'], filename=f['file_name'] )}}">
-  <br>
-
-</div>
+<h2>Description:</h2>
+<p>{{ project_summary["description"] }}</p>
+<h5>Authors</h5>
+{{project_summary["authors"][0]["name"]}}<sup title="{{project_summary['affiliations'][project_summary['authors'][0]['id_user']]}}">1</sup>
+{% for a in project_summary["authors"][1:] %}
+  , {{a["name"]}}<sup title="{{project_summary['affiliations'][project_summary['authors'][loop.index0+1]['id_user']]}}">{{loop.index0+2}}</sup>
 {% endfor %}
+
+<h3>Analyses & Results</h3>
+{% for an in project_summary["analyses"] %}
+  <h5>Analysis: {{an["analysis_name"]}}</h5>
+    {% for r in project_summary["results"][an["id_analysis"]] %}
+      <img src="{{url_for('pscs.results', id_project=project_summary['id_project'], id_analysis=an['id_analysis'], filename=r['file_name'] )}}">
+    {% endfor %}
+{% endfor %}
+
 {% endblock %}

@@ -8,7 +8,7 @@ body { max-width: 1980px; margin: 0 auto; transition-duration: 0.2s; margin-left
     background-size: contain;
     background-position: left;}
 body-sidebaropen { margin-left: 250px;}
-h1 { font-family: serif; color: #555555; margin: 1rem 0; }
+h1 { font-family: serif; color: #555555; margin: 1rem 0}
 h2 { font-family:serif; color: #555555;}
 a { color: #377ba8; }
 hr { border: none; border-top: 1px solid lightgray; }
@@ -87,3 +87,7 @@ img {max-width:1600px;}
     border: 1px solid black;
     z-index: 0;
     }
+
+.postline {
+    border-bottom: 1px solid black;
+}

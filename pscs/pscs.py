@@ -373,23 +373,45 @@ def public_project(id_project):
 
 def display_public_project(id_project):
     db = get_db()
-    project_summary = db.execute("SELECT id_project, name_project, description "
-                                 "FROM projects "
-                                 "WHERE id_project = ?", (id_project,)).fetchone()
-    # get results
-    results_rows = db.execute(
-        "SELECT file_path, title, description, id_analysis FROM results WHERE id_project = ?",
-        (id_project,)).fetchall()
-    results_files = []
+    project_desc = db.execute("SELECT id_project, name_project, description "
+                              "FROM projects "
+                              "WHERE id_project = ? AND (is_peer_review=1 OR is_published=1)", (id_project,)).fetchone()
+    project_summary = dict(project_desc)
+    # get authors & affiliations
+    project_summary["authors"] = db.execute("SELECT users_auth.name, users_auth.id_user "
+                                            "FROM users_auth INNER JOIN publication_authors "
+                                            "ON users_auth.id_user = publication_authors.id_user "
+                                            "WHERE publication_authors.id_project = ? "
+                                            "ORDER BY publication_authors.author_position ASC", (id_project,)).fetchall()
+    # Affiliations
+    project_summary["affiliations"] = dict()
+    for au in project_summary["authors"]:
+        id_auth = au["id_user"]
+        affil = db.execute("SELECT affiliation "
+                           "FROM users_affiliation "
+                           "WHERE id_user=?", (id_auth,)).fetchall()
+        project_summary["affiliations"][id_auth] = [aff['affiliation'] for aff in affil]
+
+    # get analyses
+    analyses = db.execute("SELECT id_analysis, analysis_name "
+                          "FROM analysis "
+                          "WHERE id_project = ? AND (is_peer_review=1 OR is_published=1)", (id_project,)).fetchall()
+    project_summary["analyses"] = [dict(an) for an in analyses]
+    public_analysis_id = set()
+    for an in project_summary["analyses"]:
+        public_analysis_id.add(an["id_analysis"])
+    results_rows = db.execute("SELECT file_path, title, description, id_analysis "
+                              "FROM results "
+                              "WHERE id_project = ? AND (is_peer_review=1 OR is_published=1)", (id_project,)).fetchall()
+    # Single DB fetch op means we have to sort them by analysis now
+    project_summary["results"] = dd(list)
     for r in results_rows:
-        rr = dict(r)
-        rr["file_name"] = os.path.basename(r["file_path"])
-        results_files.append(rr)
+        an_id = r["id_analysis"]
+        project_summary["results"][an_id].append(dict(r))
+        project_summary["results"][an_id][-1]["file_name"] = os.path.basename(project_summary["results"][an_id][-1]["file_path"])
 
     return render_template("pscs/project_public.html",
-                           project_name=project_summary["name_project"],
-                           summary=project_summary,
-                           results=results_files)
+                           project_summary=project_summary)
 
 
 def append_to_session(session_key: str,
@@ -484,6 +506,7 @@ def display_private_project(id_project):
         user_list = []
         for u in users:
             user_list.append(u['name_user'])
+        public_status = _get_project_publication_status(id_project)
         return render_template("pscs/project.html",
                                project_name=project_name,
                                analyses=analyses,
@@ -492,6 +515,7 @@ def display_private_project(id_project):
                                project_data_summary=project_data_summary,
                                results=results_files,
                                user_list=user_list,
+                               project_status=public_status,
                                summary=summary)
 
 
@@ -519,6 +543,9 @@ def project_publish(id_project):
 
         # Analyses & results
         analyses, result, unrun_analyses = _get_analyses(id_project)
+
+        # Public status
+        public_status = _get_project_publication_status(id_project)
         return render_template("pscs/project_publish.html",
                                proj=project_info,
                                authors=authors,
@@ -526,7 +553,8 @@ def project_publish(id_project):
                                project_data=project_data,
                                analyses=analyses,
                                results=result,
-                               unrun_analyses=unrun_analyses)
+                               unrun_analyses=unrun_analyses,
+                               public_status=public_status)
     elif request.method == "POST":
         # Publish project
         # check perm
@@ -575,6 +603,21 @@ def project_publish(id_project):
             response_json = {"url": return_url, "publish_success": 1, "success_message": ""}
             return jsonify(response_json)
     return redirect(url_for("pscs.index"))
+
+
+def _get_project_publication_status(id_project) -> str:
+    """Returns the publication status of the specified project. Returns either "public", "peer review", or "private"."""
+    db = get_db()
+    pub_status = db.execute("SELECT is_published, is_peer_review "
+                            "FROM projects "
+                            "WHERE id_project=?", (id_project,)).fetchone()
+    if pub_status["is_published"] == 1:
+        public_status = "public"
+    elif pub_status["is_peer_review"] == 1:
+        public_status = "peer review"
+    else:
+        public_status = "private"
+    return public_status
 
 
 def validate_publication_type(pubtype: str) -> bool:
