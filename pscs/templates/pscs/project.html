@@ -24,7 +24,7 @@
     <th>date_uploaded</th>
   </tr>
   {% for data_row in project_data_summary %}
-  <tr onmouseover="color('{{loop.index0}}', 'rgba(200,200,200,0.5)')" onmouseleave="color('{{loop.index0}}')" id="{{loop.index0}}">
+  <tr id="{{loop.index0}}">
     <td>{{data_row['file_path']}}</td>
     <td>{{data_row['data_type']}}</td>
     <td>{{data_row['data_uploaded_time']}}</td>

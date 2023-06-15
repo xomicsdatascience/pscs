@@ -42,6 +42,7 @@ input.danger { color: #cc2f2e; }
 input[type=submit] { align-self: start; min-width: 10em; }
 input,textarea{min-width:200px; width:20%;display:block}
 table, th, td {border: 1px solid; }
+tr:hover:not(:first-child,.post) {background-color: rgba(0,0,0, 0.2);}
 img {max-width:1600px;}
 .pscs {position:absolute; cursor: grab; z-index:2;}
 .pscsLabel {user-select: none; cursor: grab}
@@ -87,7 +88,6 @@ img {max-width:1600px;}
     border: 1px solid black;
     z-index: 0;
     }
-
 .postline {
     border-bottom: 1px solid black;
 }
