@@ -74,6 +74,7 @@ CREATE TABLE projects (
     creation_time_project TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_published BIT DEFAULT 0,
     is_peer_review BIT DEFAULT 0,
+    date_published TIMESTAMP,
     FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
 );
 
@@ -87,6 +88,7 @@ CREATE TABLE projects_deletion (
     creation_time_project TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_published BIT DEFAULT 0,
     is_peer_review BIT DEFAULT 0,
+    date_published TIMESTAMP,
     deletion_time_projects TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
 
@@ -95,8 +97,8 @@ CREATE TRIGGER stage_project_deletion
   BEFORE DELETE ON projects
   FOR EACH ROW
   BEGIN
-    INSERT INTO projects_deletion(id_project, id_user, name_project, description, num_files, num_members, creation_time_project, is_published, is_peer_review)
-    VALUES(OLD.id_project, OLD.id_user, OLD.name_project, OLD.description, OLD.num_files, OLD.num_members, OLD.creation_time_project, OLD.is_published, OLD.is_peer_review);
+    INSERT INTO projects_deletion(id_project, id_user, name_project, description, num_files, num_members, creation_time_project, is_published, is_peer_review, date_published)
+    VALUES(OLD.id_project, OLD.id_user, OLD.name_project, OLD.description, OLD.num_files, OLD.num_members, OLD.creation_time_project, OLD.is_published, OLD.is_peer_reviewm OLD.date_published);
   END;
 
 CREATE TABLE projects_roles (

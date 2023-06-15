@@ -5,7 +5,6 @@ from flask import (
     jsonify
 )
 from markdown import markdown
-from werkzeug.exceptions import abort
 import werkzeug.utils
 from werkzeug.utils import secure_filename
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -13,22 +12,16 @@ from pscs.auth import login_required, is_logged_in
 import pscs.db
 from pscs.db import get_db, get_unique_value_for_field
 from pscs.metadata.metadata import get_metadata
-from pscs.analysis.pipeline import node_parser
 import os
-import uuid
-import numpy as np
 from pscs.transfers.dispatching import dispatch, can_user_submit
 from pscs.messaging.mail import send_email
 from flask import send_from_directory
-import plotly.express as px
-import plotly
-import pandas as pd
 import json
 import hashlib
 import pathlib
 import sqlite3
 from collections import defaultdict as dd
-import secrets
+import datetime
 import string
 
 bp = Blueprint("pscs", __name__)
@@ -556,8 +549,7 @@ def project_publish(id_project):
                                unrun_analyses=unrun_analyses,
                                public_status=public_status)
     elif request.method == "POST":
-        # Publish project
-        # check perm
+        # Before publishing, check that user is allowed, validate input, etc.
         has_perm = check_user_permission(permission_name="project_management",
                                          permission_value=1,
                                          id_project=id_project)
@@ -583,7 +575,7 @@ def project_publish(id_project):
         # Now need to check all data
         # Four things are sent: publication_type, authorlist, analyses, data
         # Validate publication type
-        valid_pubtype = validate_publication_type(publication_info["publication_type"])
+        valid_pubtype = validate_publication_type(publication_info["publication_type"], id_project=id_project)
         valid_authors = validate_authorlist(publication_info["authorlist"], id_project=id_project)
         valid_analyses = validate_analyses(publication_info["analyses"], id_project=id_project)
         valid_data = validate_data(publication_info["data"], id_project=id_project)
@@ -602,6 +594,18 @@ def project_publish(id_project):
             return_url = url_for('pscs.index')
             response_json = {"url": return_url, "publish_success": 1, "success_message": ""}
             return jsonify(response_json)
+        else:
+            # These only happen if the project changes while the user is trying to publish it, or sneaky user.
+            flash_msg = ""
+            if not valid_pubtype:
+                flash_msg += f"Project can't be published as {publication_info['publication_type']} - "
+            if not valid_authors:
+                flash_msg += "Some of the authors are PSCS users that are not associated with the project. - "
+            if not valid_analyses:
+                flash_msg += "Some of the selected analyses can't be published. Ensure that they have been run first. - "
+            if not valid_data:
+                flash_msg += "Some of the selected data is not associated with the project. - "
+            flash(flash_msg[:-3])
     return redirect(url_for("pscs.index"))
 
 
@@ -620,9 +624,35 @@ def _get_project_publication_status(id_project) -> str:
     return public_status
 
 
-def validate_publication_type(pubtype: str) -> bool:
-    return pubtype in ["peer", "public"]
+def validate_publication_type(pubtype: str, id_project: str) -> bool:
+    """Returns whether the project can be set to the specified publication type."""
+    public_status = _get_project_publication_status(id_project)
+    valid_pubtypes = ["private", "peer review", "public"]
+    if pubtype == public_status:
+        return False
+    elif pubtype not in valid_pubtypes:
+        return False
+    elif public_status == "private":
+        return True  # if it's private, any publication is fine
+    elif public_status == "peer review" and pubtype == "public":
+        return True  # if it's under peer review, only 'public' is valid
+    else:
+        # There is the rare circumstance where projects that are published or set for peer review need to be private
+        # Users can do this only within the window specified in the data use agreement.
+        if pubtype == "private":
+            time_published = _get_project_publication_time(id_project)
+            now_utc = int(datetime.datetime.now().astimezone(datetime.timezone.utc).strftime("%s"))
+            return now_utc - time_published <= current_app.config["PUBLIC_RECANT_TIMEOUT"]
+    return False  # default
 
+
+def _get_project_publication_time(id_project: str) -> float:
+    """Returns the epoch time for when a project was published."""
+    db = get_db()
+    time_published = db.execute("SELECT date_published "
+                                "FROM projects "
+                                "WHERE id_project = ?", (id_project,)).fetchone()["date_published"]
+    return datetime.datetime.strptime(time_published, "%Y-%m-%d %H:%M:%S").timestamp()
 
 def validate_authorlist(authorlist: list,
                         id_project: str) -> bool:
