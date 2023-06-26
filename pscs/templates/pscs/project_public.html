@@ -8,9 +8,9 @@
 <h2>Description:</h2>
 <p>{{ project_summary["description"] }}</p>
 <h5>Authors</h5>
-{{project_summary["authors"][0]["name"]}}<sup title="{{project_summary['affiliations'][project_summary['authors'][0]['id_user']]}}">1</sup>
+{{project_summary["authors"][0]["name"]}}<sup title="{{project_summary['affiliations'][0]}}">1</sup>
 {% for a in project_summary["authors"][1:] %}
-  , {{a["name"]}}<sup title="{{project_summary['affiliations'][project_summary['authors'][loop.index0+1]['id_user']]}}">{{loop.index0+2}}</sup>
+  , {{a["name"]}}<sup title="{{project_summary['affiliations'][loop.index0+1]}}">{{loop.index0+2}}</sup>
 {% endfor %}
 
 <h3>Analyses & Results</h3>

@@ -1,0 +1,30 @@
+{% extends 'base.html' %}
+
+{% block header %}
+<h1>{% block title %}External author{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+<p>You have been identified as an external coauthor on the publication titled, {{project_summary["name_project"]}}. </p>
+<p>To move forward with publication, enter your information below. By clicking "Submit," you agree to have your name
+associated with the project. People viewing the project will be able to see that you were verified as an external author.</p>
+
+<form method="POST">
+  <label for="name">Full Name</label>
+  <input name="name" id="name" style="width: 150px;" required>
+
+  <label for="affiliations">Affiliations</label>
+  <textarea name="affiliations" id="affiliations" placeholder="Enter your affiliations, one per line"></textarea>
+
+  <label for="noPHI" style="font-weight: normal">I agree that any data sent to PSCS has had <a href="https://www.dhcs.ca.gov/dataandstats/data/Pages/ListofHIPAAIdentifiers.aspx">Personal Health Information</a> removed and that I will report any datasets I find that contain any.
+    <input type="checkbox" id="noPHI" name="noPHI" style="float: left;" required>
+  </label>
+
+  <label for="dataUse" style="font-weight: normal">I have read and agree to the terms as outlined in the <a href="/static/Data_Use_Agreement.txt">Data Use Agreement</a>.
+    <input type="checkbox" id="dataUse" name="dataUse" required>
+  </label>
+  <input type="submit" value="Submit">
+</form>
+
+<p>If you do not wish to be associated with this project, click here:</p>
+{% endblock %}

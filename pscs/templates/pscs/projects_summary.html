@@ -25,7 +25,7 @@
     </tr>
 {% for p in projects %}
     <tr>
-        <td><a href="{{ url_for('pscs.project', id_project=p['id_project']) }}">{{ p['name_project'] }}</a></td>
+        <td><a href="{{ url_for('projects.project', id_project=p['id_project']) }}">{{ p['name_project'] }}</a></td>
         <td>{{ p['role'] }}</td>
         <td>{{ p['num_members'] }}</td>
         <td>{{ p['num_files'] }}</td>

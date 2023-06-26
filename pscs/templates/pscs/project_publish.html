@@ -32,6 +32,13 @@
     <tr><td><button onclick="moveUp('authorlist')" style="display: inline-block">&uarr;</button></td></tr>
     <tr><td><button onclick="moveDown('authorlist')" style="display: inline-block">&darr;</button></td></tr>
   </table>
+  <button id="removeAuthor" onclick="removeAuthor('authorlist');">Remove selected author</button>
+<!--  External authors-->
+  <h4>External authors</h4>
+  <p>If some authors do not have registered accounts on PSCS, they can be added here. An email will be sent to request
+    that they enter their authorship information. <b>They will need to approve being included before the project publication status can move forward</b>.</p>
+  <input type="email" id="external_email" placeholder="Author email address">
+  <button id="external" onclick="addExternalAuthor()">Add external author</button>
 </div>
 {% if missing_name == 1 %}
   <p>Warning: One or more author has not specified their name in their profile. Username will be used instead.</p>
@@ -92,13 +99,13 @@
 {% if public_status == "private" %}
   <h4>Peer Review</h4>
   <p>Setting your project to peer review will make your project anonymously accessible by users with a password.</p>
-  <label for="peer">Confirm setting the project to peer review by entering the project title:</label>
-  <input name="confirmation" id="peer" placeholder="Project Title">
-  <button onclick="parsePublicationPage('peer')">Set project to peer review</button>
+  <label for="peer review">Confirm setting the project to peer review by entering the project title:</label>
+  <input name="confirmation" id="peer review" placeholder="Project Title">
+  <button onclick="parsePublicationPage('peer review')">Set project to peer review</button>
 {% endif %}
 {% if public_status == "private" or public_status == "peer review" %}
   <h4>Public</h4>
-  <label for="peer">Confirm the publishing of the project by entering the project title:</label>
+  <label for="public">Confirm the publishing of the project by entering the project title:</label>
   <input name="confirmation" id="public" placeholder="Project Title">
   <button onclick="parsePublicationPage('public')">Publish project</button>
 {% endif %}

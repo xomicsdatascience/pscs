@@ -72,8 +72,9 @@ CREATE TABLE projects (
     num_files INT DEFAULT 0,
     num_members INT DEFAULT 1,
     creation_time_project TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-    is_published BIT DEFAULT 0,
-    is_peer_review BIT DEFAULT 0,
+    is_published BIT DEFAULT 0,  -- whether project is public
+    is_peer_review BIT DEFAULT 0,  -- whether project is under peer review
+    is_on_hold BIT DEFAULT 0,  -- whether project is transition to public/peer, awaiting user confirmation
     date_published TIMESTAMP,
     FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
 );
@@ -88,6 +89,7 @@ CREATE TABLE projects_deletion (
     creation_time_project TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_published BIT DEFAULT 0,
     is_peer_review BIT DEFAULT 0,
+    is_on_hold BIT DEFAULT 0,
     date_published TIMESTAMP,
     deletion_time_projects TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -97,8 +99,8 @@ CREATE TRIGGER stage_project_deletion
   BEFORE DELETE ON projects
   FOR EACH ROW
   BEGIN
-    INSERT INTO projects_deletion(id_project, id_user, name_project, description, num_files, num_members, creation_time_project, is_published, is_peer_review, date_published)
-    VALUES(OLD.id_project, OLD.id_user, OLD.name_project, OLD.description, OLD.num_files, OLD.num_members, OLD.creation_time_project, OLD.is_published, OLD.is_peer_reviewm OLD.date_published);
+    INSERT INTO projects_deletion(id_project, id_user, name_project, description, num_files, num_members, creation_time_project, is_published, is_peer_review, is_on_hold, date_published)
+    VALUES(OLD.id_project, OLD.id_user, OLD.name_project, OLD.description, OLD.num_files, OLD.num_members, OLD.creation_time_project, OLD.is_published, OLD.is_peer_review, OLD.is_on_hold, OLD.date_published);
   END;
 
 CREATE TABLE projects_roles (
@@ -390,6 +392,31 @@ CREATE TABLE publication_authors(
     id_project TEXT NOT NULL,
     id_user TEXT NOT NULL,
     author_position INT NOT NULL,  -- 0-indexed position of the user in the author list
+    confirmed BIT DEFAULT 0,
     FOREIGN KEY id_project REFERENCES projects(id_project),
     FOREIGN KEY id_user REFERENCES users_auth(id_user)
 )
+
+CREATE TABLE publication_external_authors(
+	id_project TEXT NOT NULL,
+	email TEXT NOT NULL,
+	author_position INTEGER NOT NULL,
+	confirmed BIT DEFAULT 0,
+	FOREIGN KEY (id_project) REFERENCES projects(id_project),
+	CONSTRAINT author_key PRIMARY KEY(id_project, email));
+
+CREATE TABLE external_author_info(
+	id_project TEXT NOT NULL,
+	email TEXT NOT NULL,
+	name TEXT NOT NULL,
+	confirmed_datause BIT DEFAULT 0,
+	confirmed_phi BIT DEFAULT 0,
+	creation_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	ip TEXT NOT NULL,
+	FOREIGN KEY (id_project) REFERENCES projects(id_project),
+	CONSTRAINT author_key PRIMARY KEY(id_project, email));
+
+CREATE TABLE external_author_affiliation(
+	id_project TEXT NOT NULL,
+	email TEXT NOT NULL,
+	affiliation TEXT NOT NULL);

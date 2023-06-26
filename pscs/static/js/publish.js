@@ -1,4 +1,5 @@
 function moveUp(selectId){
+    // Moves up the selected option in the <select> element with the input ID
     const selectEl = document.getElementById(selectId);
     let selectedIdx = selectEl.selectedIndex;
     if(selectedIdx === 0 || selectedIdx === -1){
@@ -12,6 +13,7 @@ function moveUp(selectId){
 }
 
 function moveDown(selectId){
+    // Moves down the selected option in the <select> element with the input ID
     const selectEl = document.getElementById(selectId);
     let selectedIdx = selectEl.selectedIndex;
     let options = selectEl.options;
@@ -31,25 +33,52 @@ function getCheckboxIds(checkboxClass){
     return onlyChecked.map(onlyChecked => onlyChecked.id);
 }
 
-function getAuthorIds(authorSelectId="authorlist"){
-    // Returns the ids of the authors specified by the user
-    let authlist = document.getElementById(authorSelectId);
-    return Array.from(authlist.options).map(authlist => authlist.id);
+function getAuthorInfo(authorSelectId="authorlist"){
+    // Returns author objects, including external authors.
+    let authlist = Array.from(document.getElementById(authorSelectId).options);
+    // Extract only relevant info; id or name + email
+    let authobj = [];
+    for(let au of authlist){
+        if(au.email == null){
+            authobj.push({"id": au.id, "external": false});
+        }
+        else{
+            authobj.push({"email": au.email, "external": true});
+        }
+    }
+    return authobj
 }
 
-function makeHiddenInput(name="", value=""){
-    // Creates a hidden input and sets its name/value. Used for appending data to HTML forms.
-    let hiddenInput = document.createElement("input");
-    hiddenInput.type = "hidden";
-    hiddenInput.name = name;
-    hiddenInput.value = value;
-    return hiddenInput;
+function addExternalAuthor(){
+    // Adds the external author to the list; will get parsed later
+    const authorSel = document.getElementById("authorlist");
+    const emailEl = document.getElementById("external_email");
+    let newOpt = document.createElement("option");
+    if(emailEl.value === null || emailEl.value.length === 0){
+        return;
+    }
+    newOpt.email = emailEl.value;
+    newOpt.innerText = emailEl.value;
+    authorSel.options.add(newOpt);
+    emailEl.value = "";
+    return;
 }
 
-function appendInputToForm(form, name, value){
-    // Creates a hidden input with the name `name` and value `value` and appends it to `form`.
-    let hiddenInput = makeHiddenInput(name, value);
-    form.appendChild(hiddenInput);
+function removeAuthor(selectId){
+    // Removes the selected option from the <select> element with the input ID
+    const selectEl = document.getElementById(selectId);
+    if(selectEl.options.length === 1){
+        selectEl.setCustomValidity("There must be at least one author.");
+        selectEl.reportValidity();
+        return;
+    }
+    let opt = selectEl.selectedOptions[0];
+    if(!opt.hasOwnProperty("email")  || opt.email.length === 0){
+        selectEl.setCustomValidity("PSCS users associated with the project can't be removed as authors.");
+        selectEl.reportValidity();
+        return;
+    }
+    selectEl.selectedOptions[0].remove();
 }
 
 async function parsePublicationPage(pubtype) {
@@ -61,7 +90,7 @@ async function parsePublicationPage(pubtype) {
     publicationSummary["confirmation"] = confirmationEl.value;
 
     // Get author ids, preserving order
-    publicationSummary["authorlist"] = getAuthorIds("authorlist");
+    publicationSummary["authorlist"] = getAuthorInfo("authorlist");
 
     // Get analysis IDs
     publicationSummary["analyses"] = getCheckboxIds("analysisCheckbox");

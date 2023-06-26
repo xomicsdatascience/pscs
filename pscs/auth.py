@@ -13,7 +13,6 @@ from pscs.authtools.validation.registration import validate_username, validate_p
 from pscs.authtools.validation.password_reset import send_reset_email
 import math
 import datetime
-import time
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
@@ -24,9 +23,6 @@ def register():
         password = request.form['password']
         password_confirm = request.form['passwordConfirm']
         email = request.form['email']
-
-
-
         user_ip = request.remote_addr
         db = get_db()
         try:
