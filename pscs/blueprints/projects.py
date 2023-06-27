@@ -443,10 +443,10 @@ def project_publish(id_project):
                 # If project is currently in peer review, move forward. Otherwise, get confirmation from external author
                 has_ext_auth = _contains_external_authors(publication_info["authorlist"])
                 current_pub_status = _get_project_publication_status(id_project)
-                if not has_ext_auth or (has_ext_auth and current_pub_status == "peer_review"):
+                if not has_ext_auth or (has_ext_auth and current_pub_status == "peer review"):
                     project_public(id_project)
                 else:
-                    _set_hold(id_project, 1)
+                    _set_hold(id_project, 1, commit=True)
                     notify_external_authors(id_project)
                     flash("The project is staged to be public; it will be publicly viewable once the external "
                           "authors confirm their association with the project.")
