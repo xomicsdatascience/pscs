@@ -1166,7 +1166,8 @@ def external_author_info(id_project, token):
         store_external_author_info(id_project, author_information=author_info)
         done = proceed_if_possible(id_project)
         if done:
-            flash("Project is now ready for peer review.")
+            flash("Project is now ready.")
+            return redirect(url_for("projects.public_project", id_project=id_project))
         else:
             flash("Project is now waiting for other external authors. An email notification will be sent when the "
                   "project is ready.")
@@ -1190,7 +1191,7 @@ def proceed_if_possible(id_project: str):
     if "peer review" in pub_type:
         project_peer_review(id_project)
     elif "public" in pub_type:
-        raise NotImplementedError("Setting projects to public not yet implemented.")
+        project_public(id_project)
     return True
 
 
