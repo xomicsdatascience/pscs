@@ -385,18 +385,18 @@ CREATE TRIGGER stage_submitted_data_deletion
 CREATE TABLE projects_peer_review(
     id_project TEXT NOT NULL,
     peer_password TEXT NOT NULL,  -- password supplied to journal/reviewers
-    FOREIGN KEY id_project REFERENCES projects(id_project) ON DELETE CASCADE
+    FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE
 );
-
+--
 CREATE TABLE publication_authors(
     id_project TEXT NOT NULL,
     id_user TEXT NOT NULL,
     author_position INT NOT NULL,  -- 0-indexed position of the user in the author list
     confirmed BIT DEFAULT 0,
     CONSTRAINT author_key PRIMARY KEY(id_project, id_user),
-    FOREIGN KEY id_project REFERENCES projects(id_project),
-    FOREIGN KEY id_user REFERENCES users_auth(id_user)
-)
+    FOREIGN KEY (id_project) REFERENCES projects(id_project),
+    FOREIGN KEY (id_user) REFERENCES users_auth(id_user)
+);
 
 CREATE TABLE publication_external_authors(
 	id_project TEXT NOT NULL,
