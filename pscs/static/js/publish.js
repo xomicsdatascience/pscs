@@ -40,10 +40,10 @@ function getAuthorInfo(authorSelectId="authorlist"){
     let authobj = [];
     for(let au of authlist){
         if(au.email == null){
-            authobj.push({"id": au.id, "external": false});
+            authobj.push({"id": au.id});
         }
         else{
-            authobj.push({"email": au.email, "external": true});
+            authobj.push({"email": au.email});
         }
     }
     return authobj
@@ -57,7 +57,7 @@ function addExternalAuthor(){
     if(emailEl.value === null || emailEl.value.length === 0){
         return;
     }
-    newOpt.email = emailEl.value;
+    newOpt.id = emailEl.value;
     newOpt.innerText = emailEl.value;
     authorSel.options.add(newOpt);
     emailEl.value = "";

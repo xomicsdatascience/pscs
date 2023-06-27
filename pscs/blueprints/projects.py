@@ -426,7 +426,7 @@ def project_publish(id_project):
                                                                 "WHERE id_analysis = ? AND id_project = ?", (an_id, id_project))
             if publication_info["publication_type"] == "peer review":
                 # Log everything into db
-                prepare_peer_review(id_project, publication_info)
+                prepare_publication(id_project, publication_info)
                 # Wait for external authors to approve before proceeding
                 if _contains_external_authors(publication_info["authorlist"]):
                     _set_hold(id_project, commit=True)
@@ -437,6 +437,20 @@ def project_publish(id_project):
                 else:
                     # Proceed with peer review
                     project_peer_review(id_project)
+            elif publication_info["publication_type"] == "public":
+                # Log everything into db
+                prepare_publication(id_project, publication_info)
+                # If project is currently in peer review, move forward. Otherwise, get confirmation from external author
+                has_ext_auth = _contains_external_authors(publication_info["authorlist"])
+                current_pub_status = _get_project_publication_status(id_project)
+                if not has_ext_auth or (has_ext_auth and current_pub_status == "peer_review"):
+                    project_public(id_project)
+                else:
+                    _set_hold(id_project, 1)
+                    notify_external_authors(id_project)
+                    flash("The project is staged to be public; it will be publicly viewable once the external "
+                          "authors confirm their association with the project.")
+
             return_url = url_for('pscs.index')
             response_json = {"url": return_url, "publish_success": 1, "success_message": ""}
             return jsonify(response_json)
@@ -531,12 +545,11 @@ def validate_authorlist(authorlist: list,
     pscs_ids = []
     external_emails = []
     for au in authorlist:
-        if "email" in au.keys():
-            external_emails.append(au["email"])
-        elif "id" in au.keys():
+        try:
+            email_validator.validate_email(au["id"])
+            external_emails.append(au["id"])
+        except EmailNotValidError:
             pscs_ids.append(au["id"])
-        else:
-            raise ValueError("Some of the entries are not formatted correctly.")
     pscs_valid = _validate_pscs_authorlist(pscs_ids, id_project)
     external_valid, invalid_emails = _validate_external_authorlist(external_emails)
     return ((pscs_valid == 1) and (external_valid == 1), invalid_emails)
@@ -668,12 +681,41 @@ def _get_authors(id_project) -> (list, bool):
                          "FROM users_auth INNER JOIN projects_roles "
                          "ON users_auth.id_user = projects_roles.id_user "
                          "WHERE projects_roles.id_project = ?", (id_project,)).fetchall()
+    author_dicts = {}
+    for au in authors:
+        author_dicts[au["id_user"]] = dict(au)
+
+    # order the authors by author_position; this field is only available iff project was previously published
+    pub_info = db.execute("SELECT id_user, author_position "
+                          "FROM publication_authors "
+                          "WHERE id_project = ?", (id_project,)).fetchall()
+    if len(pub_info) > 0:
+        for au_pub in pub_info:
+            author_dicts[au_pub["id_user"]]["author_position"] = au_pub["author_position"]
+    else:
+        for id, _ in author_dicts.items():
+            author_dicts[id]["author_position"] = 0
+    author_list = [au for _, au in author_dicts.items()]
+
+    # Get external authors, if any
+    external_authors = db.execute("SELECT email, author_position "
+                                  "FROM publication_external_authors "
+                                  "WHERE id_project = ? AND confirmed = 1", (id_project,)).fetchall()
+    if len(external_authors) > 0:
+        for au in external_authors:
+            au_name = db.execute("SELECT name "
+                                 "FROM external_author_info "
+                                 "WHERE id_project = ? AND email = ?", (id_project, au["email"])).fetchone()["name"]
+            au_summ = {"name": au_name, "name_user": au["email"], "author_position": au["author_position"], "id_user": None}
+            author_list.append(au_summ)
+
+    author_list.sort(key=lambda x: x["author_position"])
     missing_name = False
     for a in authors:
         if a["name"] is None or len(a["name"]) == 0:
             missing_name = True
             break
-    return authors, missing_name
+    return author_list, missing_name
 
 
 def _get_data(id_project) -> list:
@@ -718,7 +760,7 @@ def _get_analyses(id_project):
     return analyses_summary, results, analyses_without_results_summary
 
 
-def prepare_peer_review(id_project: str,
+def prepare_publication(id_project: str,
                         publication_info: dict):
     """
     Sets a project to peer review. Selected data, analyses, and results are placed behind a password prompt that does
@@ -734,23 +776,29 @@ def prepare_peer_review(id_project: str,
     None
     """
     db = get_db()
+    if publication_info["publication_type"] == "peer review":
+        peer, public = 1, 0
+    elif publication_info["publication_type"] == "public":
+        peer, public = 0, 1
+    else:
+        raise ValueError(f"Invalid publication type: {publication_info['publication_type']}")
     # Mark project as under peer review
-    _set_project_peer_review(id_project)
+    _set_project_status(id_project, is_peer_review=peer, is_published=public)
     # Mark each datum
     for id_data in publication_info["data"]:
-        _set_data_peer_review(id_data)
+        _set_data_status(id_data, is_peer_review=peer, is_published=public)
     # Mark each analysis
     for id_analysis in publication_info["analyses"]:
-        _set_analysis_peer_review(id_analysis)
+        _set_analysis_status(id_analysis, is_peer_review=peer, is_published=public)
     # Mark each result
     for id_an, results_list in publication_info["results"].items():
         for id_result in results_list:
-            _set_result_peer_review(id_result["id_result"])
+            _set_result_status(id_result["id_result"], is_peer_review=peer, is_published=public)
 
     # Store authors in order
     pscs_authors, external_authors = _split_authlist(publication_info["authorlist"])
-    _store_pscs_authors(id_project, pscs_authors)
-    _store_external_authors(id_project, external_authors)
+    _store_pscs_authors(id_project, pscs_authors, drop_previous=True)
+    _store_external_authors(id_project, external_authors, drop_previous=True)
 
     # We've now done everything we need to do to prepare. Pass to next step.
     db.commit()
@@ -810,6 +858,44 @@ def project_peer_review(id_project: str):
     return
 
 
+def project_public(id_project):
+    """
+    Publishes the specified project to be publicly viewable.
+    Parameters
+    ----------
+    id_project : str
+        ID of the project to be made public.
+    Returns
+    -------
+    None
+    """
+    db = get_db()
+    # Remove hold, if any:
+    _set_hold(id_project, value=0)
+
+    # Remove peer review password, if any
+    _remove_peer_review_password(id_project)
+    from pscs.templates.misc import publication_notification
+    project_info = get_project_summary(id_project)
+    project_url = build_full_url(url_for("projects.public_project", id_project=id_project))
+    project_url_html = f"<a href='{project_url}'>{project_url}</a>"
+    notif_email = publication_notification.format(name_project=project_info["name_project"],
+                                                  project_url=project_url_html)
+    author_addresses = get_author_emails(id_project)
+    send_email(author_addresses, subject="PSCS Project Publication", body=notif_email)
+    db.commit()
+    return
+
+
+def _remove_peer_review_password(id_project, commit=False):
+    """Removes the project's password associated with peer review, if any."""
+    db = get_db()
+    db.execute("DELETE FROM projects_peer_review WHERE id_project = ?", (id_project,))
+    if commit:
+        db.commit()
+    return
+
+
 def generate_password(length: int = 32) -> str:
     """Generates a password"""
     charset = string.digits + string.ascii_letters + string.punctuation
@@ -817,34 +903,76 @@ def generate_password(length: int = 32) -> str:
 
 
 # NOTE: These are constructed as separate functions to avoid parameterizing the SQL string.
-def _set_project_peer_review(id_project, value=1, commit=False):
-    """Sets is_peer_review to value in the DB for the project."""
+def _set_project_status(id_project, is_peer_review=None, is_published=None, commit=False):
+    """Sets the publication status bits (is_peer_review, is_published) for the specified project. If None, their value
+    is unchanged."""
     db = get_db()
-    db.execute("UPDATE projects SET is_peer_review = ? WHERE id_project = ?", (value, id_project,))
+    if is_peer_review is not None and is_published is not None:
+        db.execute("UPDATE projects "
+                   "SET is_peer_review = ?, is_published = ? "
+                   "WHERE id_project = ?", (is_peer_review, is_published, id_project))
+    elif is_peer_review is not None:
+        db.execute("UPDATE projects SET is_peer_review = ? WHERE id_project = ?", (is_peer_review, id_project))
+    elif is_published is not None:
+        db.execute("UPDATE projects SET is_published = ? WHERE id_project = ?", (is_published, id_project))
     if commit:
         db.commit()
+    return
 
 
-def _set_data_peer_review(id_data, value=1, commit=False):
-    """Sets is_peer_review to value in the DB for the data."""
+def _set_data_status(id_data, is_peer_review=None, is_published=None, commit=False):
+    """Sets the publication status bits (is_peer_review, is_published) for the specified datum. If None, their value is
+    unchanged."""
     db = get_db()
-    db.execute("UPDATE data SET is_peer_review = ? WHERE id_data = ?", (value, id_data))
+    if is_peer_review is not None and is_published is not None:
+        db.execute("UPDATE data "
+                   "SET is_peer_review = ?, is_published = ? "
+                   "WHERE id_data = ?", (is_peer_review, is_published, id_data))
+    elif is_peer_review is not None:
+        db.execute("UPDATE projects SET is_peer_review = ? WHERE id_data = ?", (is_peer_review, id_data))
+    elif is_published is not None:
+        db.execute("UPDATE projects SET is_published = ? WHERE id_data = ?", (is_published, id_data))
     if commit:
         db.commit()
+    return
 
 
-def _set_analysis_peer_review(id_analysis, value=1, commit=False):
-    """Sets is_peer_review to value in the DB for the data."""
+def _set_analysis_status(id_analysis, is_peer_review=None, is_published=None, commit=False):
+    """Sets the publication bits (is_peer_review, is_published) for the specified analysis. If None, their value is
+    unchanged."""
     db = get_db()
-    db.execute("UPDATE analysis SET is_peer_review = ? WHERE id_analysis = ?", (value, id_analysis))
+    if is_peer_review is not None and is_published is not None:
+        db.execute("UPDATE analysis "
+                   "SET is_peer_review = ?, is_published = ? "
+                   "WHERE id_analysis = ?", (is_peer_review, is_published, id_analysis))
+    elif is_peer_review is not None:
+        db.execute("UPDATE analysis SET is_peer_review = ? WHERE id_analysis = ?", (is_peer_review, id_analysis))
+    elif is_published is not None:
+        db.execute("UPDATE analysis SET is_published = ? WHERE id_analysis = ?", (is_published, id_analysis))
     if commit:
         db.commit()
+    return
 
+
+def _set_result_status(id_result, is_peer_review=None, is_published=None, commit=False):
+    """Sets the publication bits (is_peer_review, is_published) for the specified result. If None, the values are left
+    unchanged."""
+    db = get_db()
+    if is_peer_review is not None and is_published is not None:
+        db.execute("UPDATE results "
+                   "SET is_peer_review = ?, is_published = ? "
+                   "WHERE id_result = ?", (is_peer_review, is_published, id_result))
+    elif is_peer_review is not None:
+        db.execute("UPDATE results SET is_peer_review = ? WHERE id_result = ?", (is_peer_review, id_result))
+    elif is_published is not None:
+        db.execute("UPDATE results SET is_published = ? WHERE id_result = ?", (is_published, id_result))
+    if commit:
+        db.commit()
+    return
 
 def _set_result_peer_review(id_result, value=1, commit=False):
     """Sets is_peer_review to value in the DB for the analysis."""
     db = get_db()
-    print(id_result)
     db.execute("UPDATE results SET is_peer_review = ? WHERE id_result = ?", (value, id_result))
     if commit:
         db.commit()
@@ -857,14 +985,21 @@ def _split_authlist(authlist: list) -> (list, list):
     ext_authors = []
     for position, au in enumerate(authlist):
         au["position"] = position
-        if "email" in au.keys():
+        id_is_email = False
+        try:
+            email_validator.validate_email(au["id"])
+            id_is_email = True
+        except EmailNotValidError:
+            id_is_email = False
+        if id_is_email:
+            au["email"] = au["id"]
             ext_authors.append(au)
         else:
             pscs_authors.append(au)
     return pscs_authors, ext_authors
 
 
-def _store_pscs_authors(id_project: str, pscs_authors: list, commit=False):
+def _store_pscs_authors(id_project: str, pscs_authors: list, drop_previous: bool = True, commit=False):
     """
     Stroes the PSCS authors into the db for the specified project.
     Parameters
@@ -873,6 +1008,8 @@ def _store_pscs_authors(id_project: str, pscs_authors: list, commit=False):
         ID of the project the authors are associated with.
     pscs_authors : list
         List of dicts with keys 'id' for the PSCS user id and 'position' for the author's position in the author list.
+    drop_previous : bool
+        Whether to drop previous authors associated with the project, if any.
     commit : bool
         Whether to commit changes to the DB.
     Returns
@@ -880,15 +1017,18 @@ def _store_pscs_authors(id_project: str, pscs_authors: list, commit=False):
     None
     """
     db = get_db()
+    if drop_previous:
+        db.execute("DELETE FROM publication_authors WHERE id_project = ?", (id_project,))
     for au in pscs_authors:
         db.execute("INSERT INTO publication_authors "
                    "(id_project, id_user, author_position) "
                    "VALUES (?,?,?)", (id_project, au["id"], au["position"]))
     if commit:
         db.commit()
+    return
 
 
-def _store_external_authors(id_project: str, ext_authors: list, commit: bool = False):
+def _store_external_authors(id_project: str, ext_authors: list, drop_previous: bool = True, commit: bool = False):
     """
     Stores info about external authors into the db for the specified project.
     Parameters
@@ -898,6 +1038,8 @@ def _store_external_authors(id_project: str, ext_authors: list, commit: bool = F
     ext_authors : list
         List of dicts with keys 'email' for the author's email and 'position' for the author's position in the author
         list.
+    drop_previous : bool
+        Whether to drop the previous authors associated with the project, if any.
     commit : bool
         Whether to commit changes to the DB.
 
@@ -906,6 +1048,8 @@ def _store_external_authors(id_project: str, ext_authors: list, commit: bool = F
     None
     """
     db = get_db()
+    if drop_previous:
+        db.execute("DELETE FROM publication_external_authors WHERE id_project = ?", (id_project,))
     for au in ext_authors:
         db.execute("INSERT INTO publication_external_authors "
                    "(id_project, email, author_position) "
@@ -943,14 +1087,14 @@ def notify_external_authors(id_project: str):
                                   "FROM publication_external_authors "
                                   "WHERE id_project = ?", (id_project,)).fetchall()
     addresses = [au["email"] for au in external_authors]
-    from pscs.templates.misc import peer_review_external_author_notification
+    from pscs.templates.misc import external_author_info_request
     for addr in addresses:
         url_signer = URLSafeTimedSerializer(secret_key=current_app.config["SECRET_KEY"], salt="external_author")
         token = url_signer.dumps(addr)
         author_url = url_for("projects.external_author_info", id_project=id_project, token=token)
         external_author_url = build_full_url(author_url)
-        notif_email = peer_review_external_author_notification.format(pscs_url=current_app.config["CURRENT_URL"],
-                                                                      author_info_url=external_author_url)
+        notif_email = external_author_info_request.format(pscs_url=current_app.config["CURRENT_URL"],
+                                                          author_info_url=external_author_url)
         subject = "PSCS Project Publication - Authorship Information Required"
         send_email([addr], subject=subject, body=notif_email)
     return
@@ -996,7 +1140,7 @@ def external_author_info(id_project, token):
         # User has returned data
         data = request.form
         author_name = escape(data["name"])
-        affiliations = data["affiliations"].split()
+        affiliations = data["affiliations"].splitlines()
         affiliations = [escape(aff) for aff in affiliations]
         noPHI = request.form["noPHI"] == "on"
         dataUse = request.form["dataUse"] == "on"

@@ -393,6 +393,7 @@ CREATE TABLE publication_authors(
     id_user TEXT NOT NULL,
     author_position INT NOT NULL,  -- 0-indexed position of the user in the author list
     confirmed BIT DEFAULT 0,
+    CONSTRAINT author_key PRIMARY KEY(id_project, id_user),
     FOREIGN KEY id_project REFERENCES projects(id_project),
     FOREIGN KEY id_user REFERENCES users_auth(id_user)
 )

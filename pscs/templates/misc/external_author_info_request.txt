@@ -1,0 +1,6 @@
+<p>A project on the <a href="{pscs_url}">Platform for Single-Cell Science (PSCS)</a> has included you as a co-author.
+ Before the project can proceed, you will need to supply authorship information (name & affiliations). You can submit
+ this information at the following link:</p>
+<p><a href="{author_info_url}">{author_info_url}</p>
+<br>
+<p>- PSCS</p>

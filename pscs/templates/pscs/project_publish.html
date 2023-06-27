@@ -6,6 +6,9 @@
 
 {% block content %}
 <h3 class="postline">Project Abstract</h3>
+{% if "on_hold" in public_status %}
+<p><b>The project is on hold pending input from external authors.</b></p>
+{% endif %}
 <p id="projectSpecs">This page manages the publication of the following project:</p>
 <p>Project Title: {{proj["name_project"]}}</p>
 <p>Project Description: {{proj["description"]}}</p>
@@ -21,7 +24,9 @@
 <div>
 <select id="authorlist" size="5" style="display: inline-block">
   {% for a in authors %}
-    {% if a["name"] is none or a["name"]|length == 0 %}
+    {% if a['id_user'] is none %}
+       <option id="{{a['name_user']}}">{{a["name"]}}</option>"
+    {% elif a["name"] is none or a["name"]|length == 0 %}
       <option id="{{a['id_user']}}">{{a["name_user"]}}</option>
     {% else %}
       <option id="{{a['id_user']}}">{{a["name"]}}</option>
@@ -109,5 +114,7 @@
   <input name="confirmation" id="public" placeholder="Project Title">
   <button onclick="parsePublicationPage('public')">Publish project</button>
 {% endif %}
-
+{% if "on_hold" in public_status %}
+  <p>Modifications to publication status are blocked until external authors have supplied the requested information.</p>
+{% endif %}
 {% endblock %}
