@@ -314,6 +314,33 @@ def delete_data(id_data):
     return
 
 
+@bp.route("/pipeline/load_analysis", methods=["POST"])
+def load_analysis():
+    if "loadAnalysis" in request.json:
+        # get id of related project to check user permissions
+        db = get_db()
+        id_analysis = request.json["loadAnalysis"]
+        id_project = db.execute("SELECT id_project "
+                                "FROM analysis WHERE id_analysis = ?", (id_analysis,)).fetchone()["id_project"]
+        has_perm = check_user_permission(permission_name="analysis_read",
+                                         permission_value=1,
+                                         id_project=id_project)
+        if has_perm:
+            # has permission to read; go get analysis file and return JSON
+            return load_analysis_from_id(id_analysis)
+        return {"": ""}
+
+
+def load_analysis_from_id(id_analysis):
+    db = get_db()
+    node_file = db.execute("SELECT node_file FROM analysis WHERE id_analysis = ?", (id_analysis,)).fetchone()[
+        'node_file']
+    f = open(node_file, 'r')
+    node_data = json.load(f)
+    f.close()
+    return node_data
+
+
 @bp.route('/pipeline', methods=['GET', 'POST'])
 def pipeline_designer():
     if request.method == 'GET':
@@ -339,26 +366,6 @@ def pipeline_designer():
             return render_template("pscs/pipeline.html", node_json=node_json, modules=modules, proj_dests=proj_dests,
                                    user_dests=user_dests, analyses=analyses, current_project=url_for("projects.project", id_project=session["CURRENT_PROJECT"]))
     elif request.method == 'POST':
-        if "loadAnalysis" in request.json:
-            # Check user perm
-            # Get id of related project
-            db = get_db()
-            id_analysis = request.json["loadAnalysis"]
-            id_project = db.execute("SELECT id_project "
-                                    "FROM analysis WHERE id_analysis = ?", (id_analysis,)).fetchone()["id_project"]
-            has_perm = check_user_permission(permission_name="analysis_read",
-                                             permission_value=1,
-                                             id_project=id_project)
-            if not has_perm:
-                return {"": ""}
-            elif has_perm:
-                # has permission to read; go get analysis file and return JSON
-                node_file = db.execute("SELECT node_file FROM analysis WHERE id_analysis = ?", (id_analysis,)).fetchone()['node_file']
-                f = open(node_file, 'r')
-                node_data = json.load(f)
-                f.close()
-                return node_data
-            return {"": ""}
         pipeline_summary = request.json
         is_dest_project = pipeline_summary['isDestProject']
         id_project = pipeline_summary['saveId']

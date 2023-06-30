@@ -17,9 +17,11 @@ from pscs.pscs import add_user_to_project, delete_data, check_user_permission
 from werkzeug.security import check_password_hash, generate_password_hash
 from pscs.messaging.mail import send_email
 import pscs
+from pscs.pscs import load_analysis_from_id
 import os
 import string
 from itsdangerous.url_safe import URLSafeTimedSerializer
+import json
 from pscs.authtools.validation.registration import decode_token
 
 bp = Blueprint("projects", __name__, url_prefix="/project")
@@ -137,6 +139,20 @@ def public_project(id_project):
             flash("Password is incorrect.")
             return redirect(url_for("pscs.public_project", id_project=id_project))
     return
+
+
+@bp.route('/<id_project>/public/load_analysis', methods=["POST"])
+def load_analysis(id_project):
+    if request.method == "POST":
+        if "loadAnalysis" in request.json:
+            id_analysis = request.json["loadAnalysis"]
+            has_perm = check_user_permission(permission_name="analysis_read",
+                                             permission_value=1,
+                                             id_project=id_project)
+            if has_perm:
+                # has permission to read; go get analysis file and return JSON
+                return load_analysis_from_id(id_analysis)
+            return {"": ""}
 
 
 def display_public_project(id_project):

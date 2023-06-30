@@ -1041,10 +1041,18 @@ function openSavePanel(projDestsJSON) {
 
 async function loadAnalysis(){
     let analysis_selection = document.getElementById("analyses");
+    console.log(analysis_selection);
     let id_analysis = analysis_selection.value;
+    console.log(id_analysis);
+    return loadAnalysisFromId(id_analysis);
+}
+
+
+async function loadAnalysisFromId(id_analysis){
+// Loads analysis data from the DB based on the input ID.
     let analysis_spec = {};
     analysis_spec["loadAnalysis"] = id_analysis;
-    let response = await fetch(window.location.href, {
+    let response = await fetch(window.location.href + "/load_analysis", {
         method: "POST",
         headers: {
             "Accept": "application/json",
