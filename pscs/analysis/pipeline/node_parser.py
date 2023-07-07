@@ -228,6 +228,7 @@ def connect_nodes(node_dict: dict, src_dict: dict) -> None:
             node.connect_to_output(node_dict[srcnode])
     return
 
+
 def identify_connections(node: dict) -> (str, list, list):
     """
     Identifies the node's ID and input & output connections.
@@ -266,7 +267,6 @@ def identify_connections(node: dict) -> (str, list, list):
     return node_id, srcs, dsts
 
 
-
 def main():
     self_path = dirname(__file__)
     tmp_files = os.listdir(self_path)
@@ -285,7 +285,8 @@ def main():
             node_params = get_node_parameters(node_tuple[1])
             node_params['module'] = module
             js_dict[node_name] = node_params
-
+    # Patch; this is to have the loaders for the HTML/JavaScript page use the first key as the pkg name
+    js_dict = {"Scanpy": js_dict}
     # find static dir
     idx = self_path.rfind('pscs')
     static_json_path = join(self_path[:idx + len('pscs')], 'static', 'node_data.json')

@@ -14,6 +14,7 @@ import json
 import hashlib
 import pathlib
 import sqlite3
+from warnings import warn
 
 
 bp = Blueprint("pscs", __name__)
@@ -344,12 +345,6 @@ def load_analysis_from_id(id_analysis):
 @bp.route('/pipeline', methods=['GET', 'POST'])
 def pipeline_designer():
     if request.method == 'GET':
-        static_path = current_app.config["STATIC_DIRECTORY"]
-        f = open(os.path.join(static_path, "node_data.json"), 'r')
-        j = json.load(f)
-        f.close()
-        modules = get_unique_values_for_key(j, 'module')
-        node_json = convert_dict_to_list(j)
         proj_dests, user_dests = get_save_destinations()
 
         # Fetch analysis that user is allowed to read
@@ -360,11 +355,11 @@ def pipeline_designer():
                               "WHERE projects_roles.id_user = ? AND projects_roles.analysis_read = 1",
                               (g.user['id_user'],)).fetchall()
         if "CURRENT_PROJECT" not in session.keys():
-            return render_template("pscs/pipeline.html", node_json=node_json, modules=modules, proj_dests=proj_dests,
+            return render_template("pscs/pipeline.html", proj_dests=proj_dests,
                                    user_dests=user_dests, analyses=analyses)
         else:
-            return render_template("pscs/pipeline.html", node_json=node_json, modules=modules, proj_dests=proj_dests,
-                                   user_dests=user_dests, analyses=analyses, current_project=url_for("projects.project", id_project=session["CURRENT_PROJECT"]))
+            return render_template("pscs/pipeline.html", proj_dests=proj_dests,user_dests=user_dests, analyses=analyses,
+                                   current_project=url_for("projects.project", id_project=session["CURRENT_PROJECT"]))
     elif request.method == 'POST':
         pipeline_summary = request.json
         is_dest_project = pipeline_summary['isDestProject']
@@ -412,6 +407,79 @@ def pipeline_designer():
         return render_template("pscs/pipeline.html")
 
 
+@bp.route("/pipeline/fetch_nodes", methods=["POST"])
+def fetch_nodes():
+    # This function loads the node data and returns it as a JSON object
+    if request.method == "POST":
+        static_path = current_app.config["STATIC_DIRECTORY"]
+        f = open(os.path.join(static_path, "node_data.json"), 'r')
+        nodes = json.load(f)
+        f.close()
+        return jsonify(nodes)
+
+
+def load_node_specs(json_file: str) -> dict:
+    """
+    Loads the node specs from the specified file. Format is expected to be:
+     {pkg_name: {node_name: {parameters: {param_name: [type, default value] }}}}
+    Parameters
+    ----------
+    json_file : str
+        Path to the JSON file containing the node specifications.
+
+    Returns
+    -------
+    dict
+        Nested dict with node information.
+
+    Raises
+    ------
+    ValueError
+        If json_file has more than one top-level key.
+    """
+    f = open(json_file, "r")
+    node_data = json.load(f)
+    f.close()
+    if len(node_data.keys()) > 1:
+        raise ValueError("Node file incorrectly-formatted; top-level key should be name of package.")
+    return node_data
+
+
+def load_many_node_specs(json_files: list) -> dict:
+    """
+    Loads several node specs from a list.
+    Parameters
+    ----------
+    json_files : list
+        List of JSON files containing node specs for different packages.
+
+    Returns
+    -------
+    dict
+        Nested dict with node information.
+
+    Warnings
+    --------
+    UserWarning
+         If two or more of the node files have the same package name, the names will be mangled and the function will
+         warn the user.
+    """
+    node_data = {}
+    for node_file in json_files:
+        node = load_node_specs(node_file)
+        pkg_name = list(node.keys())[0]
+        old_pkg_name = pkg_name  # in case of name mangling
+        if pkg_name in node_data.keys():
+            idx = 1
+            old_pkg_name = pkg_name
+            while f"{old_pkg_name}_{idx}" in node_data.keys():
+                idx += 1
+            pkg_name = f"{old_pkg_name}_{idx}"
+            warn(UserWarning(f"More than one node package have the same name; renaming {old_pkg_name} to {pkg_name}"))
+        node_data[pkg_name] = node[old_pkg_name]
+    return node_data
+
+
 @bp.route("/about", methods=["GET"])
 def about():
     if request.method == "GET":
@@ -428,8 +496,6 @@ def get_save_destinations():
     for p in projs:
         proj_dests[p['name_project']] = p['id_project']
     user_dests = {'user': g.user['name_user'], 'id': g.user['id_user']}
-    # user_dests = {g.user['name_user']: g.user['id_user']}
-    # return [p['name_project'] for p in projs]
     return proj_dests, user_dests
 
 

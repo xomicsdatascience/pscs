@@ -26,33 +26,12 @@
     {% if current_project is defined %}
         <button type="button" onclick='location.href="{{current_project}}";'>Return to current project</button>
     {% endif %}
-    {% for m in modules %}
-      <h2>{{ m[0].upper() + m[1:] }}</h2>
-      {% for j in node_json %}
-        {% if j['module'] == m %}
-          {% if j['num_inputs'] == 0 %}
-            <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createPscsNode(null, &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters'] }}&quot;, 'input', 'static/nodes/input.png')", >{{ j['name'] }}
-              <img width="20px" height="20px" src="static/nodes/input.png">
-          </p>
-          {% elif j['num_outputs'] == 0 %}
-            <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createPscsNode(null, &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;, 'output', 'static/nodes/output.png')">{{ j['name'] }}
-              <img width="20px" height="20px" src="static/nodes/output.png">
-          {% elif j['num_inputs'] == 1 %}
-            <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createPscsNode(null, &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;, 'simo', 'static/nodes/simo.png')">{{ j['name'] }}
-              <img width="20px" height="20px" src="static/nodes/simo.png">
-          {% else %}
-            <p title="{{ j['parameters'] }}" color="#999999" onmousedown="createPscsNode(null, &quot;{{ j['name'] }}&quot;, &quot;{{ j['module'] }}&quot;, &quot;{{ j['parameters']}}&quot;, 'mimo', 'static/nodes/mimo.png')">{{ j['name'] }}
-              <img width="20px" height="20px" src="static/nodes/mimo.png">
-          {% endif %}
-        {% endif %}
-      {% endfor %}
-    {% endfor %}
-
 </div>
 
 <div id="nodeContainer" class="container"></div>
 
 <script>
+window.addEventListener('load', function () {loadSidebarNodes("sidebar");})
 window.addEventListener('load', function () {toggleSidebar();})
 </script>
 {% endblock %}

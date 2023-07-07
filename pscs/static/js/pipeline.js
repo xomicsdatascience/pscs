@@ -1041,9 +1041,7 @@ function openSavePanel(projDestsJSON) {
 
 async function loadAnalysis(){
     let analysis_selection = document.getElementById("analyses");
-    console.log(analysis_selection);
     let id_analysis = analysis_selection.value;
-    console.log(id_analysis);
     return loadAnalysisFromId(id_analysis);
 }
 
@@ -1203,4 +1201,104 @@ function clearNodes() {
             node.del();
         }
     }
+}
+
+async function loadSidebarNodes(sidebarId){
+    // Fetches the node information for the sidebar.
+    let response = await fetch(window.location.href + "/fetch_nodes", {
+        method: "POST",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        }
+    })
+    const sidebar = document.getElementById(sidebarId);
+    let redata = {};
+    let module_name = "";
+    let data = await response.json();
+    // Re-arrange so data is in order of Package : Module : Node instead of Package : Node
+    for(let pack in data){
+        redata[pack] = {}
+        for(let pscsNode in data[pack]){
+            module_name = data[pack][pscsNode]['module'];
+            if(redata[pack][module_name] === undefined){
+                redata[pack][module_name] = {};
+            }
+            redata[pack][module_name][pscsNode] = data[pack][pscsNode];
+        }
+    }
+
+    // Add to sidebar
+    for(let pack in redata){
+        // Top-level package
+        let packageDiv = addCollapsibleSection(sidebar, pack)
+        packageDiv.style.fontSize = "25px";
+        for(let module in redata[pack]){
+            // Module in package
+            let moduleDiv = addCollapsibleSection(packageDiv, module);
+            moduleDiv.style.fontSize = "20px";
+            for(let nodeName in redata[pack][module]){
+                // Actual node
+                let pscsNode = redata[pack][module][nodeName];
+                let p = document.createElement("p");
+                p.title = JSON.stringify(pscsNode["parameters"]);
+                let nodeType = getNodeType(pscsNode);
+                const imgPath = "static/nodes/" + nodeType + ".png";
+                p.addEventListener('click',
+                    function () {createPscsNode(null, nodeName, module, pscsNode["parameters"], nodeType, imgPath);});
+                p.textContent = nodeName;
+                p.style.fontSize = "12px";
+                let img = document.createElement("img");
+                img.src = imgPath;
+                img.width = 20;
+                img.height = 20;
+                p.appendChild(img);
+                moduleDiv.appendChild(p);
+            }
+        }
+    }
+}
+
+function addCollapsibleSection(parentDiv, title=""){
+    // Adds a collapsible subsection to the div specified by divId
+    let section_title = document.createElement("p");
+    section_title.textContent = title;
+    section_title.addEventListener("click", toggleDisplay);
+    parentDiv.appendChild(section_title);
+    let collap = document.createElement("div");
+    collap.classList.add("sidebar-section");
+    parentDiv.appendChild(collap);
+    return collap;
+}
+
+function toggleDisplay(e){
+    // Fires on event; toggles display of sibling
+    let el = e.target;
+    let sib = el.nextElementSibling;
+    if(sib.style.display === "none"){
+        sib.style.display = "block";
+        if(el.textContent[0] === "+"){
+            el.textContent = "-" + el.textContent.substring(1,);
+        }
+        else{
+            el.textContent = "-" + el.textContent;
+        }
+    }
+    else{
+        sib.style.display = "none";
+        if(el.textContent[0] === "-"){
+            el.textContent = "+" + el.textContent.substring(1,);
+        }
+        else{
+            el.textContent = "+" + el.textContent;
+        }
+    }
+}
+
+function getNodeType(pscsNode){
+    // Determines whether the node is input, output, simo, or mimo
+    if(pscsNode["num_inputs"] === 0){return "input"}
+    else if(pscsNode["num_outputs"] === 0){return "output"}
+    else if(pscsNode["num_inputs"] === 1){return "simo"}
+    else{return "mimo"}
 }
