@@ -10,6 +10,7 @@ class PipelineNode(ABC):
     def __init__(self):
         self.num_inputs = 1
         self.num_outputs = 1
+        self.parameters = {}
         self._effect = []  # properties added to annotated data
         self._next = []  # list of nodes that follow this one
         self._previous = []  # list of nodes that lead to this node
@@ -31,6 +32,13 @@ class PipelineNode(ABC):
             for next_node in self._next:
                 next_node.run_pipeline()
         return
+
+    def store_vars_as_parameters(self, **kwargs):
+        """Stores the key-value pairs in self.parameters. Excludes "self"""
+        for param, value in kwargs.items():
+            if param == "self" or param == "return" or param.startswith("_"):
+                continue
+            self.parameters[param] = value
 
     @property
     def cumulative_effect(self) -> list:
@@ -211,7 +219,6 @@ class Pipeline:
         for _, node in self.pipeline.items():
             if node.is_ready:
                 ready_list.append(node)
-        print(ready_list)
         while len(ready_list) > 0:
             run_list = ready_list
             ready_list = []

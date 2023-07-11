@@ -3,7 +3,8 @@ include pscs/universities.json
 include pscs/templates/misc/*
 include pscs/static/pscs_logo2.svg
 include pscs/Data_Use_Agreement.txt
-include pscs/static/singularity/*
+include pscs/static/singularity/pscs_sing.def
+include pscs/static/singularity/run_pscs_pipeline.py
 
 global-include *.js
 global-include *.png

@@ -22,21 +22,18 @@ class CSVLoadingNode(InputNode):
             If int, takes the column at that position.
         """
         super().__init__()
-        path = str(path)
-        if path.endswith('.tsv'):
-            self.sep = '\t'
+        vars_without_self = vars()
+        del vars_without_self["self"]
+        self.store_vars_as_parameters(**vars_without_self)
+        if isinstance(path, str) and path.endswith('.tsv'):
+            self.parameters["sep"] = '\t'
         else:
-            self.sep = ','
-        if index_col is None:
-            index_col = 0
-        self.path = path
-        self.index_col = index_col
-        self.effect = ['+X', '+obs', '+var']  # creates the data object
+            self.parameters["sep"] = ','
         return
 
     def run(self):
         # Load csv
-        data = pd.read_csv(self.path, sep=self.sep, index_col=self.index_col)
+        data = pd.read_csv(self.parameters["path"], sep=self.parameters["sep"], index_col=self.parameters["index_col"])
         self._terminate(result=anndata.AnnData(data))
         return
 
@@ -50,8 +47,8 @@ class CSVLoadingNode(InputNode):
             True if parameters are valid; False if parameters are invalid and suppress=True.
         """
         exception_str = []
-        if not self.path.endswith('.tsv') or not self.path.endswith('.csv'):
-            exception_str.append(f"File {os.path.basename(self.path)} must be either .csv or .tsv")
+        if not self.parameters["save"].endswith('.tsv') or not self.parameters["save"].endswith('.csv'):
+            exception_str.append(f"File {os.path.basename(self.parameters['save'])} must be either .csv or .tsv")
         if len(exception_str) > 0:
             raise ValueError(exception_str)
         return

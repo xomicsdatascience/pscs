@@ -2,64 +2,65 @@ from pscs.analysis.pipeline.base import OutputNode
 import matplotlib
 from matplotlib import pyplot as plt
 import scanpy as sc
-# matplotlib.use('Agg')
+from scanpy import plotting as pl
+from typing import Optional, Sequence, Literal, Collection, Union
+import os
+from pathlib import Path
 
 
-class ScatterPlot(OutputNode):
+class Scatter(OutputNode):
     def __init__(self,
-                 x_gene: str = None,
-                 y_gene: str = None,
-                 output_name: str = "scatter.png"):
+                 x: Optional[str] = None,
+                 y: Optional[str] = None,
+                 color: Union[str, Collection[str], None] = None,
+                 layers: Union[str, Collection[str], None] = None,
+                 save: Union[str, bool] = "scatter.png"):
         super().__init__()
-        self.x = x_gene
-        self.y = y_gene
-        self.output_name = output_name
+        vars_without_self = vars()
+        save = "_" + str(save)
+        if not save.endswith(".png") and not save.endswith(".svg") and not save.endswith(".jpeg"):
+            save += ".png"
+        vars_without_self["show"] = False
+        vars_without_self["save"] = save
+        del vars_without_self["self"]
+        self.store_vars_as_parameters(**vars_without_self)
         return
 
     def run(self):
         ann_data = self._previous[0].result
-        plt.figure()
-        plt.scatter(ann_data[:, self.x].X, ann_data[:, self.y].X)
-        plt.xlabel(self.x)
-        plt.ylabel(self.y)
-        plt.savefig(self.output_name)
-        plt.close()
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        tmp_parameters = self.parameters.copy()
+        tmp_parameters["save"] = os.path.basename(tmp_parameters["save"])
+        pl.scatter(ann_data, **tmp_parameters)
         return
 
 
 class HighestExpressedGenes(OutputNode):
     def __init__(self,
                  n_top: int = 30,
-                 output_name: str = "highest_expressed.png"):
-        """
-        Fraction of counts assigned to each gene over all cells.
-        Computes, for each gene, the fraction of counts assigned to that gene within a cell. The n_top genes with the highest mean fraction over all cells are plotted as boxplots.
-        Parameters
-        ----------
-        n_top : int
-            Number of top-expressed genes to plot. Default: 30.
-        log : bool
-            Whether to plot the x-axis in log scale. Default: False.
-        output_name : str
-            Name of the output file.
-        """
+                 save: str = "highest_expressed.png",
+                 log: bool = False):
         super().__init__()
-        self.n_top = n_top
-        self.output_name = output_name
+        vars_without_self = vars()
+        del vars_without_self["self"]
+        vars_without_self["show"] = False
+        self.store_vars_as_parameters(**vars_without_self)
         return
 
     def run(self):
         ann_data = self._previous[0].result
-        sc.pl.highest_expr_genes(ann_data, n_top=self.n_top, show=False)
-        plt.savefig(self.output_name)
+        sc._settings.ScanpyConfig.figdir = os.path.dirname(self.parameters["save"])
+        tmp_parameters = self.parameters.copy()
+        tmp_parameters["save"] = os.path.basename(tmp_parameters["save"])
+        pl.highest_expr_genes(ann_data, **tmp_parameters)
         return
 
 
 class UMAPPlot(OutputNode):
     def __init__(self,
-                 add_outline: bool = None,
-                 color: list = None,
-                 output_name: str = "UMAP.png"):
+                 add_outline: Optional[bool] = None,
+                 color: Union[str, Sequence[str], None] = None,
+                 save: str = "UMAP.png"):
         """
         Creates the UMAP plot based on the ann_data.obsm['X_umap'] matrix.
         Parameters
@@ -68,18 +69,19 @@ class UMAPPlot(OutputNode):
             Whether to add outlines to clusters on the plot.
         color : list
             List of column names to use to apply colors.
-        output_name : str
+        save : str
             Name to use for the output file.
         """
         super().__init__()
-        self.add_outline = add_outline
-        self.output_name = output_name
-        self.requirements = ["+.obsm['X_umap']"]
-        self.color = color
+        vars_without_self = vars()
+        del vars_without_self["self"]
+        self.store_vars_as_parameters(**vars_without_self)
         return
 
     def run(self):
         ann_data = self._previous[0].result
-        sc.pl.umap(ann_data, add_outline=self.add_outline)
-        plt.savefig(self.output_name)
+        sc._settings.ScanpyConfig.figdir = os.path.dirname(self.parameters["save"])
+        tmp_parameters = self.parameters.copy()
+        tmp_parameters["save"] = os.path.basename(tmp_parameters["save"])
+        sc.pl.umap(ann_data, **tmp_parameters)
         return

@@ -7,9 +7,7 @@ import os
 import json
 from importlib import import_module
 import inspect
-import re
 exclude_files = set(["__init__.py", "base.py", "exceptions.py", basename(__file__)])
-reserved_params = set(['num_inputs', 'num_outputs', 'effect'])  # These are parameters that should be public but unused
 
 # This file parses available nodes and creates a JSON object describing coarse node properties
 # for use by the pipeline designer.
@@ -79,7 +77,6 @@ def parse_params(params_dict: dict) -> dict:
     params = {}
     for param_name, param_value in params_dict.items():
         annot = str(param_value.annotation)
-        annot = re.search("'(.*)'", annot).group()[1:-1]  # look for the string between quotes, then omit the quotes
         params[param_name] = (annot, param_value.default)
     return params
 
@@ -183,7 +180,9 @@ def assign_outputs(pipeline: Pipeline, output_dir: str) -> None:
     """
     for node_num, node in pipeline.pipeline.items():
         if isinstance(node, OutputNode):
-            node.output_name = join(output_dir, secure_filename(node.output_name))
+            save_name = node.parameters["save"]
+            num_leading_uscore = len(save_name) - len(save_name.lstrip("_"))
+            node.parameters["save"] = join(output_dir, "_"*num_leading_uscore + secure_filename(node.parameters["save"]))
     return
 
 def assign_inputs(pipeline: Pipeline, input_files: dict, path_keyword: str = 'path') -> None:
@@ -205,7 +204,7 @@ def assign_inputs(pipeline: Pipeline, input_files: dict, path_keyword: str = 'pa
     input_keys = input_files.keys()
     for node_num, node in pipeline.pipeline.items():
         if node.nodeId in input_keys:
-            node.__dict__[path_keyword] = input_files[node.nodeId]
+            node.parameters[path_keyword] = input_files[node.nodeId]
     return
 
 
