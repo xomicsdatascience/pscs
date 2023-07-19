@@ -7,6 +7,7 @@ import os
 import json
 from importlib import import_module
 import inspect
+from typomancy.handlers import type_wrangler
 exclude_files = set(["__init__.py", "base.py", "exceptions.py", basename(__file__)])
 
 # This file parses available nodes and creates a JSON object describing coarse node properties
@@ -131,8 +132,19 @@ def load_from_nodes(node_json: str) -> Pipeline:
         # Restrict imports to PSCS pipeline:
         module = import_module(f'pscs.analysis.pipeline.{node_module}', package=__package__)
         node_class = inspect.getmembers(module, lambda mem: inspect.isclass(mem) and mem.__name__ == node_name)[0][1]
+
         # Instantiate the class with specified parameters
-        node_instance = node_class(**node['paramsValues'])
+        # Get class annotations and convert JSON values to the type specified
+        class_params = inspect.signature(node_class.__init__).parameters
+        cast_params = dict()
+        for param_name, param_obj in class_params.items():
+            if param_name == "self":
+                continue
+            par = type_wrangler(node["paramsValues"][param_name], param_obj.annotation)
+            if par is None:
+                par = param_obj.default
+            cast_params[param_name] = par
+        node_instance = node_class(**cast_params)
         node_instance.nodeId = node['nodeId']
         node_num, node_srcs, node_dsts = identify_connections(node)
         node_dict[node_num] = node_instance

@@ -1,6 +1,7 @@
 from abc import ABC, abstractmethod
 from pscs.exceptions import PreviousNodesNotRun, NodeRequirementsNotMet
 from copy import deepcopy
+from ast import literal_eval
 
 
 class PipelineNode(ABC):
@@ -38,7 +39,10 @@ class PipelineNode(ABC):
         for param, value in kwargs.items():
             if param == "self" or param == "return" or param.startswith("_"):
                 continue
-            self.parameters[param] = value
+            if value is None or value == "null":
+                self.parameters[param] = None
+            else:
+                self.parameters[param] = value
 
     @property
     def cumulative_effect(self) -> list:
