@@ -34,8 +34,9 @@ class PipelineNode(ABC):
                 next_node.run_pipeline()
         return
 
-    def store_vars_as_parameters(self, **kwargs):
-        """Stores the key-value pairs in self.parameters. Excludes "self"""
+    @staticmethod
+    def store_vars_as_parameters(**kwargs):
+        self = kwargs["self"]
         for param, value in kwargs.items():
             if param == "self" or param == "return" or param.startswith("_"):
                 continue
@@ -43,7 +44,6 @@ class PipelineNode(ABC):
                 self.parameters[param] = None
             else:
                 self.parameters[param] = value
-
     @property
     def cumulative_effect(self) -> list:
         """
@@ -72,6 +72,7 @@ class PipelineNode(ABC):
         for prev in self._previous:
             requirements += prev.cumulative_requirements
         return requirements + self._requirements
+
 
     @property
     def result(self):
@@ -204,6 +205,11 @@ class OutputNode(PipelineNode):
 
     def connect_to_output(self, node):
         raise ValueError(f"This node doesn't have an output to be received.")
+
+    def _terminate(self,
+                   result=None):
+        """Output nodes don't need to store results."""
+        pass
 
 
 class Pipeline:

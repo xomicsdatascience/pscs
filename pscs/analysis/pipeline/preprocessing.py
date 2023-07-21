@@ -20,15 +20,7 @@ class CalculateQCMetrics(PipelineNode):
                  log1p: bool = True):
         # Assign all arguments to self.parameters
         super().__init__()
-        self.parameters = {}
-        for param, value in vars().items():
-            if param == "self":
-                continue
-            self.parameters[param] = value
-        self.parameters["inplace"] = True
-        self.effect = ["total_{var_type}_by_{expr_type}", "total_{expr_type}",
-                       "pct_{expr_type}_in_top_{percent_top}_{var_type}",
-                       "total_{expr_type}_{qc_var}", "pct_{expr_type}_{qc_var}"]
+        self.store_vars_as_parameters(**vars(), inplace=True)
         return
 
     def run(self):
@@ -45,10 +37,7 @@ class FilterCells(PipelineNode):
                  max_counts: Optional[int] = None,
                  max_genes: Optional[int] = None):
         super().__init__()
-        vars_without_self = vars()
-        del vars_without_self["self"]
-        vars_without_self["inplace"] = True
-        self.store_vars_as_parameters(**vars_without_self)
+        self.store_vars_as_parameters(**vars(), inplace=True)
         return
 
     def run(self):
@@ -69,10 +58,7 @@ class FilterGenes(PipelineNode):
                  max_counts: Optional[int] = None,
                  max_cells: Optional[int] = None):
         super().__init__()
-        vars_without_self = vars()
-        del vars_without_self["self"]
-        vars_without_self["inplace"] = True
-        self.store_vars_as_parameters(**vars_without_self)
+        self.store_vars_as_parameters(**vars(), inplace=True)
         return
 
     def run(self):
@@ -100,10 +86,7 @@ class HighlyVariableGenes(PipelineNode):
                  subset: bool = False,
                  batch_key: Optional[str] = None):
         super().__init__()
-        vars_without_self = vars()
-        del vars_without_self["self"]
-        self.store_vars_as_parameters(**vars_without_self)
-        self.parameters["inplace"] = True
+        self.store_vars_as_parameters(**vars(), inplace=True)
         return
 
     def run(self):
@@ -121,9 +104,7 @@ class Log1p(PipelineNode):
                  layer: Optional[str] = None,
                  obsm: Optional[str] = None):
         super().__init__()
-        vars_without_self = vars()
-        del vars_without_self["self"]
-        self.store_vars_as_parameters(**vars_without_self)
+        self.store_vars_as_parameters(**vars())
         return
 
     def run(self):
@@ -144,9 +125,7 @@ class PCA(PipelineNode):
                  chunked: bool = False,
                  chunk_size: Optional[int] = None):
         super().__init__()
-        vars_without_self = vars()
-        del vars_without_self["self"]
-        self.store_vars_as_parameters(**vars_without_self)
+        self.store_vars_as_parameters(**vars())
         return
 
     def run(self):
@@ -164,10 +143,7 @@ class NormalizeTotal(PipelineNode):
                  key_added: Optional[str] = None,
                  layer: Optional[str] = None):
         super().__init__()
-        vars_without_self = vars()
-        del vars_without_self["self"]
-        vars_without_self["inplace"] = True
-        self.store_vars_as_parameters(**vars_without_self)
+        self.store_vars_as_parameters(**vars(), inplace=True)
         return
 
     def run(self):
@@ -182,10 +158,7 @@ class RegressOut(PipelineNode):
                  keys: Union[str, Sequence[str]] = None,
                  n_jobs: Optional[int] = None):
         super().__init__()
-        vars_without_self = vars()
-        del vars_without_self["self"]
-        vars_without_self["inplace"] = True
-        self.store_vars_as_parameters(**vars_without_self)
+        self.store_vars_as_parameters(**vars(), inplace=True)
         return
 
     def run(self):
@@ -202,9 +175,7 @@ class Scale(PipelineNode):
                  layer: Optional[str] = None,
                  obsm: Optional[str] = None):
         super().__init__()
-        vars_without_self = vars()
-        del vars_without_self["self"]
-        self.store_vars_as_parameters(**vars_without_self)
+        self.store_vars_as_parameters(**vars())
         return
 
     def run(self):
@@ -220,9 +191,7 @@ class Subsample(PipelineNode):
                  n_obs: Optional[int] = None,
                  random_state: Union[None, int] = 0):
         super().__init__()
-        vars_without_self = vars()
-        del vars_without_self["self"]
-        self.store_vars_as_parameters(**vars_without_self)
+        self.store_vars_as_parameters(**vars())
         return
 
     def run(self):
@@ -239,9 +208,7 @@ class DownsampleCounts(PipelineNode):
                  random_state: Union[None, int] = 0,
                  replace: bool = False):
         super().__init__()
-        vars_without_self = vars()
-        del vars_without_self["self"]
-        self.store_vars_as_parameters(**vars_without_self)
+        self.store_vars_as_parameters(**vars())
         return
 
     def run(self):
@@ -250,3 +217,41 @@ class DownsampleCounts(PipelineNode):
         self._terminate(ann_data)
         return
 
+
+class Combat(PipelineNode):
+    def __init__(self,
+                 key: str = "batch",
+                 covariates: Optional[Collection[str]] = None):
+        super().__init__()
+        self.store_vars_as_parameters(**vars())
+        return
+
+    def run(self):
+        ann_data = self._previous[0].result
+        pp.combat(ann_data, **self.parameters, inplace=True)
+        self._terminate(ann_data)
+        return
+
+
+class Neighbors(PipelineNode):
+    def __init__(self,
+                 n_neighbors: int = 15,
+                 n_pcs: Optional[int] = None,
+                 use_rep: Optional[str] = None,
+                 knn: bool = True,
+                 random_state: Union[None, int] = 0,
+                 method: Optional[Literal["umap", "gauss", "rapids"]] = "umap",
+                 metric: Literal['cityblock', 'cosine', 'euclidean', 'l1', 'l2', 'manhattan', 'braycurtis', 'canberra',
+                                 'chebyshev', 'correlation', 'dice', 'hamming', 'jaccard', 'kulsinski', 'mahalanobis',
+                                 'minkowski', 'rogerstanimoto', 'russellrao', 'seuclidean', 'sokalmichener',
+                                 'sokalsneath', 'sqeuclidean', 'yule'] = "euclidean",
+                 key_added: Optional[str] = None):
+        super().__init__()
+        self.store_vars_as_parameters(**vars())
+        return
+
+    def run(self):
+        ann_data = self._previous[0].result
+        pp.neighbors(ann_data, **self.parameters)
+        self._terminate(ann_data)
+        return

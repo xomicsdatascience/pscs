@@ -22,9 +22,7 @@ class CSVLoadingNode(InputNode):
             If int, takes the column at that position.
         """
         super().__init__()
-        vars_without_self = vars()
-        del vars_without_self["self"]
-        self.store_vars_as_parameters(**vars_without_self)
+        self.store_vars_as_parameters(**vars())
         if isinstance(path, str) and path.endswith('.tsv'):
             self.parameters["sep"] = '\t'
         else:

@@ -1,5 +1,6 @@
+# This file parses available nodes and creates a JSON object describing coarse node properties
+# for use by the pipeline designer.
 from os.path import join, basename, dirname
-from pscs.analysis.pipeline.base import PipelineNode
 from pscs.analysis.pipeline.base import InputNode, OutputNode
 from pscs.analysis.pipeline.base import Pipeline
 from werkzeug.utils import secure_filename
@@ -8,10 +9,7 @@ import json
 from importlib import import_module
 import inspect
 from typomancy.handlers import type_wrangler
-exclude_files = set(["__init__.py", "base.py", "exceptions.py", basename(__file__)])
-
-# This file parses available nodes and creates a JSON object describing coarse node properties
-# for use by the pipeline designer.
+exclude_files = {"__init__.py", "base.py", "exceptions.py", basename(__file__)}
 
 
 def without_leading_underscore(d: dict) -> list:
@@ -78,7 +76,11 @@ def parse_params(params_dict: dict) -> dict:
     params = {}
     for param_name, param_value in params_dict.items():
         annot = str(param_value.annotation)
-        params[param_name] = (annot, param_value.default)
+        # In case default value is empty, set to none
+        default = param_value.default
+        if default == inspect._empty:
+            default = None
+        params[param_name] = (annot, default)
     return params
 
 
