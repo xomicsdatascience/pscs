@@ -456,7 +456,7 @@ class PCAOverview(OutputNode):
 
 class TSNE(OutputNode):
     def __init__(self,
-                 color: Union[str, Sequence[str],] = None,
+                 color: Union[str, Sequence[str]] = None,
                  gene_symbols: Optional[str] = None,
                  use_raw: Optional[bool] = None,
                  layer: Optional[str] = None,
@@ -478,7 +478,7 @@ class TSNE(OutputNode):
                  size: Union[float, Sequence[float], None] = None,
                  color_map: Union[str, None] = None,
                  palette: Union[str, Sequence[str], None] = None,
-                 na_color: str= "lightgray",
+                 na_color: str = "lightgray",
                  na_in_legend: bool = True,
                  frameon: Optional[bool] = None,
                  title: Union[str, Sequence[str], None] = None,
@@ -499,5 +499,102 @@ class TSNE(OutputNode):
     def run(self):
         ann_data = self._previous[0].result
         pl.tsne(ann_data, **self.parameters)
+        self._terminate(ann_data)
+        return
+
+
+class UMAP(OutputNode):
+    def __init__(self,
+                 color: Union[str, Sequence[str], None] = None,
+                 gene_symbols: Optional[str] = None,
+                 use_raw: Optional[bool] = None,
+                 layer: Optional[str] = None,
+                 edges: bool = False,
+                 edges_width: float = 0.1,
+                 edges_color: Union[str, Sequence[float], Sequence[str]] = "grey",
+                 neighbors_key: Optional[str] = None,
+                 sort_order: bool = True,
+                 groups: Optional[str] = None,
+                 dimensions: Union[Tuple[int, int], Sequence[Tuple[int, int]], None] = None,
+                 projection: Literal["2d", "3d"] = "2d",
+                 legend_loc: str = "right margin",
+                 legend_fontsize: Union[int, float, Literal["xx-small", "x-small", "small", "medium", "large", "x-large", "xx-large"]] = None,
+                 legend_fontweight: Union[int, Literal["light", "normal", "medium", "semibold", "bold", "heavy", "black"]] = "black",
+                 legend_fontoutline: Optional[int] = None,
+                 colorbar_log: Optional[str] = "right",
+                 size: Union[float, Sequence[float], None] = None,
+                 color_map: str = None,
+                 palette: Union[str, Sequence[str], None] = None,
+                 na_color: str = "lightgray",
+                 na_in_legend: bool = True,
+                 frameon: Optional[bool] = None,
+                 title: Union[str, Sequence[str], None] = None,
+                 vmin: Union[str, float] = None,
+                 vmax: Union[str, float] = None,
+                 vcenter: Union[str,float] = None,
+                 add_outline: Optional[bool] = False,
+                 outline_color: Tuple[str, str] = ("black", "white"),
+                 outline_width: Tuple[float, float] = (0.3, 0.05),
+                 ncols: int = 4,
+                 wspace: Optional[float] = None,
+                 hspace: float = 0.25,
+                 save: Union[bool, str, None] = None):
+        super().__init__()
+        self.store_vars_as_parameters(**vars(), show=False)
+        return
+
+    def run(self):
+        ann_data = self._previous[0].result
+        pl.umap(ann_data, **self.parameters)
+        self._terminate(ann_data)
+        return
+
+
+class DiffMap(OutputNode):
+    def __init__(self,
+                 color: Union[str, Sequence[str], None] = None,
+                 gene_symbols: Optional[str] = None,
+                 use_raw: Optional[bool] = None,
+                 layer: Optional[str] = None,
+                 edges: bool = False,
+                 edges_width: float = 0.1,
+                 edges_color: Union[str, Sequence[float], Sequence[str]] = "grey",
+                 neighbors_key: Optional[str] = None,
+                 sort_order: bool = True,
+                 groups: Optional[str] = None,
+                 dimensions: Union[Tuple[int, int], Sequence[Tuple[int, int]], None] = None,
+                 projection: Literal["2d", "3d"] = "2d",
+                 legend_loc: str = "right margin",
+                 legend_fontsize: Union[int, float, Literal[
+                     "xx-small", "x-small", "small", "medium", "large", "x-large", "xx-large"]] = None,
+                 legend_fontweight: Union[
+                     int, Literal["light", "normal", "medium", "semibold", "bold", "heavy", "black"]] = "black",
+                 legend_fontoutline: Optional[int] = None,
+                 colorbar_log: Optional[str] = "right",
+                 size: Union[float, Sequence[float], None] = None,
+                 color_map: str = None,
+                 palette: Union[str, Sequence[str], None] = None,
+                 na_color: str = "lightgray",
+                 na_in_legend: bool = True,
+                 frameon: Optional[bool] = None,
+                 title: Union[str, Sequence[str], None] = None,
+                 vmin: Union[str, float] = None,
+                 vmax: Union[str, float] = None,
+                 vcenter: Union[str, float] = None,
+                 add_outline: Optional[bool] = False,
+                 outline_color: Tuple[str, str] = ("black", "white"),
+                 outline_width: Tuple[float, float] = (0.3, 0.05),
+                 ncols: int = 4,
+                 wspace: Optional[float] = None,
+                 hspace: float = 0.25,
+                 save: Union[bool, str, None] = None
+                 ):
+        super().__init__()
+        self.store_vars_as_parameters(**vars, show=False)
+        return
+
+    def run(self):
+        ann_data = self._previou[0].result
+        pl.diffmap(ann_data)
         self._terminate(ann_data)
         return
