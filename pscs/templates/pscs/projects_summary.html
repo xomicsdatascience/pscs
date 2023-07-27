@@ -1,6 +1,6 @@
 {% extends 'base.html' %}
-
 {% block header %}
+<script src="/static/js/projects_summary.js"></script>
 {% if g.user %}
 <h1>{% block title %}{% endblock %}</h1>
 
@@ -12,9 +12,35 @@
 {% block content %}
 {% if g.user %}
 <p style="text-align: center">Welcome, {{ g.user['name_user'] }}!</p>
-<!--<a class="action" href="{{ url_for('pscs.create_project') }}">Create Project</a>-->
 <a class="linkbutton" href="{{ url_for('pscs.create_project') }}">Create Project</a>
 <p></p>
+
+{% if invitations_received | length %}
+<h3>Project invitations</h3>
+<table>
+    {% for invitation in invitations_received %}
+    <tr>
+        <td>Invitation from {{invitation["inviter_name"]}} to join {{invitation["name_project"]}} sent on {{invitation["time_sent"]}}.</td>
+        <td><input type="button" value="Accept" onclick="acceptInvitation('{{invitation["id_invitation"]}}')">
+            <input type="button" value="Reject" onclick="rejectInvitation('{{invitation["id_invitation"]}}')">
+        </td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+
+{% if invitations_sent | length %}
+<h3>Pending invitations</h3>
+<table>
+    {% for invitation in invitations_sent %}
+    <tr>
+        <td>Invitation to {{invitation["invitee_name"]}} to join {{invitation["name_project"]}} sent on {{invitation["time_sent"]}}.</td>
+        <td><input type="button" value="Rescind" onclick="rescindInvitation('{{invitation["id_invitation"]}}')"></td>
+    </tr>
+    {% endfor %}
+</table>
+{% endif %}
+<br>
 <table>
     <tr>
         <th>Project Name</th>

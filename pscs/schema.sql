@@ -80,7 +80,7 @@ CREATE TABLE projects (
 );
 
 CREATE TABLE projects_deletion (
-    id_project TEXT UNIQUE NOT NULL,  -- id for this project
+    id_project TEXT NOT NULL,  -- id for this project
     id_user TEXT NOT NULL,  -- owner of the project
     name_project TEXT NOT NULL,  -- title of project, input by user
     description TEXT,  -- description of project, input by user
@@ -155,7 +155,7 @@ CREATE TABLE data (
 );
 
 CREATE TABLE data_deletion (
-  id_data TEXT UNIQUE NOT NULL PRIMARY KEY,
+  id_data TEXT NOT NULL PRIMARY KEY,
   id_user TEXT NOT NULL,  -- owner/uploader
   id_project TEXT NOT NULL,  -- project that this data is associated with
   file_path TEXT NOT NULL,  -- path of the data
@@ -191,7 +191,7 @@ CREATE TABLE results(
 );
 
 CREATE TABLE results_deletion(
-    id_result TEXT UNIQUE NOT NULL PRIMARY KEY,  -- unique ID for each file produced by analysis
+    id_result TEXT NOT NULL PRIMARY KEY,  -- unique ID for each file produced by analysis
     id_project TEXT NOT NULL,
     id_analysis TEXT,  -- ID specific to analysis
     file_path TEXT NOT NULL,  -- where the result can be found
@@ -228,7 +228,7 @@ CREATE TABLE analysis(
 );
 
 CREATE TABLE analysis_deletion(
-  id_analysis TEXT UNIQUE NOT NULL PRIMARY KEY,  -- unique id for each pipeline
+  id_analysis TEXT NOT NULL PRIMARY KEY,  -- unique id for each pipeline
   id_project TEXT NOT NULL,  -- project with which this pipeline is associated
   analysis_name TEXT UNIQUE NOT NULL,  -- name used for display
   node_file TEXT NOT NULL,  -- file containing node configuration
@@ -258,7 +258,7 @@ CREATE TABLE analysis_author(
 );
 
 CREATE TABLE analysis_author_deletion(
-    id_analysis TEXT UNIQUE NOT NULL,
+    id_analysis TEXT NOT NULL,
     id_user TEXT NOT NULL,
     deletion_time_analysis_author TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );
@@ -335,7 +335,7 @@ CREATE TABLE submitted_jobs(  -- logging submitted jobs
 );
 
 CREATE TABLE submitted_jobs_deletion(  -- logging submitted jobs
-   id_job TEXT UNIQUE NOT NULL PRIMARY KEY,  -- unique id for job
+   id_job TEXT NOT NULL PRIMARY KEY,  -- unique id for job
    submitted_resource TEXT NOT NULL,  -- computing resource to which the job was submitted
    resource_job_id TEXT NOT NULL,  -- job id on the resource
    id_user TEXT NOT NULL,  -- submitter
@@ -421,3 +421,13 @@ CREATE TABLE external_author_affiliation(
 	id_project TEXT NOT NULL,
 	email TEXT NOT NULL,
 	affiliation TEXT NOT NULL);
+
+CREATE TABLE project_invitations(
+    id_invitation TEXT NO NULL,
+    id_invitee TEXT NOT NULL,  -- user being invited
+    id_inviter TEXT NOT NULL,  -- user inviting
+    id_project TEXT NOT NULL,  -- id of project to which the user is being invited
+    time_sent TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE,
+    CONSTRAINT invite_key PRIMARY KEY(id_invitee, id_project)
+);

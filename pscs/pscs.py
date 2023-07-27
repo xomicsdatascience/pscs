@@ -110,7 +110,11 @@ def projects_summary():
                                    "FROM projects INNER JOIN projects_roles "
                                    "ON projects.id_project=projects_roles.id_project "
                                    "AND projects_roles.id_user=?", (g.user['id_user'],))
-        return render_template('pscs/projects_summary.html', projects=user_projects)
+        invitations_sent = get_project_invitations_sent(g.user["id_user"])
+        invitations_received = get_project_invitations_received(g.user["id_user"])
+        return render_template('pscs/projects_summary.html', projects=user_projects,
+                               invitations_sent=invitations_sent,
+                               invitations_received=invitations_received)
 
 
 @bp.route('/profile', methods=['GET'])
@@ -123,9 +127,9 @@ def profile():
         user_info = db.execute("SELECT name_user, email, creation_time_user, confirmed "
                                "FROM users_auth "
                                "WHERE id_user = ?", (id_user,)).fetchone()
-
         return render_template("pscs/profile.html", user_info=user_info)
     return render_template(url_for("pscs.index"))
+
 
 
 @bp.route('/create_project', methods=['GET', 'POST'])
@@ -629,3 +633,40 @@ def review_results(filename, id_project, id_analysis):
 def public_results(filename, id_project, id_analysis):
     res_dir = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=id_analysis)
     return send_from_directory(res_dir, secure_filename(filename))
+
+
+def get_project_invitations_received(id_user: str):
+    """Returns a list of invitations where the specified user has been invited."""
+    db = get_db()
+    ids = db.execute("SELECT id_invitation, id_inviter, id_project, time_sent "
+                     "FROM project_invitations "
+                     "WHERE id_invitee = ?", (id_user,)).fetchall()
+    # ids not very useful; convert to username + project title
+    invite = []
+    for i in ids:
+        # get inviter username
+        inv = dict(i).copy()
+        inv["inviter_name"] = db.execute("SELECT name_user FROM users_auth WHERE id_user = ?", (i["id_inviter"],)).fetchone()["name_user"]
+        # get project name
+        proj_name = db.execute("SELECT name_project FROM projects WHERE id_project = ?", (i["id_project"],)).fetchone()["name_project"]
+        if len(proj_name) > 20:  # in case project name is too long
+            proj_name = proj_name[:20] + "[...]"
+        inv["name_project"] = proj_name
+        invite.append(inv)
+    return invite
+
+
+def get_project_invitations_sent(id_user: str):
+    """Returns a list of invitations where the specified user sent the invitation."""
+    db = get_db()
+    ids = db.execute("SELECT id_invitation, id_invitee, id_project, time_sent "
+                      "FROM project_invitations "
+                      "WHERE id_inviter = ?", (id_user,)).fetchall()
+    invite = []
+    for i in ids:
+        inv = dict(i).copy()
+        inv["invitee_name"] = db.execute("SELECT name_user FROM users_auth WHERE id_user = ?", (i["id_invitee"],)).fetchone()["name_user"]
+        proj_name = db.execute("SELECT name_project FROM projects WHERE id_project = ?", (i["id_project"],)).fetchone()["name_project"]
+        inv["name_project"] = proj_name
+        invite.append(inv)
+    return invite

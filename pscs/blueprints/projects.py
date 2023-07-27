@@ -13,7 +13,7 @@ import email_validator
 from email_validator import EmailNotValidError
 from pscs.auth import login_required, is_logged_in
 from pscs.db import get_db
-from pscs.pscs import add_user_to_project, delete_data, check_user_permission
+from pscs.pscs import delete_data, check_user_permission, get_unique_value_for_field, add_user_to_project
 from werkzeug.security import check_password_hash, generate_password_hash
 from pscs.messaging.mail import send_email
 import pscs
@@ -59,23 +59,24 @@ def project(id_project):
             elif has_perm:
                 db = get_db()
                 pscs.db.delete_project(db, id_project=id_project)
-        elif 'addUser' in request.json:
+        elif 'inviteUser' in request.json:
             # check that current user is allowed to add users
             has_perm = check_user_permission(permission_name='project_management',
                                              permission_value=1,
                                              id_project=id_project)
             if has_perm:
                 # add user
-                user_to_add = request.json['addUser']
+                user_to_invite = request.json['inviteUser']
                 # get user id
                 db = get_db()
-                id_user = db.execute("SELECT id_user FROM users_auth WHERE name_user = ?", (user_to_add,)).fetchone()
+                id_user = db.execute("SELECT id_user FROM users_auth WHERE name_user = ?", (user_to_invite,)).fetchone()
                 if id_user is None:
                     # user doesn't exist
-                    flash(f"User {user_to_add} not found.")
+                    flash(f"User {user_to_invite} not found.")
                     return url_for('projects.project', id_project=id_project)
-                add_user_to_project(id_user=id_user["id_user"], id_project=id_project, db=db,
-                                    role='member', permissions={'data_read': 1})
+                invite_user_to_project(id_invitee=id_user["id_user"], id_inviter=session["id_user"], id_project=id_project)
+                flash("User invited.")
+                return url_for("projects.project", id_project=id_project)
             else:
                 flash("You do not have permission to add users to the project.")
             return url_for("projects.project", id_project=id_project)
@@ -84,6 +85,107 @@ def project(id_project):
             delete_data(id_data)
             return url_for("projects.project", id_project=id_project)
     return redirect(url_for('pscs.index'))
+
+
+@bp.route("/manage_invitation", methods=["POST"])
+def manage_invitation():
+    if request.method == "POST":
+        data = request.json
+        if "invite" == data["action"]:
+            if check_user_permission("project_management", 1, data["id_project"]):
+                invite_user_to_project(id_invitee=data["id_invitee"],
+                                       id_inviter=session["id_user"],
+                                       id_project=data["id_project"])
+                return jsonify({"done": 1})
+        elif "rescind" == data["action"]:
+            # Confirm that user either sent the invitation (somehow) or has management permission
+            invitation = get_invitation(data["id_invitation"])
+            if invitation["id_inviter"] == session["id_user"] or \
+                    check_user_permission("project_management", 1, invitation["id_project"]):
+                rescind_invitation(data["id_invitation"])
+                flash("Invitation rescinded.")
+                reply_json = {"done": 1, "url": url_for("pscs.projects_summary")}
+                return jsonify(reply_json)
+            flash("You do not have the permission to do this.")
+            return redirect(url_for("pscs.index"))
+        elif "accept" == data["action"]:
+            # Confirm invitation is real
+            db = get_db()
+            invitation = get_invitation(data["id_invitation"])
+            if invitation["id_invitee"] == session["id_user"]:
+                # invitation exists, etc.
+                add_user_to_project(id_user=session["id_user"],
+                                    id_project=invitation["id_project"],
+                                    db=db,
+                                    role="member",
+                                    permissions={"data_read": 1,
+                                                 "data_write": 1,
+                                                 "analysis_read": 1,
+                                                 "analysis_write": 1,
+                                                 "analysis_execute": 1,
+                                                 "project_management": 0})
+                rescind_invitation(data["id_invitation"])
+                return jsonify({"done": 1})
+        elif "reject" == data["action"]:
+            invitation = get_invitation(data["id_invitation"])
+            if invitation["id_invitee"] == session["id_user"]:
+                # invitation is for the current user
+                rescind_invitation(data["id_invitation"])
+                return jsonify({"done": 1, "url": url_for("pscs.projects_summary")})
+    return redirect(url_for("pscs.index"))
+
+
+def get_invitation(id_invitation: str):
+    """Fetches inviter, invitee, and project ids connected to the invitation"""
+    db = get_db()
+    return db.execute("SELECT id_invitee, id_inviter, id_project "
+                      "FROM project_invitations "
+                      "WHERE id_invitation = ?", (id_invitation,)).fetchone()
+
+
+def invite_user_to_project(id_invitee: str,
+                           id_inviter: str,
+                           id_project: str):
+    """
+    Sends invitation to the specified user to join the project.
+    Parameters
+    ----------
+    id_invitee : str
+        ID of the user to invite.
+    id_inviter : str
+        ID of the user doing the inviting.
+    id_project : str
+        ID of the project.
+
+    Returns
+    -------
+    None
+    """
+    db = get_db()
+    id_invitation = get_unique_value_for_field(db, field="id_invitation", table="project_invitations")
+    db.execute("INSERT INTO project_invitations (id_invitation, id_invitee, id_inviter, id_project) VALUES(?,?,?,?)",
+               (id_invitation, id_invitee, id_inviter, id_project))
+    db.commit()
+    return
+
+
+def rescind_invitation(id_invitation: str):
+    """
+    Rescinds a previously-sent invitation.
+    Parameters
+    ----------
+    id_invitation : str
+        ID of the invitation to rescind.
+
+    Returns
+    -------
+    None
+    """
+    db = get_db()
+    db.execute("DELETE FROM project_invitations "
+               "WHERE id_invitation = ?", (id_invitation,))
+    db.commit()
+    return
 
 
 @bp.route('/<id_project>/public', methods=['GET', 'POST'])
@@ -363,6 +465,9 @@ def display_private_project(id_project):
                                user_list=user_list,
                                project_status=public_status,
                                summary=summary)
+    else:
+        flash("The requested project is not available.")
+        return redirect(url_for("pscs.index"))
 
 
 @bp.route('/<id_project>/publish', methods=["GET", "POST"])

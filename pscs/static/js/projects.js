@@ -187,10 +187,10 @@ function deleteProject(projectName){
   }
 }
 
-function addUser(){
-   var adduser_spec = new Object();
-   userEl = document.getElementById('addUser');
-   adduser_spec['addUser'] = userEl.value;
+function inviteUser(){
+   let adduser_spec = {};
+   let userEl = document.getElementById('inviteUser');
+   adduser_spec['inviteUser'] = userEl.value;
    fetch(window.location.href, {
    method: "POST",
    headers: {
