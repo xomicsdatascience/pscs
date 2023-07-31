@@ -11,6 +11,8 @@ import math
 
 
 class PCA(PipelineNode):
+    important_parameters = ["n_comps", "zero_center"]
+
     def __init__(self,
                  n_comps: Optional[int] = None,
                  zero_center: Optional[bool] = True,
@@ -29,6 +31,8 @@ class PCA(PipelineNode):
 
 
 class TSNE(PipelineNode):
+    important_parameters = ["n_pcs", "perplexity"]
+
     def __init__(self,
                  n_pcs: Optional[int] = None,
                  use_rep: Optional[str] = None,
@@ -49,6 +53,8 @@ class TSNE(PipelineNode):
 
 
 class UMAP(PipelineNode):
+    important_parameters = None
+
     def __init__(self,
                  min_dat: float = 0.5,
                  spread: float = 1.0,
@@ -75,6 +81,8 @@ class UMAP(PipelineNode):
 
 
 class DrawGraph(PipelineNode):
+    important_parameters = None
+
     def __init__(self,
                  layout: Literal['fr', 'drl', 'kk', 'grid_fr', 'lgl', 'rt', 'rt_circular', 'fa'] = "fa",
                  root: Optional[int] = None,
@@ -95,6 +103,8 @@ class DrawGraph(PipelineNode):
 
 
 class DiffMap(PipelineNode):
+    important_parameters = ["n_comps"]
+
     def __init__(self,
                  n_comps: int = 15,
                  neighbors_key: Optional[str] = None,
@@ -110,6 +120,8 @@ class DiffMap(PipelineNode):
 
 
 class EmbeddingDensity(PipelineNode):
+    important_parameters = None
+
     def __init__(self,
                  basis: str = "umap",
                  groupby: Optional[str] = None,
@@ -127,6 +139,8 @@ class EmbeddingDensity(PipelineNode):
 
 
 class Leiden(PipelineNode):
+    important_parameters = ["resolution"]
+
     def __init__(self,
                  resolution: float = 1,
                  random_state: Union[None, int] = 0,
@@ -149,6 +163,8 @@ class Leiden(PipelineNode):
 
 
 class Louvain(PipelineNode):
+    important_parameters = ["resolution"]
+
     def __init__(self,
                  resolution: Optional[float] = None,
                  random_state: Union[None, int] = 0,
@@ -170,6 +186,8 @@ class Louvain(PipelineNode):
 
 
 class Dendrogram(PipelineNode):
+    important_parameters = ["groupby", "n_pcs"]
+
     def __init__(self,
                  groupy: Collection[str],
                  n_pcs: Optional[int] = None,
@@ -191,6 +209,8 @@ class Dendrogram(PipelineNode):
 
 
 class DPT(PipelineNode):
+    important_parameters = ["n_dcs", "n_branchings", "min_group_size"]
+
     def __init__(self,
                  n_dcs: int = 10,
                  n_branchings: int = 0,
@@ -208,6 +228,8 @@ class DPT(PipelineNode):
 
 
 class PAGA(PipelineNode):
+    important_parameters = ["groups"]
+
     def __init__(self,
                  groups: Optional[str] = None,
                  use_rna_velocity: bool = False,

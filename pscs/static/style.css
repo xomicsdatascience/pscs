@@ -50,6 +50,12 @@ img {max-width:1600px;}
     background-color: rgba(200,180,200,0.4);
     right: 0px;
     z-index: 3;}
+.pscsParamTable {
+    width: 100px;
+    border: 5px solid black;
+    border-collapse: separate;
+    border-spacing: 2px;}
+
 .exportPanel {
     position: absolute;
     background-color: rgba(200,200,200,1);

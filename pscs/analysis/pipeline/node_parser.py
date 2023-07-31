@@ -47,7 +47,6 @@ def get_node_parameters(node: callable) -> dict:
     d = dict()
     param_dict = inspect.signature(node).parameters
     params = parse_params(param_dict)
-
     # To support MIMO nodes in the designer, this part needs to be updated.
     # Check which type of node this is
     d['num_inputs'] = 1
@@ -57,6 +56,7 @@ def get_node_parameters(node: callable) -> dict:
     elif issubclass(node, OutputNode):
         d['num_outputs'] = 0
     d['parameters'] = params
+    d["important_parameters"] = node.important_parameters
     return d
 
 

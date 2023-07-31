@@ -140,7 +140,7 @@ function getValueFromPx(pxString){
   return parseFloat(pxString.split("px")[0]);
 }
 
-function createPscsNode(idNum, processName, module, params, pscsType, img){
+function createPscsNode(idNum, processName, module, params, pscsType, img, pscsNode = null){
   // idNum: int - optional; if defined, will attempt to make a node with this id: NODE-idNum
   // processName: string - name of the function; used for initial labelText
   // module: string - name of the Python module that the process came from
@@ -171,6 +171,7 @@ function createPscsNode(idNum, processName, module, params, pscsType, img){
     nodeIds.push(pageEl.id);  // add id to the list -- should probably remove this and use querySelectorAll instead
     let params_dict = parseParams(params);
     pageEl.params = [];
+    pageEl.important_parameters = [];
     pageEl.paramsValues = {};
     pageEl.paramsTypes = {};
     // store param names, values into pageEl
@@ -179,6 +180,8 @@ function createPscsNode(idNum, processName, module, params, pscsType, img){
         pageEl.paramsTypes[p] = params_dict[p][0];
         pageEl.paramsValues[p] = params_dict[p][1];
     }
+    pageEl.important_parameters = pscsNode["important_parameters"];
+
     pageEl.title = pageEl.params.toString();
     pageEl.pscsType = pscsType;
     pageEl.img = img; // for later loading
@@ -297,18 +300,16 @@ function createPscsNode(idNum, processName, module, params, pscsType, img){
         if (pageEl.params.length === 0){
             return;
         }
-        lastSelected = null;  // prevent character deletion from user hitting 'delete'
+        lastSelectedElement = null;  // prevent character deletion from user hitting 'delete'
         const panel = document.createElement("div");
         panel.class = PARAMPANEL;
         panel.id = formatId(PARAMPANEL, extractIdNums(pageEl.id)[0]);
         panel.nodeId = pageEl.id;
+        panel.describedNode = pageEl;
         applyClassCSS(panel);
         // Create table for user input
         let tbl = document.createElement('table');
-        tbl.style.width = '100px';
-        tbl.style.border = '5px solid black';
-        tbl.style.borderCollapse = "separate";
-        tbl.style.borderSpacing = "2px";
+        tbl.classList.add("pscsParamTable");
         // Name for display / input selection later
         let tr = tbl.insertRow();
         let td = tr.insertCell();
@@ -318,17 +319,50 @@ function createPscsNode(idNum, processName, module, params, pscsType, img){
         inp.defaultValue = pageEl.labelText;
         inp.id = formatId(NODENAME, extractIdNums(pageEl.id)[0]);
         td.appendChild(inp);
-        for (let idx=0; idx<pageEl.params.length; idx++) {
-            // Get labels / default values, if any
-            let parName = pageEl.params[idx];
-            let parVal = pageEl.paramsValues[parName];
-            let parType = pageEl.paramsTypes[parName];  // todo: use for validation
-            // Create row; one per parameter
+        let displayParams;
+        let displayValues = {};
+        let displayTypes = {};
+        let important_only = false;
+        // If important parameters are listed, include only those
+        if (pageEl.important_parameters !== null) {
+            important_only = true;
+            displayParams = pageEl.important_parameters;
+            for (let idx in displayParams){
+                let dName = displayParams[idx];
+                displayValues[dName] = pageEl.paramsValues[dName];
+                displayTypes[dName] = pageEl.paramsTypes[dName];
+            }
+        }
+        else{
+            important_only = false;
+            displayValues = pageEl.paramsValues;
+            displayTypes = pageEl.paramsTypes;
+        }
+
+        populatePanel(panel, displayValues, displayTypes, important_only);
+        addElementToContainer(panel);
+        lastOpenPanel = panel;
+    }
+
+    function populatePanel(panel, paramsValues, paramsTypes, important_only=false){
+        const currentTable = panel.querySelector("table");
+        if (currentTable !== null) {
+            currentTable.remove();
+        }
+        const tbl = document.createElement("table");
+        tbl.classList.add("pscsParamTable");
+        let tr, td;
+        let parVal, parType;
+        for (const parName in paramsValues){
+            parVal = paramsValues[parName];
+            parType = paramsTypes[parName];
+
             tr = tbl.insertRow();
             td = tr.insertCell();
             td.appendChild(document.createTextNode(parName));
+
             td = tr.insertCell();
-            inp = document.createElement('INPUT');
+            const inp = document.createElement('INPUT');
             if (parVal != null){
                 inp.defaultValue = parVal;
             }
@@ -336,6 +370,7 @@ function createPscsNode(idNum, processName, module, params, pscsType, img){
             inp.parType = parType;
             td.appendChild(inp);
         }
+
         // Create save/close buttons
         tr = tbl.insertRow();
         td = tr.insertCell();
@@ -345,6 +380,24 @@ function createPscsNode(idNum, processName, module, params, pscsType, img){
         btn.panelId = panel.id;
         btn.innerHTML = "&times; Cancel"
         td.appendChild(btn);
+
+        td = tr.insertCell();
+        btn = document.createElement("button");
+        btn.panelId = panel.id;
+        const pageEl = panel.describedNode;
+        if (important_only){
+            // Add button that displays all parameters
+            btn.onclick = function(){populatePanel(panel, pageEl.paramsValues, pageEl.paramsTypes, important_only=false)}
+            btn.innerHTML = "Expand";
+        }
+        else{
+            btn.onclick = function(){openPanel();}
+            btn.innerHTML = "Shrink";
+        }
+        td.appendChild(btn);
+
+
+
         td = tr.insertCell();
         btn = document.createElement("button");
         btn.onclick = saveParams;
@@ -353,10 +406,10 @@ function createPscsNode(idNum, processName, module, params, pscsType, img){
         btn.innerHTML = "&#10003; Save"
         td.appendChild(btn);
 
+
         panel.appendChild(tbl);
-        addElementToContainer(panel);
-        lastOpenPanel = panel;
     }
+
     function closePanel(panelId){
         let panel = document.getElementById(panelId);
         panel.remove();
@@ -1245,7 +1298,7 @@ async function loadSidebarNodes(sidebarId){
                 let nodeType = getNodeType(pscsNode);
                 const imgPath = "static/nodes/" + nodeType + ".png";
                 p.addEventListener('click',
-                    function () {createPscsNode(null, nodeName, module, pscsNode["parameters"], nodeType, imgPath);});
+                    function () {createPscsNode(null, nodeName, module, pscsNode["parameters"], nodeType, imgPath, pscsNode);});
                 p.textContent = nodeName;
                 p.style.fontSize = "12px";
                 let img = document.createElement("img");

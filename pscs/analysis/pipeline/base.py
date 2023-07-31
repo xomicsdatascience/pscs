@@ -8,10 +8,12 @@ class PipelineNode(ABC):
     """
     Class for describing an individual pipeline segment, with all necessary classes indicated.
     """
+    important_parameters = None  # parameters to prioritize for display
+
     def __init__(self):
         self.num_inputs = 1
         self.num_outputs = 1
-        self.parameters = {}
+        self.parameters = {}  # settings used to run the node's code
         self._effect = []  # properties added to annotated data
         self._next = []  # list of nodes that follow this one
         self._previous = []  # list of nodes that lead to this node

@@ -10,6 +10,8 @@ import math
 
 
 class CalculateQCMetrics(PipelineNode):
+    important_parameters = ["expr_type", "var_type"]
+
     def __init__(self,
                  expr_type: str = "counts",
                  var_type: str = "genes",
@@ -31,6 +33,8 @@ class CalculateQCMetrics(PipelineNode):
 
 
 class FilterCells(PipelineNode):
+    important_parameters = None
+
     def __init__(self,
                  min_counts: Optional[int] = None,
                  min_genes: Optional[int] = None,
@@ -52,6 +56,8 @@ class FilterCells(PipelineNode):
 
 
 class FilterGenes(PipelineNode):
+    important_parameters = None
+
     def __init__(self,
                  min_counts: Optional[int] = None,
                  min_cells: Optional[int] = None,
@@ -73,6 +79,8 @@ class FilterGenes(PipelineNode):
 
 
 class HighlyVariableGenes(PipelineNode):
+    important_parameters = ["n_top_genes"]
+
     def __init__(self,
                  layer: Optional[str] = None,
                  n_top_genes: Optional[int] = None,
@@ -97,6 +105,8 @@ class HighlyVariableGenes(PipelineNode):
 
 
 class Log1p(PipelineNode):
+    important_parameters = None
+
     def __init__(self,
                  base: Optional[float] = None,
                  chunked: Optional[bool] = None,
@@ -115,6 +125,8 @@ class Log1p(PipelineNode):
 
 
 class PCA(PipelineNode):
+    important_parameters = ["n_comps", "zero_center"]
+
     def __init__(self,
                  n_comps: Optional[int] = None,
                  zero_center: Optional[bool] = True,
@@ -136,6 +148,8 @@ class PCA(PipelineNode):
 
 
 class NormalizeTotal(PipelineNode):
+    important_parameters = ["target_sum", "exclude_highly_expressed"]
+
     def __init__(self,
                  target_sum: Optional[float] = None,
                  exclude_highly_expressed: bool = False,
@@ -154,6 +168,8 @@ class NormalizeTotal(PipelineNode):
 
 
 class RegressOut(PipelineNode):
+    important_parameters = ["keys"]
+
     def __init__(self,
                  keys: Union[str, Sequence[str]] = None,
                  n_jobs: Optional[int] = None):
@@ -169,6 +185,8 @@ class RegressOut(PipelineNode):
 
 
 class Scale(PipelineNode):
+    important_parameters = ["zero_center"]
+
     def __init__(self,
                  zero_center: bool = True,
                  max_value: Optional[float] = None,
@@ -186,6 +204,8 @@ class Scale(PipelineNode):
 
 
 class Subsample(PipelineNode):
+    important_parameters = None
+
     def __init__(self,
                  fraction: Optional[float] = None,
                  n_obs: Optional[int] = None,
@@ -202,6 +222,8 @@ class Subsample(PipelineNode):
 
 
 class DownsampleCounts(PipelineNode):
+    important_parameters = ["counts_per_cell", "total_counts"]
+
     def __init__(self,
                  counts_per_cell: Union[int, Collection[int], None] = None,
                  total_counts: Optional[int] = None,
@@ -219,6 +241,8 @@ class DownsampleCounts(PipelineNode):
 
 
 class Combat(PipelineNode):
+    important_parameters = ["covariates"]
+
     def __init__(self,
                  key: str = "batch",
                  covariates: Optional[Collection[str]] = None):
@@ -234,6 +258,8 @@ class Combat(PipelineNode):
 
 
 class Neighbors(PipelineNode):
+    important_parameters = ["n_neighbors", "n_pcs"]
+
     def __init__(self,
                  n_neighbors: int = 15,
                  n_pcs: Optional[int] = None,

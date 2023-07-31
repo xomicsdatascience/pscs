@@ -9,6 +9,8 @@ from pathlib import Path
 
 
 class Scatter(OutputNode):
+    important_parameters = ["x", "y", "save"]
+
     def __init__(self,
                  x: Optional[str] = None,
                  y: Optional[str] = None,
@@ -36,6 +38,7 @@ class Scatter(OutputNode):
 
 
 class HeatMap(OutputNode):
+    important_parameters = ["var_names", "groupby", "save"]
     def __init__(self,
                  var_names: Union[str, Collection[str]],
                  groupby: Union[str, Collection[str]],
@@ -68,6 +71,7 @@ class HeatMap(OutputNode):
 
 
 class DotPlot(OutputNode):
+    important_parameters = ["var_names", "groupy", "save"]
     def __init__(self,
                  var_names: Union[str, Collection],
                  groupby: Union[str, Sequence[str]],
@@ -108,6 +112,7 @@ class DotPlot(OutputNode):
 
 
 class TracksPlot(OutputNode):
+    important_parameters = ["var_names", "groupy", "save"]
     def __init__(self,
                  var_names: Union[str, Collection[str]],
                  groupby: Union[str, Collection[str]],
@@ -134,6 +139,7 @@ class TracksPlot(OutputNode):
 
 
 class Violin(OutputNode):
+    important_parameters = ["keys", "groupy", "save"]
     def __init__(self,
                  keys: Union[str, Collection[str]],
                  groupby: Optional[str] = None,
@@ -161,6 +167,7 @@ class Violin(OutputNode):
 
 
 class StackedViolin(OutputNode):
+    important_parameters = ["var_names", "groupy", "save"]
     def __init__(self,
                  var_names: Union[str, Collection[str]],
                  groupby: Union[str, Sequence[str]],
@@ -201,6 +208,8 @@ class StackedViolin(OutputNode):
 
 
 class MatrixPlot(OutputNode):
+    important_parameters = ["var_names", "groupy", "save"]
+
     def __init__(self,
                  var_names: Union[str, Collection[str]],
                  groupby: Union[str, Collection[str]],
@@ -235,6 +244,8 @@ class MatrixPlot(OutputNode):
 
 
 class ClusterMap(OutputNode):
+    important_parameters = ["obs_keys", "save"]
+
     def __init__(self,
                  obs_keys: Optional[str] = None,
                  use_raw: Optional[bool] = None,
@@ -251,6 +262,8 @@ class ClusterMap(OutputNode):
 
 
 class Ranking(OutputNode):
+    important_parameters = None
+
     def __init__(self,
                  attr: Literal["var", "obs", "uns", "varm", "obsm"],
                  keys: Union[str, Collection[str]]):
@@ -266,6 +279,8 @@ class Ranking(OutputNode):
 
 
 class Dendrogram(OutputNode):
+    important_parameters = ["groupby", "save"]
+
     def __init__(self,
                  groupby: str,
                  dendrogram_key: Optional[str] = None,
@@ -284,6 +299,8 @@ class Dendrogram(OutputNode):
 
 
 class HighestExprGenes(OutputNode):
+    important_parameters = ["n_top", "save"]
+
     def __init__(self,
                  n_top: int = 30,
                  save: Union[str, bool, None] = None,
@@ -301,6 +318,8 @@ class HighestExprGenes(OutputNode):
 
 
 class FilterGenesDispersion(OutputNode):
+    important_parameters = ["save"]
+
     def __init__(self,
                  log: bool = False,
                  save: Union[str, bool, None] = None):
@@ -316,6 +335,8 @@ class FilterGenesDispersion(OutputNode):
 
 
 class HighlyVariableGenes(OutputNode):
+    important_parameters = ["save"]
+
     def __init__(self,
                  log: bool = False,
                  save: Union[str, bool, None] = None):
@@ -331,6 +352,8 @@ class HighlyVariableGenes(OutputNode):
 
 
 class PCAPlot(OutputNode):
+    important_parameters = ["color", "save"]
+
     def __init__(self,
                  color: Union[str, Collection[str], None] = None,
                  gene_symbols: Optional[str] = None,
@@ -376,6 +399,8 @@ class PCAPlot(OutputNode):
 
 
 class PCALoadings(OutputNode):
+    important_parameters = ["components", "save"]
+
     def __init__(self,
                  components: Union[str, Sequence[int], None] = None,
                  include_lowest: bool = True,
@@ -393,10 +418,11 @@ class PCALoadings(OutputNode):
 
 
 class PCAVarianceRatio(OutputNode):
+    important_parameters = ["n_pcs", "save"]
+
     def __init__(self,
                  n_pcs: int = 30,
                  log: bool = False,
-                 show: Optional[bool] = None,
                  save: Union[str, bool, None] = None):
         super().__init__()
         self.store_vars_as_parameters(**vars(), show=False)
@@ -410,6 +436,8 @@ class PCAVarianceRatio(OutputNode):
 
 
 class PCAOverview(OutputNode):
+    important_parameters = ["save"]
+
     def __init__(self,
                  color: Union[str, Collection[str], None] = None,
                  use_raw: Optional[bool] = None,
@@ -455,6 +483,8 @@ class PCAOverview(OutputNode):
 
 
 class TSNE(OutputNode):
+    important_parameters = ["save"]
+
     def __init__(self,
                  color: Union[str, Sequence[str]] = None,
                  gene_symbols: Optional[str] = None,
@@ -504,6 +534,8 @@ class TSNE(OutputNode):
 
 
 class UMAP(OutputNode):
+    important_parameters = ["save"]
+
     def __init__(self,
                  color: Union[str, Sequence[str], None] = None,
                  gene_symbols: Optional[str] = None,
@@ -551,6 +583,8 @@ class UMAP(OutputNode):
 
 
 class DiffMap(OutputNode):
+    important_parameters = ["save"]
+
     def __init__(self,
                  color: Union[str, Sequence[str], None] = None,
                  gene_symbols: Optional[str] = None,
@@ -590,11 +624,11 @@ class DiffMap(OutputNode):
                  save: Union[bool, str, None] = None
                  ):
         super().__init__()
-        self.store_vars_as_parameters(**vars, show=False)
+        self.store_vars_as_parameters(**vars(), show=False)
         return
 
     def run(self):
-        ann_data = self._previou[0].result
+        ann_data = self._previous[0].result
         pl.diffmap(ann_data)
         self._terminate(ann_data)
         return
