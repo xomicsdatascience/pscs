@@ -135,6 +135,13 @@ def manage_invitation():
     return redirect(url_for("pscs.index"))
 
 
+@bp.route("/<id_project>/upload", methods=["GET", "POST"])
+@login_required
+def upload(id_project):
+    if request.method == "GET":
+        return render_template("pscs/upload.html")
+
+
 def get_invitation(id_invitation: str):
     """Fetches inviter, invitee, and project ids connected to the invitation"""
     db = get_db()
@@ -435,6 +442,13 @@ def display_private_project(id_project):
         project_data_summary = db.execute(
             'SELECT id_data, file_path, data_type, file_hash, data_uploaded_time FROM data WHERE id_project = ?',
             (id_project,)).fetchall()
+        # Convert returned data to dicts; remove leading path
+        new_summary = []
+        for dat in project_data_summary:
+            ddat = dict(dat)
+            ddat["file_path"] = os.path.basename(ddat["file_path"])
+            new_summary.append(ddat)
+        project_data_summary = new_summary
 
         # Get results
         results_rows = db.execute("SELECT file_path, title, description, id_analysis FROM results WHERE id_project = ?",
