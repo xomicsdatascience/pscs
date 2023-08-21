@@ -7,7 +7,7 @@
 {% endblock %}
 
 {% block content %}
-<script src="static/js/profile.js"></script>
+<script src="/static/js/profile.js"></script>
 <table>
     <tr>
         <td>Email:</td>
@@ -28,7 +28,7 @@
 </table>
 
 <h3>Password update</h3>
-Send yourself a password-reset email: <input type="button" value="Reset password" onclick="resetPassword({{user_info["name_user"] }})">
+Send yourself a password-reset email: <input type="button" value="Reset password" onclick="resetPassword('{{user_info["name_user"] }}')">
 
 
 {% endblock %}

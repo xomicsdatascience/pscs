@@ -21,5 +21,5 @@ def send_reset_email(id_user):
     from pscs.templates.misc import password_reset
     password_formatted = password_reset.format(name_user=user_info["name_user"],
                                                url=reset_url)
-    send_email([user_info["email"]], "PSCS - Password reset", password_formatted)
-    return redirect("pscs.index")
+    send_email([user_info["email"]], subject="PSCS - Password reset", body=password_formatted)
+    return

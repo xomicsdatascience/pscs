@@ -1,7 +1,7 @@
 import functools
 from uuid import uuid4
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, session, url_for, current_app
+    Blueprint, flash, g, redirect, render_template, request, session, url_for, current_app, jsonify
 )
 
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -322,19 +322,19 @@ def reset_password_email():
     if request.method == "GET":
         return render_template("auth/password_forgot.html")
     if request.method == "POST":
-        data = request.form
+        data = request.json
         id_user = None
         if "id_user" in data.keys():
             id_user = data["id_user"]
-        elif "username" in data.keys():
+        elif "name_user" in data.keys():
             db = get_db()
             id_user = db.execute("SELECT id_user "
                                  "FROM users_auth "
-                                 "WHERE name_user = ?", (data["username"],)).fetchone()["id_user"]
+                                 "WHERE name_user = ?", (data["name_user"],)).fetchone()["id_user"]
         if id_user is not None:
             send_reset_email(id_user)
-            flash("Password reset sent.")
-            return redirect(url_for("pscs.index"))
+            flash("The password reset information has been sent to your email.")
+            return jsonify({"url": url_for("pscs.index")})
         else:
             flash("There was a problem retrieving the user email. Please contact PSCS admin.")
             return redirect(url_for("pscs.index"))
