@@ -216,7 +216,7 @@ CREATE TRIGGER stage_results_deletion
 CREATE TABLE analysis(
     id_analysis TEXT UNIQUE NOT NULL PRIMARY KEY,  -- unique id for each pipeline
     id_project TEXT NOT NULL,  -- project with which this pipeline is associated
-    analysis_name TEXT UNIQUE NOT NULL,  -- name used for display
+    analysis_name TEXT NOT NULL,  -- name used for display
     node_file TEXT NOT NULL,  -- file containing node configuration
     parameter_file TEXT NOT NULL,  -- file containing pipeline object
     analysis_hash NOT NULL,  -- hash of the node_file + parameter_file, for checking if analysis has changed since validation
@@ -230,7 +230,7 @@ CREATE TABLE analysis(
 CREATE TABLE analysis_deletion(
   id_analysis TEXT NOT NULL PRIMARY KEY,  -- unique id for each pipeline
   id_project TEXT NOT NULL,  -- project with which this pipeline is associated
-  analysis_name TEXT UNIQUE NOT NULL,  -- name used for display
+  analysis_name TEXT NOT NULL,  -- name used for display
   node_file TEXT NOT NULL,  -- file containing node configuration
   parameter_file TEXT NOT NULL,  -- file containing pipeline object
   analysis_hash NOT NULL,  -- hash of the node_file + parameter_file, for checking if analysis has changed since validation
