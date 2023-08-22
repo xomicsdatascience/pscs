@@ -38,6 +38,11 @@ const HORIZONTAL_SPACING = 100;
 const VERTICAL_JIGGLE = 10;
 const HORIZONTAL_JIGGLE = 15;
 
+// const nodeData = getNodeInfo();
+let nodeInfo = null;
+// let nodeInfo = null;
+getNodeInfo();
+
 // document listeners
 document.addEventListener("keydown", kbshortcut);
 function kbshortcut(event){
@@ -180,8 +185,9 @@ function createPscsNode(idNum, processName, module, params, pscsType, img, pscsN
         pageEl.paramsTypes[p] = params_dict[p][0];
         pageEl.paramsValues[p] = params_dict[p][1];
     }
-    pageEl.important_parameters = pscsNode["important_parameters"];
-
+    if(pscsNode !== null) {
+        pageEl.important_parameters = pscsNode["important_parameters"];
+    }
     pageEl.title = pageEl.params.toString();
     pageEl.pscsType = pscsType;
     pageEl.img = img; // for later loading
@@ -1124,8 +1130,9 @@ async function loadAnalysisFromId(id_analysis){
             paramValue = node["paramsValues"][paramName];
             load_params[paramName] = [paramType, paramValue];
         }
+        let psNode = nodeInfo["Scanpy"][node.module][node.procName];
         let nodeNum = extractIdNums(node["nodeId"]);
-        let loadedNode = createPscsNode(nodeNum, node.labelText, node.module, load_params, node.pscsType, node.img);
+        let loadedNode = createPscsNode(nodeNum, node.labelText, node.module, load_params, node.pscsType, node.img, psNode);
         if(node.pscsType === "input"){
             loadedNode.depth = 0;
         }
@@ -1256,8 +1263,25 @@ function clearNodes() {
     }
 }
 
-async function loadSidebarNodes(sidebarId){
-    // Fetches the node information for the sidebar.
+function reorderNodeInfo(nodeInfo){
+    // Reorders node info so that it is in the order of Package:Module:Node instead of Package:Node[Module]
+    let redata = {};
+    let module_name = "";
+    for(let pack in nodeInfo){
+        redata[pack] = {}
+        for(let pscsNode in nodeInfo[pack]){
+            module_name = nodeInfo[pack][pscsNode]['module'];
+            if(redata[pack][module_name] === undefined){
+                redata[pack][module_name] = {};
+            }
+            redata[pack][module_name][pscsNode] = nodeInfo[pack][pscsNode];
+        }
+    }
+    return redata;
+}
+
+async function getNodeInfo(){
+    // fetches the node information from the server
     let response = await fetch(window.location.href + "/fetch_nodes", {
         method: "POST",
         headers: {
@@ -1265,34 +1289,25 @@ async function loadSidebarNodes(sidebarId){
             "Content-Type": "application/json"
         }
     })
-    const sidebar = document.getElementById(sidebarId);
-    let redata = {};
-    let module_name = "";
-    let data = await response.json();
-    // Re-arrange so data is in order of Package : Module : Node instead of Package : Node
-    for(let pack in data){
-        redata[pack] = {}
-        for(let pscsNode in data[pack]){
-            module_name = data[pack][pscsNode]['module'];
-            if(redata[pack][module_name] === undefined){
-                redata[pack][module_name] = {};
-            }
-            redata[pack][module_name][pscsNode] = data[pack][pscsNode];
-        }
-    }
+    nodeInfo = reorderNodeInfo(await response.json());
+    document.dispatchEvent(new Event('nodesLoaded'));
+    return nodeInfo;
+}
 
-    // Add to sidebar
-    for(let pack in redata){
+async function loadSidebarNodes(sidebarId){
+    const sidebar = document.getElementById(sidebarId);
+    // Add nodes to sidebar
+    for(let pack in nodeInfo){
         // Top-level package
         let packageDiv = addCollapsibleSection(sidebar, pack)
         packageDiv.style.fontSize = "25px";
-        for(let module in redata[pack]){
+        for(let module in nodeInfo[pack]){
             // Module in package
             let moduleDiv = addCollapsibleSection(packageDiv, module);
             moduleDiv.style.fontSize = "20px";
-            for(let nodeName in redata[pack][module]){
+            for(let nodeName in nodeInfo[pack][module]){
                 // Actual node
-                let pscsNode = redata[pack][module][nodeName];
+                let pscsNode = nodeInfo[pack][module][nodeName];
                 let p = document.createElement("p");
                 p.title = JSON.stringify(pscsNode["parameters"]);
                 let nodeType = getNodeType(pscsNode);

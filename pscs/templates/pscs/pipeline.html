@@ -31,7 +31,7 @@
 <div id="nodeContainer" class="container"></div>
 
 <script>
-window.addEventListener('load', function () {loadSidebarNodes("sidebar");})
-window.addEventListener('load', function () {toggleSidebar();})
+document.addEventListener('nodesLoaded', function () {loadSidebarNodes("sidebar");})
+document.addEventListener('nodesLoaded', function () {toggleSidebar();})
 </script>
 {% endblock %}
