@@ -17,7 +17,7 @@ def send_reset_email(id_user):
 
     url_signer = URLSafeTimedSerializer(secret_key=current_app.config["SECRET_KEY"], salt="reset")
     token = url_signer.dumps(id_user)
-    reset_url = "https://" + current_app.config["CURRENT_URL"] + f"/auth/reset/{token}"
+    reset_url = current_app.config["CURRENT_URL"] + f"/auth/reset/{token}"
     from pscs.templates.misc import password_reset
     password_formatted = password_reset.format(name_user=user_info["name_user"],
                                                url=reset_url)

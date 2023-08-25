@@ -263,7 +263,7 @@ def login_required(view):
                 token = url_signer.dumps(id_user)
                 if is_okay_to_send:
                     resend_url = url_for("auth.resend_confirmation", token=token)
-                    msg = f"Email verification is required. To send a new verification link, <a href='https://{current_app.config['CURRENT_URL']}{resend_url}'>click here</a>."
+                    msg = f"Email verification is required. To send a new verification link, <a href='{current_app.config['CURRENT_URL']}{resend_url}'>click here</a>."
                 else:
                     msg = "Email verification is required. Check your inbox for the confirmation email."
                 flash(msg, category="link")

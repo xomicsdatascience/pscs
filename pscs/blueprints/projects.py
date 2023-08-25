@@ -981,7 +981,7 @@ def project_peer_review(id_project: str):
     project_info = db.execute("SELECT name_project, description "
                               "FROM projects "
                               "WHERE id_project = ?", (id_project,)).fetchone()
-    project_url = "https://" + current_app.config["CURRENT_URL"] + url_for("projects.public_project", id_project=id_project)
+    project_url = current_app.config["CURRENT_URL"] + url_for("projects.public_project", id_project=id_project)
     project_url = f"<a href='{project_url}'>{project_url}</a>"  # to make email content clickable
     peer_email = peer_review_password_email.format(title=project_info["name_project"],
                                                    description=project_info["description"],
