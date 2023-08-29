@@ -328,7 +328,6 @@ def generate_htcondor_submission(pipeline_json: str,
     # need to include other files in input_paths
     input_paths += ',' + join(remote_project_dir, basename(pipeline_json))
     input_paths += ',' + join(remote_project_dir, basename(remapped_input_json))
-    input_paths += ',' + "test.py"
 
     start_idx = 0
     if remote_project_dir.startswith(os.sep):
