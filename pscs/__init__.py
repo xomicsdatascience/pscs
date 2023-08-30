@@ -1,4 +1,4 @@
-__version__ = "0.1.5"
+__version__ = "0.1.7"
 
 import os
 from flask import Flask
@@ -31,6 +31,7 @@ def create_app(test_config=None) -> Flask:
     static_source = join(this_dir, "static")
     print(f"Copying from {template_source} into {template_directory}")
     shutil.copytree(template_source, template_directory, dirs_exist_ok=True)
+    print(f"Copying from {static_source} into {static_directory}")
     shutil.copytree(static_source, static_directory, dirs_exist_ok=True)
     app = Flask(__name__, instance_path=env_dict["INSTANCE_PATH"],
                 instance_relative_config=True, template_folder=template_directory,
@@ -63,6 +64,8 @@ def create_app(test_config=None) -> Flask:
 
     app.config["DELETION_DIRECTORY"] = join(app.instance_path, "deletion", "{id_project}")
     _makedir_until_format(app.config["DELETION_DIRECTORY"])
+
+
 
     app.add_url_rule('/upload/<name>', endpoint='pscs.download_file', build_only=True)
 
