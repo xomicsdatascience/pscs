@@ -32,6 +32,8 @@ class Scatter(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.scatter(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -65,6 +67,8 @@ class HeatMap(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.heatmap(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -106,6 +110,8 @@ class DotPlot(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.dotplot(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -133,6 +139,8 @@ class TracksPlot(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.dotplot(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -161,6 +169,8 @@ class Violin(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.violin(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -202,6 +212,8 @@ class StackedViolin(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.stacked_violin(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -238,6 +250,8 @@ class MatrixPlot(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.matrixplot(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -256,6 +270,8 @@ class ClusterMap(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.clustermap(ann_data)
         self._terminate(ann_data)
         return
@@ -273,6 +289,8 @@ class Ranking(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.ranking(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -293,6 +311,8 @@ class Dendrogram(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.dendrogram(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -312,6 +332,8 @@ class HighestExprGenes(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.highest_expr_genes(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -329,6 +351,8 @@ class FilterGenesDispersion(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.filter_genes_dispersion(ann_data)
         self._terminate(ann_data)
         return
@@ -346,6 +370,8 @@ class HighlyVariableGenes(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.highly_variable_genes(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -393,6 +419,8 @@ class PCAPlot(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.pca(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -412,6 +440,8 @@ class PCALoadings(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.pca_loadings(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -430,6 +460,8 @@ class PCAVarianceRatio(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.pca_variance_ratio(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -477,6 +509,8 @@ class PCAOverview(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.pca_overview(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -528,6 +562,8 @@ class TSNE(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.tsne(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -577,6 +613,8 @@ class UMAP(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.umap(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
@@ -629,6 +667,8 @@ class DiffMap(OutputNode):
 
     def run(self):
         ann_data = self._previous[0].result
+        sc._settings.ScanpyConfig.figdir = Path(os.path.dirname(self.parameters["save"]))
+        self.parameters["save"] = os.path.basename(self.parameters["save"])
         pl.diffmap(ann_data)
         self._terminate(ann_data)
         return

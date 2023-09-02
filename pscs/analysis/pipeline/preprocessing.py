@@ -47,10 +47,15 @@ class FilterCells(PipelineNode):
     def run(self):
         ann_data = self._previous[0].result
         # filter_cells only accepts one arg at a time; go through each one
+        other_params = {}
+        functional_params = {"min_counts", "min_genes", "max_counts", "max_genes"}
         for par_key, par_val in self.parameters.items():
-            par = {par_key: par_val}
-            if par_val is not None:
-                _ = sc.pp.filter_cells(ann_data, **par)
+            if par_key not in functional_params:
+                other_params[par_key] = par_val
+        for fpar in functional_params:
+            fdict = {fpar: self.parameters[fpar]}
+            if fdict[fpar] is not None:
+                _ = sc.pp.filter_cells(ann_data, **fdict, **other_params)
         self._terminate(ann_data)
         return
 
