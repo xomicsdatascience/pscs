@@ -203,7 +203,7 @@ class Scale(PipelineNode):
 
     def run(self):
         ann_data = self._previous[0].result
-        pp.regress_out(ann_data, **self.parameters)
+        pp.scale(ann_data, **self.parameters)
         self._terminate(ann_data)
         return
 
