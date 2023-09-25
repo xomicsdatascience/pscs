@@ -57,7 +57,7 @@ class HeatMap(OutputNode):
                  standard_scale: Optional[Literal["var", "obs"]] = None,
                  swap_axes: bool = False,
                  show_gene_labels: Optional[bool] = None,
-                 save: Union[str, bool, None] = None,
+                 save: Union[str, bool, None] = "heatmap.png",
                  vmin: Optional[float] = None,
                  vmax: Optional[float] = None,
                  vcenter: Optional[float] = None):
@@ -100,7 +100,7 @@ class DotPlot(OutputNode):
                  dot_max: Optional[float] = None,
                  dot_min: Optional[float] = None,
                  smallest_dot: Optional[float] = 0.0,
-                 save: Union[str, bool, None] = None,
+                 save: Union[str, bool, None] = "dotplot.png",
                  vmin: Optional[float] = None,
                  vmax: Optional[float] = None,
                  vcenter: Optional[float] = None):
@@ -132,7 +132,7 @@ class TracksPlot(OutputNode):
                  var_group_labels: Optional[Collection[str]] = None,
                  var_group_rotation: Optional[float] = None,
                  layer: Optional[str] = None,
-                 save: Union[str, bool, None] = None):
+                 save: Union[str, bool, None] = "tracksplot.png"):
         super().__init__()
         self.store_vars_as_parameters(**vars(), show=False)
         return
@@ -163,7 +163,7 @@ class Violin(OutputNode):
                  xlabel: str = "",
                  ylabel: Union[str, Collection[str], None] = None,
                  rotation: Optional[float] = None,
-                 save: Union[str, bool, None] = None):
+                 save: Union[str, bool, None] = "violin.png"):
         super().__init__()
         self.store_vars_as_parameters(**vars(), show=False)
 
@@ -203,7 +203,7 @@ class StackedViolin(OutputNode):
                  scale: Literal["area", "count", "width"] = "width",
                  yticklabels: Optional[bool] = False,
                  row_palette: Optional[str] = None,
-                 save: Union[bool] = None,
+                 save: Union[bool] = "stackedviolin.png",
                  vmin: Optional[float] = None,
                  vmax: Optional[float] = None,
                  vcenter: Optional[float] = None):
@@ -240,7 +240,7 @@ class MatrixPlot(OutputNode):
                  cmap: Optional[str] = "viridis",
                  standard_scale: Optional[Literal["var", "group"]] = None,
                  swap_axes: bool = False,
-                 save: Union[str, bool, None] = None,
+                 save: Union[str, bool, None] = "matrixplot.png",
                  vmin: Optional[float] = None,
                  vmax: Optional[float] = None,
                  vcenter: Optional[float] = None):
@@ -263,7 +263,7 @@ class ClusterMap(OutputNode):
     def __init__(self,
                  obs_keys: Optional[str] = None,
                  use_raw: Optional[bool] = None,
-                 save: Union[str, bool, None] = None):
+                 save: Union[str, bool, None] = "clustermap.png"):
         super().__init__()
         self.store_vars_as_parameters(**vars(), show=False)
         return
@@ -304,7 +304,7 @@ class Dendrogram(OutputNode):
                  dendrogram_key: Optional[str] = None,
                  orientation: Literal["top", "bottom", "left", "right"] = "top",
                  remove_labels: bool = False,
-                 save: Union[str, bool, None] = None):
+                 save: Union[str, bool, None] = "dendrogram.png"):
         super().__init__()
         self.store_vars_as_parameters(**vars(), show=False)
         return
@@ -323,7 +323,7 @@ class HighestExprGenes(OutputNode):
 
     def __init__(self,
                  n_top: int = 30,
-                 save: Union[str, bool, None] = None,
+                 save: Union[str, bool, None] = "highestexprgenes.png",
                  gene_symbols: Optional[str] = None,
                  log: bool = False):
         super().__init__()
@@ -344,7 +344,7 @@ class FilterGenesDispersion(OutputNode):
 
     def __init__(self,
                  log: bool = False,
-                 save: Union[str, bool, None] = None):
+                 save: Union[str, bool, None] = "filtergenesdisp.png"):
         super().__init__()
         self.store_vars_as_parameters(**vars(), show=False)
         return
@@ -363,7 +363,7 @@ class HighlyVariableGenes(OutputNode):
 
     def __init__(self,
                  log: bool = False,
-                 save: Union[str, bool, None] = None):
+                 save: Union[str, bool, None] = "highlyvariablegenes.png"):
         super().__init__()
         self.store_vars_as_parameters(**vars(), show=False)
         return
@@ -412,7 +412,7 @@ class PCAPlot(OutputNode):
                  ncols: int = 4,
                  wspace: Optional[float] = None,
                  hspace: float = 0.25,
-                 save: Union[str, bool, None] = None):
+                 save: Union[str, bool, None] = "pcaplot.png"):
         super().__init__()
         self.store_vars_as_parameters(**vars(), show=False)
         return
@@ -433,7 +433,7 @@ class PCALoadings(OutputNode):
                  components: Union[str, Sequence[int], None] = None,
                  include_lowest: bool = True,
                  n_points: Optional[bool] = None,
-                 save: Union[str, bool, None] = None):
+                 save: Union[str, bool, None] = "pcaloadings.png"):
         super().__init__()
         self.store_vars_as_parameters(**vars(), show=False)
         return
@@ -453,7 +453,7 @@ class PCAVarianceRatio(OutputNode):
     def __init__(self,
                  n_pcs: int = 30,
                  log: bool = False,
-                 save: Union[str, bool, None] = None):
+                 save: Union[str, bool, None] = "pcavarianceratio.png"):
         super().__init__()
         self.store_vars_as_parameters(**vars(), show=False)
         return
@@ -502,7 +502,7 @@ class PCAOverview(OutputNode):
                  ncols: int = 4,
                  wspace: Optional[float] = None,
                  hspace: float = 0.25,
-                 save: Union[str, bool, None] = None):
+                 save: Union[str, bool, None] = "pcaoverview.png"):
         super().__init__()
         self.store_vars_as_parameters(**vars(), show=False)
         return
@@ -555,7 +555,7 @@ class TSNE(OutputNode):
                  ncols: int = 4,
                  wspace: Optional[float] = None,
                  hspace: float = 0.25,
-                 save: Union[bool, str, None] = None):
+                 save: Union[bool, str, None] = "tsne.png"):
         super().__init__()
         self.store_vars_as_parameters(**vars(), show=False)
         return
@@ -606,7 +606,7 @@ class UMAP(OutputNode):
                  ncols: int = 4,
                  wspace: Optional[float] = None,
                  hspace: float = 0.25,
-                 save: Union[bool, str, None] = None):
+                 save: Union[bool, str, None] = "umap.png"):
         super().__init__()
         self.store_vars_as_parameters(**vars(), show=False)
         return
@@ -659,7 +659,7 @@ class DiffMap(OutputNode):
                  ncols: int = 4,
                  wspace: Optional[float] = None,
                  hspace: float = 0.25,
-                 save: Union[bool, str, None] = None
+                 save: Union[bool, str, None] = "diffmap.png"
                  ):
         super().__init__()
         self.store_vars_as_parameters(**vars(), show=False)
