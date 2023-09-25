@@ -1,74 +1,110 @@
 DATA USE AGREEMENT
+This Data Use Agreement (“Agreement”) is entered into by and between yourself  (“User”) and Cedars-Sinai Medical Center, a California non-profit public benefit corporation (“Cedars”), and concerns the transfer of data by User to Cedars for the purposes and under the terms and conditions set forth herein.
+WHEREAS, Cedars has developed an online platform for the interactive analysis of omics data (the “Platform for Single Cell Science” or “PSCS”);
+WHEREAS, the PSCS is capable of receiving and storing single cell omics data from authorized users across the world;
+WHEREAS, the PSCS enables authorized users to conduct interactive data analysis on any Data submitted by authorized users, and share information with authorized users regarding analysis pipelines and interactive results;
+WHEREAS, User seeks access to the PSCS for the purpose(s) of sharing Data with authorized users, analyzing Data stored on the PSCS, and/or sharing such Data analysis with other authorized users;
+WHEREAS, Cedars agrees to grant User access to the PSCS subject to the terms and conditions set forth below;
+NOW, THEREFORE, in consideration of the mutual covenants contained and provided for in this Agreement, Cedars and User agree as follows:
+    1. Definitions.  For purposes of this Agreement, the terms listed below shall have the respective meanings set forth in Section 1(a) – (d).
 
-This Data Use Agreement (“Agreement”) is made between [User Name] (“User”) and the Platform for Single-Cell Science (“Company”) with respect to the use of User’s data uploaded on Company’s platform.
+    (a) Protected Health Information means individually identifiable health information.
+ 
+    (b) Health Information means any information, including genetic information, whether oral or recorded in any form or medium that: (i) is created or received by a health care provider, health plan, public health authority, employer, life insurer, school or university, or health care clearinghouse; and (ii) relates to the past, present, or future physical or mental health or conditions of an individual; the provision of health care to an individual; or the past, present, or future payment for the provision of health care to an individual.
 
-    Data Lifecycle
-    This section describes the expected lifecycle of data uploaded by a user to the platform.
-a. Data is uploaded by the user.
-b. Data is processed using an analysis made available through PSCS.
-c. Data is marked for publication.
-d. Data is published.
-e. Data is accessible for others to use, on condition that the following are cited:
-1) the related publication as specified by the user
-2) the data's Digital Object Identifier as provided by PSCS.
+    (c) Genetic Data has the meaning set forth in Article 4 of the General Data Protection Regulation, defined as personal data relating to the inherited or acquired genetic characteristics of a natural person which give unique information about the physiology or the health of that natural person and which result, in particular, from an analysis of a biological sample from the natural person in question.
 
-    Data Privacy
+    (d)  Anonymization has the meaning set forth in ISO standard (ISO 29100:2011), defined as the process by which personally identifiable information (“PII”) is irreversibly altered in such a way that a PII principal can no longer be identified directly or indirectly, either by the PII controller alone or in collaboration with any other party.
 
-a. By default, data uploaded by the User is private and will not be accessed, other than:
-1) by other users explicitly approved by the User (e.g., project collaborators),
-2) by other users explicitly approved by users empowered to do so by the User (e.g., collaborators added by project administrators) or those similarly-derived (e.g., collaborators added by a chain of approved project administrators),
-3) for automated data handling operations (e.g., extracting metadata, compression, encryption),
-4) for processing as requested by the User (e.g., data analysis).
+    2. Description of Data.  The data to be transferred by User to Cedars and/or the PSCS (“Data”) shall consist of single cell omics data and single cell genomics data, including, but not limited to, proteomics and transcriptomics (“Data”).  User acknowledges and agrees that Data shared to the PSCS shall not include any Protected Health Information or Genetic Data.  To the extent that such Data may include and/or constitute Protected Health Information or Genetic Data, User agrees that the Data shall have undergone an Anonymization process prior to uploading to the PSCS.  
 
-b. Company shall take appropriate technical and organizational measures to ensure the security, confidentiality, and integrity of the User’s data.
+    3. Data Lifecycle.  Cedars and User acknowledge and agree that the following processes accurately reflect the parties’ mutual understanding of the Data Lifecycle for Data submitted to the PSCS:
 
-    Data Deletion
-a. Data that is deleted is removed from the server hosting the data.
-b. Metadata related to the data will be temporarily retained for internal use.
-c. Depending on the system's backup schedule, data marked for deletion could be retained in system backups.
-d. In the event of a system restore where a previous version of the database is used instead of the latest version, the retained metadata is used to ensure that deleted data is not later restored.
-e. Once all system backups are certain to not contain data marked for deletion, the retained metadata is deleted.
+    (a) Data is uploaded to the PSCS by User.
 
-    Publication
+    (b) Data is processed by User, or by other authorized users (as set forth in Section 4(a), below) using an analysis made available through the PSCS.
 
-a. Once the User marks the data for publication, it will be held for 3 days. During this period, the User can revoke the data's publication status.
+    (c) After processing, Data may be published by User subject to Section 6 below.
 
-b. If the User does not revoke the data's publication status during the 3-day period, it will be published, and the User surrenders the right to delete the data.
+    (d) Published Data is accessible for others to use, on condition that the following are cited:
+    (i) the related publication as specified by the User; and 
+    (ii) the data’s Digital Object Identifier if provided by PSCS.
 
-    Modification
+    4. Data Privacy.  User acknowledges and agrees to the following terms and conditions related to the privacy and accessibility of Data uploaded to the PSCS:
 
-a. Once the data is published, the User is allowed to modify the data for updates or corrections. All modifications will be publicly visible, and the original data will be retained.
+    (a) By default, Data uploaded by the User is private and will not be accessible, other than by the following authorized users:
+    (i) by User;
+    (ii) by other users explicitly approved by the User (e.g., project collaborators, co-authors);
+    (iii) by other users explicitly approved by users empowered to do so by the User (e.g., collaborators added by project administrators) or those similarly-derived (e.g., collaborators added by a chain of approved project administrators);
+    (iv) for automated data handling operations (e.g., extracting metadata, compression, encryption); and
+    (v) for processing as requested by the User (e.g., data analysis).
 
-b. The User acknowledges that the modifications made by them will not impact any third party rights or breach any applicable laws.
+    (b) User may change the privacy designation of that Data to “peer-review.”  Data which has been designated for “peer-review” shall be accessible via a password provided by Cedars to User and authorized users approved by User.  The User shall be responsible for ensuring that only authorized users obtain access to said password.
 
-    Intellectual Property
+    (c) Data which has been published shall be publicly available to anyone who accesses the PSCS.  
 
-a. The User retains all ownership and intellectual property rights in the data uploaded on the platform.
+    (d) Cedars shall take appropriate technical and organizational measures to ensure the security, confidentiality, and integrity of the User’s data.
 
-b. The User grants Company a non-exclusive, transferable, sublicensable, royalty-free, worldwide license to use, copy, modify, create derivative works based on, distribute, publicly display, publicly perform, and otherwise exploit the data uploaded on the platform for any purpose, including but not limited to, marketing, advertising, and product development.
 
-    Term and Termination
+    5. Data Deletion.  User acknowledges and agrees to the following terms and conditions related to the retention and deletion of Data uploaded to the PSCS:
 
-a. This Agreement shall commence on the date the User uploads the data on the platform and shall continue until terminated by either party.
+    (a) User may not delete Data that has been published (see Section 6, below, for further terms and conditions regarding the publication of Data).
 
-b. The User may terminate this Agreement by deleting the uploaded data from the platform before the data is published.
+    (b) Data that is deleted shall be permanently removed from the server.
 
-c. Company may terminate this Agreement with immediate effect if the User breaches any of its obligations under this Agreement.
+    (c) Metadata related to the deleted Data may be temporarily retained for internal use by Cedars.
 
-    Governing Law and Jurisdiction
+    (d) Depending on the system’s backup schedule, Data marked for deletion may be retained in system backups.
 
-a. This Agreement shall be governed by and construed in accordance with the laws of [State/Country].
+    (e) In the event of a system restore where a previous version of the PSCS is used instead of the latest version, the retained metadata shall be used to ensure that deleted Data is not later restored.
 
-b. Any dispute arising out of or in connection with this Agreement shall be finally settled by arbitration in accordance with the [Arbitration Rules]. The place of arbitration shall be [City], and the language of the arbitration shall be [Language].
+    (f) Once all system backups are certain to not contain Data marked for deletion, the retained metadata is deleted.
 
-    Miscellaneous
+    6. Publication.  User acknowledges and agrees to the following terms and conditions regarding the publication of Data and/or analyses uploaded to or conducted on the PSCS: 
 
-a. This Agreement constitutes the entire agreement between the parties and supersedes all prior or contemporaneous agreements or understandings, whether written or oral, relating to the subject matter of this Agreement.
+    (a) After User marks Data for publication, the User has the ability to revoke the Data’s publication status subject to Section 6(b) below.
 
-b. The failure of either party to enforce any provision of this Agreement shall not be construed as a waiver or limitation of that party’s right to subsequently enforce and compel strict compliance with every provision of this Agreement.
+    (b) If the User does not revoke the Data's publication status within three (3) days of marking the Data for publication, the User surrenders the right to delete the data.
 
-c. If any provision of this Agreement is held to be invalid or unenforceable, such provision shall be struck and the remaining provisions shall be enforced.
+    7. Modification.  User acknowledges and agrees to the following terms and conditions regarding modification of Data uploaded to the PSCS:
 
-d. In the event that the data is found to include Personal Health Information (as defined by https://www.dhcs.ca.gov/dataandstats/data/Pages/ListofHIPAAIdentifiers.aspx), the data will be made inaccessible and reported to the relevant authorities.
+    (a) Prior to publication, User may freely modify and/or delete Data.
 
-By clicking “I Agree,” the User represents and warrants that they have read, understood, and agreed to the terms and conditions of this Agreement.
+    (b) Once Data is published, User may modify Data for updates or corrections.  However, User acknowledges and agrees that all post-publication modifications will be publicly visible, and the original Data will be retained.
+
+    (c) User acknowledges and agrees that any modifications made by them will not impact any third-party rights or breach any applicable laws.
+
+    8. Intellectual Property.  Cedars and User acknowledge and agree that:
+
+    (a) User retains all ownership and intellectual property rights in Data uploaded to the PSCS.
+
+    (b) User grants Cedars a non-exclusive, transferable, sublicensable, royalty-free, worldwide license to use, copy, modify, create derivative works based on, distribute, publicly display, publicly perform, and otherwise exploit the Data uploaded on the PSCS for any purpose, including but not limited to, marketing, advertising, and product development.
+
+    9.     Term and Termination.
+
+    (a) This Agreement shall commence on the date the User digitally executes this Agreement and shall continue until terminated by either party.
+
+    (b) User may terminate this Agreement by deleting the uploaded Data from the PSCS before the Data is published.  For avoidance of doubt, User acknowledges and agrees that after Data has been published on the PSCS, User may not terminate this Agreement. 
+
+    (c) Cedars may terminate this Agreement with immediate effect with or without cause, including but not limited to circumstances wherein User breaches any of their obligations under this Agreement.
+
+    10. Governing Law and Jurisdiction.  This Agreement shall be governed by and construed in accordance with the laws of California.  Any dispute arising out of or in connection with this Agreement shall be finally settled by arbitration in accordance with the American Arbitration Association rules then in effect.  The place of arbitration shall be Los Angeles, California, and the language of the arbitration shall be English.
+
+    11. Miscellaneous.
+
+    (a) Compliance with Laws.  User agrees to comply with all applicable international, federal, state, and local laws, regulations and orders, as amended from time to time, regarding the transmission, processing, and/or publication of Data uploaded to the PSCS. 
+
+    (b) Entire Agreement.  This Agreement constitutes the entire agreement between the parties and supersedes all prior or contemporaneous agreements or understandings, whether written or oral, relating to the subject matter of this Agreement.
+
+    (c) Indemnification.  User will indemnify, defend and hold harmless Cedars from and against any claim, cause of action, liability, damage, cost or expense arising out of or in connection with any breach of this Agreement or unauthorized or prohibited use or disclosure of Data by User or its authorized users.
+
+    (d) Electronic Execution.  This Agreement may be executed electronically.  User agrees that their electronic signature shall be valid and binding to the same extent as a manual, original signature.  By accessing and/or uploading Data to the PSCS, User acknowledges that they have read and agree to the terms set forth in this Agreement.
+
+    (e) No Waiver.  The failure of either party to enforce any provision of this Agreement shall not be construed as a waiver or limitation of that party’s right to subsequently enforce and compel strict compliance with every provision of this Agreement.
+
+    (f) Severability.  If any provision of this Agreement is held to be invalid or unenforceable, such provision shall be struck and the remaining provisions shall be enforced.
+
+    (g) No Third-Party Beneficiaries.  None of the provisions herein are intended by the parties, nor shall they be deemed, to confer any benefit on any persons not a party to this Agreement.
+
+    (h) Treatment of Protected Health Information.  User acknowledges and agrees not to upload to the PSCS any Data containing Protected Health Information.  User further agrees that, in the event that Data is found to include Protected Health Information or Genetic Data, such Data will be made inaccessible and reported to the relevant authorities, and Cedars may immediately terminate this Agreement and User’s access to the PSCS.
+By clicking “I Agree,” and providing an electronic signature, User represents and warrants that they have read, understood, and agreed to the terms and conditions of this Agreement.
