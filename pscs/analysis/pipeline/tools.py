@@ -56,7 +56,7 @@ class UMAP(PipelineNode):
     important_parameters = None
 
     def __init__(self,
-                 min_dat: float = 0.5,
+                 min_dist: float = 0.5,
                  spread: float = 1.0,
                  n_components: int = 2,
                  maxiter: Optional[int] = None,
