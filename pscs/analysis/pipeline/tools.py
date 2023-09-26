@@ -70,7 +70,7 @@ class UMAP(PipelineNode):
                  method: Literal["umap", "rapids"] = "umap",
                  neighbors_key: Optional[str] = None):
         super().__init__()
-        self.store_vars_as_parameters(**vars())
+        self.store_vars_as_parameters(**vars(), inplace=True)
         return
 
     def run(self):

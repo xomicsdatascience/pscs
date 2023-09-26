@@ -133,6 +133,9 @@ def load_from_nodes(node_json: str) -> Pipeline:
         node_name = node['procName']
         # Restrict imports to PSCS pipeline:
         module = import_module(f'pscs.analysis.pipeline.{node_module}', package=__package__)
+        last_uscore = node_name.rfind('_')  # this is in case name mangling is necessary
+        if last_uscore != -1:
+            node_name = node_name[:last_uscore]
         node_class = inspect.getmembers(module, lambda mem: inspect.isclass(mem) and mem.__name__ == node_name)[0][1]
 
         # Instantiate the class with specified parameters

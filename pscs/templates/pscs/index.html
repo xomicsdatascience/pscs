@@ -12,14 +12,12 @@
 {% block content %}
 
 {% for post in posts %}
-<table align="center">
+<table align="center" style="table-layout: fixed; width: 100%">
     <tr><th style="border:none">{{post["title"]|safe}}</th></tr>
     <tr class="post">
-        <td style="border:none">{{post["body"]|safe}}</td>
+        <td style="border:none; word-wrap: break-word;">{{post["body"]|safe}}</td>
     </tr>
 </table>
 <br>
 {% endfor %}
-
-
 {% endblock %}

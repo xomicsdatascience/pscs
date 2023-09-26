@@ -8,7 +8,7 @@ arguments = {node_json} {input_json} {output_directory}
 # Locations for std outputs
 error = stderr/{pscs_job_id}.error
 output = stdout/{pscs_job_id}.output
-log = logs/pscs_latest.log
+log = logs/{pscs_job_id}.log
 
 # Request resources
 request_cpus = 1
