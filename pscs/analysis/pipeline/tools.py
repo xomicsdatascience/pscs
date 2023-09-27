@@ -70,7 +70,7 @@ class UMAP(PipelineNode):
                  method: Literal["umap", "rapids"] = "umap",
                  neighbors_key: Optional[str] = None):
         super().__init__()
-        self.store_vars_as_parameters(**vars(), inplace=True)
+        self.store_vars_as_parameters(**vars())
         return
 
     def run(self):
@@ -199,7 +199,7 @@ class Dendrogram(PipelineNode):
                  optimal_ordering: bool = False,
                  key_added: Optional[str] = None):
         super().__init__()
-        self.store_vars_as_parameters(**vars(), inplace=True)
+        self.store_vars_as_parameters(**vars())
 
     def run(self):
         ann_data = self._previous[0].result
