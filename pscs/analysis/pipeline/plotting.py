@@ -589,7 +589,7 @@ class UMAP(OutputNode):
                  legend_fontsize: Union[int, float, Literal["xx-small", "x-small", "small", "medium", "large", "x-large", "xx-large"]] = None,
                  legend_fontweight: Union[int, Literal["light", "normal", "medium", "semibold", "bold", "heavy", "black"]] = "black",
                  legend_fontoutline: Optional[int] = None,
-                 colorbar_log: Optional[str] = "right",
+                 colorbar_loc: Optional[str] = "right",
                  size: Union[float, Sequence[float], None] = None,
                  color_map: str = None,
                  palette: Union[str, Sequence[str], None] = None,
