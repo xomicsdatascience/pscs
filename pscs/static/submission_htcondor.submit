@@ -12,8 +12,8 @@ log = logs/{pscs_job_id}.log
 
 # Request resources
 request_cpus = 1
-request_memory = 256 MB
-request_disk = 128 MB
+request_memory = 2 GB
+request_disk = 4 GB
 
 # transfer things
 transfer_input_files = {input_files}
