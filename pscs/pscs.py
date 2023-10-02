@@ -16,7 +16,6 @@ import pathlib
 import sqlite3
 from warnings import warn
 
-
 bp = Blueprint("pscs", __name__)
 ALLOWED_EXTENSIONS = {'csv', 'tsv'}
 PATH_KEYWORD = 'path'
@@ -92,6 +91,7 @@ def upload():
     <!doctype html>
     <title>Upload new File</title>
     <h1>Upload new File</h1>
+    <p>Data should be a .csv with each row as an observation (sample), and each column as a feature (gene, protein).</p>
     <form method=post enctype=multipart/form-data>
       <input type=file name=file>
       <input type=submit value=Upload>
@@ -372,7 +372,7 @@ def pipeline_designer():
         input_nodes = {}
         for n in pipeline_summary['nodes']:
             params = n['paramsValues']
-            if PATH_KEYWORD in params.keys():
+            if PATH_KEYWORD in params.keys():  # TODO: vestigeal; instead check if node is input
                 input_nodes[n['nodeId']] = n['labelText']  # labelText is what is displayed to the user
         # TODO: saveID is from the user; need to validate that the user has access to it
         # Create new pipeline ID
@@ -670,3 +670,4 @@ def get_project_invitations_sent(id_user: str):
         inv["name_project"] = proj_name
         invite.append(inv)
     return invite
+

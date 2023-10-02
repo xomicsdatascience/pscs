@@ -1,4 +1,4 @@
-__version__ = "0.1.17"
+__version__ = "0.1.18"
 
 import os
 from flask import Flask
@@ -64,8 +64,6 @@ def create_app(test_config=None) -> Flask:
 
     app.config["DELETION_DIRECTORY"] = join(app.instance_path, "deletion", "{id_project}")
     _makedir_until_format(app.config["DELETION_DIRECTORY"])
-
-
 
     app.add_url_rule('/upload/<name>', endpoint='pscs.download_file', build_only=True)
 

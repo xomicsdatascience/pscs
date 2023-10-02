@@ -1030,7 +1030,7 @@ async function exportPipeline(inputNameElement, pipelineDestination, panel) {
                         body: JSON.stringify(pipelineSummary)
                     });
     panel.remove();
-    alert("Pipeline saved!");
+    alert("Pipeline saved! You can execute the pipeline from the pipeline page.");
 }
 
 function openSavePanel(projDestsJSON) {
