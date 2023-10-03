@@ -1264,6 +1264,7 @@ function clearNodes() {
             node.del();
         }
     }
+    nodeIds = [];
 }
 
 function reorderNodeInfo(nodeInfo){
