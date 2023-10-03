@@ -493,9 +493,11 @@ def about():
 def get_save_destinations():
     # Get all projects that this user belongs to
     db = get_db()
-    projs = db.execute(
-        'SELECT name_project, id_project FROM projects WHERE id_user = ?',
-        (g.user['id_user'],)).fetchall()
+    projs = db.execute("SELECT projects.name_project, projects.id_project "
+                       "FROM projects INNER JOIN projects_roles "
+                       "ON projects.id_project=projects_roles.id_project "
+                       "WHERE projects_roles.id_user=? "
+                       "AND projects_roles.analysis_write=1", (g.user["id_user"],)).fetchall()
     proj_dests = {}
     for p in projs:
         proj_dests[p['name_project']] = p['id_project']
