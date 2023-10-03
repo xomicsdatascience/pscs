@@ -190,6 +190,9 @@ function createPscsNode(idNum, processName, module, params, pscsType, img, pscsN
     }
     pageEl.title = pageEl.params.toString();
     pageEl.pscsType = pscsType;
+    if(!img.startsWith("/")){
+        img = "/" + img;
+    }
     pageEl.img = img; // for later loading
     pageEl.src = img;
     pageEl.srcConnectors = [];
@@ -1282,7 +1285,7 @@ function reorderNodeInfo(nodeInfo){
 
 async function getNodeInfo(){
     // fetches the node information from the server
-    let response = await fetch(window.location.href + "/fetch_nodes", {
+    let response = await fetch("/pipeline/fetch_nodes", {
         method: "POST",
         headers: {
             "Accept": "application/json",
@@ -1311,7 +1314,7 @@ async function loadSidebarNodes(sidebarId){
                 let p = document.createElement("p");
                 p.title = JSON.stringify(pscsNode["parameters"]);
                 let nodeType = getNodeType(pscsNode);
-                const imgPath = "static/nodes/" + nodeType + ".png";
+                const imgPath = "/static/nodes/" + nodeType + ".png";
                 p.addEventListener('click',
                     function () {createPscsNode(null, nodeName, module, pscsNode["parameters"], nodeType, imgPath, pscsNode);});
                 p.textContent = nodeName;
