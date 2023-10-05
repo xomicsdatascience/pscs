@@ -1193,44 +1193,10 @@ async function loadAnalysisFromId(id_analysis){
     }
     // Below this is aesthetics.
     // determine depth of each node
-    let maxDepth = -1;
-    let doBreak = false;
-    let spliceIdxList;
-    let hasChanged = true;
-    while(nodesWithoutDepth.length > 0){
-        spliceIdxList = [];
-        hasChanged = false;
-        for(let spliceIdx = 0; spliceIdx < nodesWithoutDepth.length; spliceIdx++){
-            let node = nodesWithoutDepth[spliceIdx];
-            // examine previous nodes; if they all have depth, assign max depth+1 to this node
-            maxDepth = -1;
-            doBreak = false;
-            for(let previousNodeIdx = 0; previousNodeIdx < node.dstConnectors.length; previousNodeIdx++){
-                // get num of previous node
-                let prevNum = extractIdNums(node.dstConnectors[previousNodeIdx])[0][0];
-                let prevNode = nodeObject[prevNum];
-                if(prevNode.depth === -1 && hasChanged){
-                    doBreak = true;
-                    break;
-                }
-                if(prevNode.depth !== -1){
-                    // has depth; compare to maxdepth
-                    maxDepth = Math.max(maxDepth, prevNode.depth);
-                }
-            }
-            if(doBreak){
-                continue;
-            }
-            hasChanged = true;
-            node.depth = maxDepth + 1;
-            spliceIdxList.push(spliceIdx);
-        }
-        spliceIdxList.reverse();  // going backwards to preserve idx validity as we remove entries
-        spliceIdxList.forEach(idx => {
-            nodesWithoutDepth.splice(idx, 1);
-        });
-    }
-
+    determineDepths();
+    let nodeList = document.querySelectorAll("[id^=" + NODE + "]");
+    let maxDepth = 0;
+    nodeList.forEach(el => {if(el.depth > maxDepth){maxDepth=el.depth}});
     // determine x position of each
     let xposByDepth = {};
     for(let idx=0; idx<maxDepth+2; idx++){
@@ -1252,6 +1218,92 @@ async function loadAnalysisFromId(id_analysis){
         node.moveAll(xpos, ypos);
     }
 
+}
+
+function determineDepths(){
+    let nodeList = document.querySelectorAll("[id^=" + NODE + "]");
+    let inputNodes = [];
+    nodeList.forEach(el => {
+        if(el.pscsType === "input"){
+            inputNodes.push(el);
+        }
+    });
+    // Check the nodes following the input nodes
+    let nodesToCheck = [];
+    inputNodes.forEach(el => {
+            nodesToCheck = nodesToCheck.concat(getNextNodes(el));
+        });
+
+    do{
+        let nextCheck = [];
+        for(let checkIdx=0; checkIdx<nodesToCheck.length; checkIdx++){
+            let nodeToCheck = nodesToCheck[checkIdx];
+            let prevDepth = maxDepthOfPrevNodes(nodeToCheck);
+            if(prevDepth === -1){
+                // instead, find the previous node that doesn't have depth, then check it
+                let prevNodes = getPrevNodes(nodeToCheck);
+                nextCheck = nextCheck.concat(getDepthless(prevNodes));
+            }
+            else{
+                nodeToCheck.depth = prevDepth + 1;
+                // check next ones
+                let nextNodes = getNextNodes(nodeToCheck);
+                nextCheck = nextCheck.concat(getDepthless(nextNodes));
+            }
+        }
+        nodesToCheck = nextCheck;
+    } while(nodesToCheck.length > 0);
+}
+
+function hasDepth(nodeToCheck){
+    return !(nodeToCheck.depth === -1 || nodeToCheck.depth === undefined)
+}
+
+function getDepthless(nodeList){
+    // checks each element of nodeList to verify that they have .depth >= 0
+    let depthless = [];
+    nodeList.forEach(el =>{
+        if(!hasDepth(el)){
+            depthless.push(el);
+        }
+    });
+    return depthless;
+}
+
+function maxDepthOfPrevNodes(pscsNode){
+    // Checks the depth of previous nodes; returns -1 if .depth is undefined or -1
+    // iterate through dstConnector
+    let maxDepth = -1;
+    let prevNodes = getPrevNodes(pscsNode);
+    for(let idx=0; idx<prevNodes.length; idx++){
+        let prevNode = prevNodes[idx];
+        if(!hasDepth(prevNode)){
+            return -1
+        }
+        else{
+            maxDepth = Math.max(maxDepth, prevNode.depth);
+        }
+    }
+    return maxDepth
+}
+
+function getNextNodes(pscsNode){
+    // Returns an array of nodes that come after the input node.
+    let nextNodes = []
+    pscsNode.srcConnectors.forEach(conn => {
+        let nextNum = extractIdNums(conn)[1][0];  // note; if you want to track port, this is what you need to change
+        nextNodes.push(getPscsNodeFromNum(nextNum));
+    })
+    return nextNodes;
+}
+
+function getPrevNodes(pscsNode){
+    let prevNodes = []
+    pscsNode.dstConnectors.forEach(conn => {
+        let prevNum = extractIdNums(conn)[0][0];
+        prevNodes.push(getPscsNodeFromNum(prevNum));
+    })
+    return prevNodes;
 }
 
 function clearNodes() {
