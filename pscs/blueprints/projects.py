@@ -246,7 +246,7 @@ def public_project(id_project):
 
         else:
             flash("Password is incorrect.")
-            return redirect(url_for("pscs.public_project", id_project=id_project))
+            return redirect(url_for("projects.public_project", id_project=id_project))
     return
 
 
@@ -255,10 +255,12 @@ def load_analysis(id_project):
     if request.method == "POST":
         if "loadAnalysis" in request.json:
             id_analysis = request.json["loadAnalysis"]
-            has_perm = check_user_permission(permission_name="analysis_read",
-                                             permission_value=1,
-                                             id_project=id_project)
-            if has_perm:
+            # Verify that the project is indeed public
+            status = _get_project_publication_status(id_project)
+            has_peer_review_password = status == "peer review" and "project_review" in session.keys() and id_project in session["project_review"]
+            if status == "public" or has_peer_review_password:
+                return load_analysis_from_id(id_analysis)
+            elif check_user_permission("analysis_read", 1, id_project):
                 # has permission to read; go get analysis file and return JSON
                 return load_analysis_from_id(id_analysis)
             return {"": ""}
