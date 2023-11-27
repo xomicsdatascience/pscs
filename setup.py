@@ -1,5 +1,4 @@
 import setuptools
-import version
 import os
 
 

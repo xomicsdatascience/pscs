@@ -1,6 +1,5 @@
 from flask import (
-    Blueprint, flash, g, redirect, render_template, request, url_for, Flask, session, current_app, send_from_directory,
-    jsonify
+    Blueprint, flash, g, redirect, render_template, request, url_for, session, current_app, jsonify
 )
 from markdown import markdown
 from werkzeug.utils import secure_filename

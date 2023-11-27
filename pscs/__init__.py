@@ -1,6 +1,5 @@
 __version__ = "0.1.23"
 
-import os
 from flask import Flask
 import os
 from os.path import join, dirname

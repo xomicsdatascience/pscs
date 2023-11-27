@@ -1,5 +1,3 @@
-import sqlite3
-
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, url_for, Flask, session, current_app, send_from_directory,
     jsonify
@@ -21,8 +19,6 @@ from pscs.pscs import load_analysis_from_id
 import os
 import string
 from itsdangerous.url_safe import URLSafeTimedSerializer
-import json
-from pscs.authtools.validation.registration import decode_token
 
 bp = Blueprint("projects", __name__, url_prefix="/project")
 

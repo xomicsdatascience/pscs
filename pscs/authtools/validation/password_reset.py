@@ -4,7 +4,6 @@ from flask import current_app, flash, redirect
 from pscs.messaging.mail import send_email
 from pscs.db import get_db
 from itsdangerous.url_safe import URLSafeTimedSerializer
-from itsdangerous.exc import SignatureExpired, BadSignature
 
 
 def send_reset_email(id_user):

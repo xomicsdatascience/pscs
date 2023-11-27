@@ -1,5 +1,3 @@
-import os
-from os.path import join
 from flask import session, g
 from pscs.db import get_db
 import uuid
