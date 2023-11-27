@@ -9,6 +9,7 @@ from itsdangerous.url_safe import URLSafeTimedSerializer
 from itsdangerous.exc import SignatureExpired, BadSignature
 from typing import Optional
 from pscs.messaging.mail import send_email
+import werkzeug
 min_password_length = 12
 
 
@@ -35,10 +36,13 @@ def validate_username(username: str, db=None) -> (bool, str):
         msg = "Username is empty."
     elif not username[0].isalpha():
         msg = "First character must be alphabetical."
+    elif werkzeug.utils.escape(username) != username:  # sneaky user
+        msg = "Error with username."
     elif db is not None:  # If no other errors, check against DB
         other_usernames_in_db = db.execute('SELECT name_user FROM users_auth WHERE name_user = ?', (username,)).fetchall()
         if len(other_usernames_in_db) > 0:
             msg = "Username already taken."
+
     return (len(msg) == 0), msg
 
 
@@ -64,6 +68,8 @@ def validate_email(email: str, db=None) -> (bool, str):
         msg = "Email address is empty."
     elif email.count('@') != 1:
         msg = "Email address format incorrect."
+    elif werkzeug.utils.escape(email) != email:
+        msg = "Error with email."
     elif db is not None:
         # Check for uniqueness
         db_emails = db.execute('SELECT email FROM users_auth WHERE email = ?', (email,)).fetchall()

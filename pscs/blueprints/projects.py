@@ -35,7 +35,7 @@ def project(id_project):
     elif request.method == 'POST':
         # Check for rename or delete
         if 'newName' in request.json:  # is rename
-            new_project_name = request.json['newName']
+            new_project_name = escape(request.json['newName'])
             # Assert that user has permission
             has_perm = check_user_permission(permission_name='project_management',
                                              permission_value=1,
@@ -66,7 +66,7 @@ def project(id_project):
                                              id_project=id_project)
             if has_perm:
                 # add user
-                user_to_invite = request.json['inviteUser']
+                user_to_invite = escape(request.json['inviteUser'])
                 # get user id
                 db = get_db()
                 id_user = db.execute("SELECT id_user FROM users_auth WHERE name_user = ?", (user_to_invite,)).fetchone()
@@ -82,7 +82,13 @@ def project(id_project):
             return url_for("projects.project", id_project=id_project)
         elif "deleteData" in request.json:
             id_data = request.json["deleteData"]
-            delete_data(id_data)
+            has_perm = check_user_permission(permission_name="data_write",
+                                             permission_value=1,
+                                             id_project=id_project)
+            if has_perm:
+                delete_data(id_data)
+            else:
+                flash("You do not have permission to delete data from the project.")
             return url_for("projects.project", id_project=id_project)
     return redirect(url_for('pscs.index'))
 
@@ -537,7 +543,7 @@ def project_publish(id_project):
         name_project = db.execute("SELECT name_project "
                                   "FROM projects "
                                   "WHERE id_project = ?", (id_project,)).fetchone()["name_project"]
-        user_submmited_name = request.json["confirmation"]
+        user_submmited_name = escape(request.json["confirmation"])
         if name_project != user_submmited_name:
             flash("The project name you entered did not match the project's actual name. Please try again.")
             return redirect(url_for("projects.project_publish", id_project=id_project))
@@ -1294,12 +1300,12 @@ def external_author_info(id_project, token):
             return redirect(url_for("projects.external_author_info", id_project=id_project, token=token))
 
         # Collect external author info
-        author_info = {"email": external_author_email,
+        author_info = {"email": escape(external_author_email),
                        "name": author_name,
                        "affiliations": affiliations,
                        "noPHI": noPHI,
                        "dataUse": dataUse,
-                       "ip": request.remote_addr}
+                       "ip": escape(request.remote_addr)}
         store_external_author_info(id_project, author_information=author_info)
         done = proceed_if_possible(id_project)
         if done:

@@ -1,6 +1,5 @@
 {% extends 'base.html' %}
 {% block header %}
-<script src="/static/js/projects_summary.js"></script>
 {% if g.user %}
 <h1>{% block title %}{% endblock %}</h1>
 
@@ -10,6 +9,7 @@
 {% endblock %}
 
 {% block content %}
+<script src="/static/js/projects_summary.js"></script>
 {% if g.user %}
 <p style="text-align: center">Welcome, {{ g.user['name_user'] }}!</p>
 <a class="linkbutton" href="{{ url_for('pscs.create_project') }}">Create Project</a>

@@ -40,11 +40,11 @@ setuptools.setup(
         "Development Status :: 2 - Alpha",
         'Intended Audience :: Science/Research',
         "Programming Language :: Python :: 3",
-        "License :: OSI Approved :: MIT License"
+        "License :: OSI Approved :: AGPL 3"
     ],
     packages=setuptools.find_packages(),
     include_package_data=True,
     python_requires='>=3.10',
-    license="MIT",
+    license="AGPL",
     install_requires=get_requirements(),
 )
