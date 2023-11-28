@@ -1,5 +1,5 @@
-#!/bin/python3.10
-from pscs.analysis.pipeline import node_parser
+#!/bin/python3.11
+from pscs_api import node_parser
 import json
 import os
 import argparse

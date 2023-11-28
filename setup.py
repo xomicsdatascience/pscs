@@ -30,7 +30,7 @@ def get_requirements():
 setuptools.setup(
     name="pscs",
     version=get_version(),
-    author="Meyer Lab",
+    author="Alexandre Hutton",
     author_email="",
     description="",
     long_description="",
@@ -43,7 +43,7 @@ setuptools.setup(
     ],
     packages=setuptools.find_packages(),
     include_package_data=True,
-    python_requires='>=3.10',
+    python_requires='>=3.11',
     license="AGPL",
     install_requires=get_requirements(),
 )
