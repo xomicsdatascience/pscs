@@ -1454,7 +1454,7 @@ def _get_project_analysis_info(db, id_project: str) -> dict:
 
 def _get_project_jobs_summary(db, id_project: str) -> dict:
     """Returns a summary of jobs"""
-    jobs = db.execute("SELECT id_job "
+    jobs = db.execute("SELECT id_job, is_complete "
                       "FROM submitted_jobs "
                       "WHERE id_project = ?", (id_project,)).fetchall()
     summary = {"jobs": [j for j in jobs if not j["is_complete"]]}
