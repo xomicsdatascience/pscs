@@ -212,6 +212,6 @@ function getTabInfo(tab){
 
 function displayResult(file_path){
   const container = document.getElementById("container_results");
-  container.innerHTML = "<img src='" + file_path + "'>" ;
+  container.innerHTML = "<img src='/" + file_path + "'>" ;
   return
 }
