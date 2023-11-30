@@ -14,7 +14,9 @@ function createTable(projectFiles, analysisInputs){
   drop = createDataDropdown(projectFiles);
   if(lastTable != null){
     lastEl = document.getElementById(lastTable);
-    lastEl.remove();
+    if(lastEl != null) {
+      lastEl.remove();
+    }
   }
   // Create row for each input node
   tbl = document.createElement('table');
