@@ -1473,7 +1473,7 @@ def _get_project_jobs_info(db, id_project: str) -> (dict, dict):
                                 "A.analysis_name, J.date_completed "
                                 "FROM submitted_jobs AS J INNER JOIN users_auth AS U ON J.id_user = U.id_user "
                                 "INNER JOIN analysis AS A ON J.id_analysis = A.id_analysis "
-                                "WHERE J.id_project = ? AND J.is_complete = 0 "
+                                "WHERE J.id_project = ? AND J.is_complete = 1 "
                                 "ORDER BY J.date_submitted ASC", (id_project,)).fetchall()
     info = {"jobs": running_jobs}
     info["completed_jobs"] = completed_jobs
