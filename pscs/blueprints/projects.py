@@ -440,8 +440,8 @@ def display_private_project(id_project):
                 project_inps[inp['node_id']] = inp['node_name']
             analysis_nodes[an['id_analysis']] = project_inps
         # Get files associated with project
-        project_data = db.execute('SELECT id_data, file_path FROM data WHERE id_project = ? AND id_user = ?',
-                                  (id_project, id_user)).fetchall()
+        project_data = db.execute('SELECT id_data, file_path FROM data WHERE id_project = ?',
+                                  (id_project,)).fetchall()
         files = {}
         for project_file in project_data:
             files[project_file['id_data']] = os.path.basename(project_file['file_path'])
@@ -478,7 +478,6 @@ def display_private_project(id_project):
 
         project_summary = get_project_summary(db, id_project)
         project_summary["id_project"] = id_project
-        print(f"name_project: {project_summary['name_project']}")
         return render_template("pscs/project.html",
                                project_name=project_name,
                                analyses=analyses,
