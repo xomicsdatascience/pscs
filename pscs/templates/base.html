@@ -1,6 +1,6 @@
 <!doctype html>
 
-<title>{% block title %}{% endblock %}PSCS</title>
+<title>{% block title %}PSCS {% endblock %}</title>
 
 <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
 <link rel="shortcut icon" href="{{ url_for('static', filename='favicon.ico') }}">
@@ -33,6 +33,12 @@
         {% endif %}
     {% endfor %}
     <body>
-        {% block content %}{% endblock %}
+        <div class="flex-container" style="margin-right: 0;">
+            <div class="main-content">
+                {% block content %}{% endblock %}
+            </div>
+        </div>
+
+
     </body>
 </section>

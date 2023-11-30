@@ -1,0 +1,29 @@
+<h4>Project Management</h4>
+<h5>Invite Collaborators</h5>
+<input type="text" id="inviteUser" placeholder="Username" style="display: inline;"><button onclick="inviteUser();">Invite user</button>
+
+<h5>Manage Collaborator Access</h5>
+<table>
+    <tr>
+        <th>Username</th>
+        <th>Role</th>
+    </tr>
+    {% for u in project_info["users"] %}
+        <tr>
+            <td>{{u["name_user"]}}</td>
+            <td>{{u["role"]}}</td>
+        </tr>
+    {% endfor %}
+</table>
+
+<h5>Publication</h5>
+<div style="display: inline-block">
+    Current status: {{project_info["publication_status"]}}.
+    <button onclick="window.location.href=window.location.href + '/publish'">Publishing options</button>
+</div>
+
+<h5>Project Management</h5>
+<div>
+    <input type="text" id="inputRename" placeholder="New project name" style="display: inline-block"><button onclick="renameProject();">Rename project</button>
+</div>
+Delete project: <button onclick="deleteProject('{{project_name}}');" style="color: rgb(150, 20, 20);">Delete project</button>

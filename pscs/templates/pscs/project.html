@@ -1,43 +1,12 @@
 {% extends 'base.html' %}
 
 {% block header %}
-<h1>{{ project_name }}</h1>
+<h1>Project: {{ summary['name_project'] }}</h1>
 {% endblock %}
 
 {% block content %}
 
-<!--Data summary-->
-<h3>Data Summary</h3>
-<a class="linkbutton" href="{{ url_for('pscs.upload') }}">Upload Data</a>
-
-<!--Data-->
-<script>
-  function color(id, color = 'rgba(255,255,255,0.2)'){
-    let elem = document.getElementById(id);
-    elem.style.backgroundColor = color;
-  }
-</script>
-<table>
-  <tr>
-    <th>file_path</th>
-    <th>data_type</th>
-    <th>date_uploaded</th>
-  </tr>
-  {% for data_row in project_data_summary %}
-  <tr id="{{loop.index0}}">
-    <td>{{data_row['file_path']}}</td>
-    <td>{{data_row['data_type']}}</td>
-    <td>{{data_row['data_uploaded_time']}}</td>
-    <td><button onclick="startDeletion('{{data_row['id_data']}}', '{{data_row['file_path']}}');">Delete</button></td>
-  </tr>
-  {% endfor %}
-</table>
-
-<!--Analysis-->
-<h3>Analyses</h3>
 <script src="/static/js/projects.js"></script>
-
-<!-- Create dropdown of analyses -->
 <script>
   function parseAndCreateTable(sel){
     let buttonRun = document.getElementById("buttonRun");
@@ -47,58 +16,34 @@
   }
 </script>
 
-<a class="linkbutton" href="{{ url_for('pscs.pipeline_designer') }}">Create Analysis</a><br>
-<select name="analysis" id="analysis" autocomplete="off" onchange="parseAndCreateTable(this);">
-  <option value="default" selected disabled>Select analysis pipeline...</option>
-<!--    Go through each available analysis -->
-  {% for an in analyses %}
-    <option value="{{an}}">{{analyses[an]}}</option>
-  {% endfor %}
-</select>
-<button onclick="executePipeline();" id="buttonRun" disabled="disabled">Run</button>
-
-<!--Results-->
-<h3>Results</h3>
-{% for f in results %}
-<div style="text-align:center">
-
-  <br>
-  <img src="{{url_for('pscs.results', id_project=summary['id_project'], id_analysis=f['id_analysis'], filename=f['file_name'] )}}">
-  <br>
-
-</div>
-{% endfor %}
-
-<h3>Project Management</h3>
-Users associated with this project:
-<table>
+<h3>Summary</h3>
+<table id="table_summary">
   <tr>
-  {% for u in user_list %}
-    <td>{{u}}</td>
-  {% endfor %}
+    <td>Users: {{summary['users'] | length}}</td>
+    <td>Datasets: {{summary['data_names'] | length}}</td>
+    <td>Analyses: {{summary['analysis'] | length}}</td>
+  </tr>
+  <tr></tr>
+  <tr>
+    <td>My role: {{summary['user_role']}}</td>
+    <td>Publication status: {{summary['publication_status']}}</td>
   </tr>
 </table>
+<br>
 
-  <table>
-    <tr>
-      <td>Invite user</td>
-      <td><input type="text" id="inviteUser"></td>
-      <td><button onclick="inviteUser();">Add</button></td>
-    </tr>
-    <tr>
-      <td>Publish project</td>
-      <td>Current status: {{project_status}}</td>
-      <td><button onclick="window.location.href=window.location.href + '/publish'">Publishing options</button></td>
-    </tr>
-    <tr>
-      <td>Rename project</td>
-      <td style="vertical-align: middle;"><input type="text" id="inputRename"></td>
-      <td><button onclick="renameProject();">Submit</button></td>
-    </tr>
-    <tr>
-      <td>Delete project</td>
-      <td></td>
-      <td><button onclick="deleteProject('{{project_name}}');">Delete</button></td>
-    </tr>
-  </table>
+<div id="project_info" style="border-color: #222222; border-style: solid; border-width: 2px; padding: 5px;">
+  <div id="tabs">
+    <button class="tab" onclick="getTabInfo('data')">Data</button>
+    <button class="tab" onclick="getTabInfo('jobs')">Jobs</button>
+    <button class="tab" onclick="getTabInfo('analysis')">Analysis</button>
+    <button class="tab" onclick="getTabInfo('results')">Results</button>
+    <button class="tab" onclick="getTabInfo('project_management')">Project Management</button>
+  </div>
+
+  <div id="tab_content">
+
+  </div>
+
+</div>
+
 {% endblock %}

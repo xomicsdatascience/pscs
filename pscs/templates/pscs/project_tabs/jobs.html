@@ -1,0 +1,41 @@
+<h4>Running Jobs</h4>
+<table>
+    <tr>
+        <th>Submitted Resource</th>
+        <th>Response</th>
+        <th>Submitted Time</th>
+        <th>Submitted By</th>
+        <th>Analysis</th>
+    </tr>
+    {% for j in running_jobs %}
+    <tr>
+        <td>{{j["submitted_resource"]}}</td>
+        <td>{{j["server_response"]}}</td>
+        <td>{{j["date_submitted"]}}</td>
+        <td>{{j["name_user"]}}</td>
+        <td>{{j["analysis_name"]}}</td>
+    </tr>
+    {% endfor %}
+</table>
+
+<h4>Completed Jobs</h4>
+<table>
+    <tr>
+        <th>Submitted Resource</th>
+        <th>Response</th>
+        <th>Submitted Time</th>
+        <th>Submitted By</th>
+        <th>Analysis</th>
+        <th>Completed on</th>
+    </tr>
+    {% for j in completed_jobs %}
+    <tr>
+        <td>{{j["submitted_resource"]}}</td>
+        <td>{{j["server_response"]}}</td>
+        <td>{{j["date_submitted"]}}</td>
+        <td>{{j["name_user"]}}</td>
+        <td>{{j["analysis_name"]}}</td>
+        <td>{{j["date_completed"]}}</td>
+    </tr>
+    {% endfor %}
+</table>

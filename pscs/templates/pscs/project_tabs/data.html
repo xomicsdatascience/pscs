@@ -1,0 +1,22 @@
+<h4>Project Data</h4>
+<table>
+    <tr>
+        <th>File</th>
+        <th>Type</th>
+        <th>Uploaded by</th>
+        <th>Time Uploaded</th>
+        <th>SHA3</th>
+    </tr>
+    {% for d in data_info %}
+      <tr>
+          <td>{{d["file_path"]}}</td>
+          <td>{{d["data_type"]}}</td>
+          <td>{{d["name_user"]}}</td>
+          <td>{{d["data_uploaded_time"]}}</td>
+          <td>{{d["file_hash"]}}</td>
+          <td><button onclick="startDeletion('{{d['id_data']}}', '{{d['file_path']}}');">Delete</button></td>
+      </tr>
+    {% endfor %}
+</table>
+
+<a class="linkbutton" href="{{ url_for('pscs.upload') }}">Upload Data</a>

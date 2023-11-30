@@ -116,17 +116,17 @@ function unpauseRun(elementIdToEnable){
 
 function startDeletion(id_data, name_data){
   // Asks user to confirm their choice, then sends a request for the data to be deleted.
-  confirmationText = "Confirm deletion of:\n" + name_data
+  const confirmationText = "Confirm deletion of:\n" + name_data
   if(confirm(confirmationText)){
-    var data_spec = new Object();
+    let data_spec = new Object();
     data_spec['deleteData'] = id_data;
     fetch(window.location.href,{
-    method: "POST",
-    headers: {
-        "Accept": "application/json",
-        "Content-Type": "application/json"},
-    body: JSON.stringify(data_spec)
-    }).then(response => {window.location.href = response.url});
+      method: "POST",
+      headers: {
+          "Accept": "application/json",
+          "Content-Type": "application/json"},
+      body: JSON.stringify(data_spec)})
+        .then(response => {window.location.href = response.url});
   }
 }
 
@@ -200,3 +200,18 @@ function inviteUser(){
    }).then(response => {window.location.href = response.url});
 }
 
+function getTabInfo(tab){
+  let idProject = window.location.href;
+  idProject = idProject.split("/");
+  idProject = idProject[idProject.length-1];
+  fetch(idProject + '/tabs/' + tab)
+      .then(response => response.text())
+      .then(html => document.getElementById("tab_content").innerHTML = html)
+      .catch(error => console.error("Error: ", error))
+}
+
+function displayResult(file_path){
+  const container = document.getElementById("container_results");
+  container.innerHTML = "<img src='" + file_path + "'>" ;
+  return
+}

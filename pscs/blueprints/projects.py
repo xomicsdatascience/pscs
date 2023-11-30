@@ -1,3 +1,5 @@
+import sqlite3
+
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, url_for, Flask, session, current_app, send_from_directory,
     jsonify
@@ -258,7 +260,7 @@ def load_analysis(id_project):
         if "loadAnalysis" in request.json:
             id_analysis = request.json["loadAnalysis"]
             # Verify that the project is indeed public
-            status = _get_project_publication_status(id_project)
+            status = _get_project_publication_status(db, id_project)
             has_peer_review_password = status == "peer review" and "project_review" in session.keys() and id_project in session["project_review"]
             if status == "public" or has_peer_review_password:
                 return load_analysis_from_id(id_analysis)
@@ -472,7 +474,11 @@ def display_private_project(id_project):
         user_list = []
         for u in users:
             user_list.append(u['name_user'])
-        public_status = _get_project_publication_status(id_project)
+        public_status = _get_project_publication_status(db, id_project)
+
+        project_summary = get_project_summary(db, id_project)
+        project_summary["id_project"] = id_project
+        print(f"name_project: {project_summary['name_project']}")
         return render_template("pscs/project.html",
                                project_name=project_name,
                                analyses=analyses,
@@ -482,7 +488,7 @@ def display_private_project(id_project):
                                results=results_files,
                                user_list=user_list,
                                project_status=public_status,
-                               summary=summary)
+                               summary=project_summary)
     else:
         flash("The requested project is not available.")
         return redirect(url_for("pscs.index"))
@@ -514,7 +520,7 @@ def project_publish(id_project):
         analyses, result, unrun_analyses = _get_analyses(id_project)
 
         # Public status
-        public_status = _get_project_publication_status(id_project)
+        public_status = _get_project_publication_status(db, id_project)
         return render_template("pscs/project_publish.html",
                                proj=project_info,
                                authors=authors,
@@ -581,7 +587,7 @@ def project_publish(id_project):
                 prepare_publication(id_project, publication_info)
                 # If project is currently in peer review, move forward. Otherwise, get confirmation from external author
                 has_ext_auth = _contains_external_authors(publication_info["authorlist"])
-                current_pub_status = _get_project_publication_status(id_project)
+                current_pub_status = _get_project_publication_status(db, id_project)
                 if not has_ext_auth or (has_ext_auth and current_pub_status == "peer review"):
                     project_public(id_project)
                 else:
@@ -612,9 +618,8 @@ def project_publish(id_project):
     return redirect(url_for("pscs.index"))
 
 
-def _get_project_publication_status(id_project) -> str:
+def _get_project_publication_status(db, id_project) -> str:
     """Returns the publication status of the specified project. Returns either "public", "peer review", or "private"."""
-    db = get_db()
     pub_status = db.execute("SELECT is_published, is_peer_review, is_on_hold "
                             "FROM projects "
                             "WHERE id_project=?", (id_project,)).fetchone()
@@ -633,7 +638,8 @@ def _get_project_publication_status(id_project) -> str:
 
 def validate_publication_type(pubtype: str, id_project: str) -> bool:
     """Returns whether the project can be set to the specified publication type."""
-    public_status = _get_project_publication_status(id_project)
+    db = get_db()
+    public_status = _get_project_publication_status(db, id_project)
     valid_pubtypes = ["private", "peer review", "public"]
     if pubtype == public_status:
         return False
@@ -647,15 +653,14 @@ def validate_publication_type(pubtype: str, id_project: str) -> bool:
         # There is the rare circumstance where projects that are published or set for peer review need to be private
         # Users can do this only within the window specified in the data use agreement.
         if pubtype == "private":
-            time_published = _get_project_publication_time(id_project)
+            time_published = _get_project_publication_time(db, id_project)
             now_utc = int(datetime.datetime.now().astimezone(datetime.timezone.utc).strftime("%s"))
             return now_utc - time_published <= current_app.config["PUBLIC_RECANT_TIMEOUT"]
     return False  # default
 
 
-def _get_project_publication_time(id_project: str) -> float:
+def _get_project_publication_time(db, id_project: str) -> float:
     """Returns the epoch time for when a project was published."""
-    db = get_db()
     time_published = db.execute("SELECT date_published "
                                 "FROM projects "
                                 "WHERE id_project = ?", (id_project,)).fetchone()["date_published"]
@@ -1015,7 +1020,7 @@ def project_public(id_project):
     # Remove peer review password, if any
     _remove_peer_review_password(id_project)
     from pscs.templates.misc import publication_notification
-    project_info = get_project_summary(id_project)
+    project_info = get_project_summary(db, id_project)
     project_url = build_full_url(url_for("projects.public_project", id_project=id_project))
     project_url_html = f"<a href='{project_url}'>{project_url}</a>"
     notif_email = publication_notification.format(name_project=project_info["name_project"],
@@ -1272,7 +1277,7 @@ def external_author_info(id_project, token):
         return redirect(url_for("pscs.index"))
     if request.method == "GET":
         # Get project info to display to user
-        project_summary = get_project_summary(id_project)
+        project_summary = get_project_summary(db, id_project)
         # Request user info
         return render_template("auth/external_author.html", project_summary=project_summary)
     elif request.method == "POST":
@@ -1326,7 +1331,7 @@ def proceed_if_possible(id_project: str):
     if missing_confirmation:
         return False  # not everyone has confirmed; exit
     # Move forward!
-    pub_type = _get_project_publication_status(id_project)
+    pub_type = _get_project_publication_status(db, id_project)
     if "peer review" in pub_type:
         project_peer_review(id_project)
     elif "public" in pub_type:
@@ -1367,11 +1372,13 @@ def store_external_author_info(id_project: str,
     return
 
 
-def get_project_summary(id_project: str) -> dict:
+def get_project_summary(db: sqlite3.Connection, id_project: str) -> dict:
     """
     Builds a summary of the specified project.
     Parameters
     ----------
+    db : sqlite3.Connection
+        DB connection
     id_project : str
         ID of the project to summarize.
     Returns
@@ -1379,9 +1386,149 @@ def get_project_summary(id_project: str) -> dict:
     dict
         Summary of the project.
     """
-    db = get_db()
-    proj_info = db.execute("SELECT name_project, description "
-                           "FROM projects "
-                           "WHERE id_project = ?", (id_project,)).fetchone()
-    return proj_info
+    project_summary = dict()
+    project_summary |= _get_project_user_summary(db, id_project)
+    project_summary |= _get_project_data_summary(db, id_project)
+    project_summary |= _get_project_analysis_summary(db, id_project)
+    project_summary |= _get_project_jobs_summary(db, id_project)
 
+    user_role = db.execute("SELECT role "
+                           "FROM projects_roles "
+                           "WHERE id_project = ? AND id_user = ?", (id_project, session["id_user"])).fetchone()
+    project_summary["user_role"] = user_role["role"]
+    project_summary["publication_status"] = _get_project_publication_status(db, id_project)
+    project_summary |= dict(db.execute("SELECT name_project, description "
+                                  "FROM projects "
+                                  "WHERE id_project = ?", (id_project,)).fetchone())
+    return project_summary
+
+
+def _get_project_user_summary(db, id_project: str) -> dict:
+    """Returns a dict containing the entry "users"  of users associated with the specified project."""
+    users = db.execute("SELECT users_auth.name_user "
+                       "FROM users_auth INNER JOIN projects_roles "
+                       "ON users_auth.id_user = projects_roles.id_user "
+                       "WHERE projects_roles.id_project = ?", (id_project,)).fetchall()
+    summary = {"users": [u["name_user"] for u in users]}
+    return summary
+
+
+def _get_project_data_summary(db, id_project: str) -> dict:
+    """Returns the names of the datasets related to the id_project"""
+    data = db.execute("SELECT file_path "
+                      "FROM data "
+                      "WHERE id_project = ?", (id_project,)).fetchall()
+    summary = {"data_names": [d["file_path"] for d in data]}
+    return summary
+
+
+def _get_project_data_info(db, id_project: str) -> dict:
+    """Returns full info of data related to the specified project."""
+    data = db.execute("SELECT data.id_data, users_auth.name_user, data.file_path, data.data_type, data.data_uploaded_time, data.file_hash "
+                      "FROM users_auth INNER JOIN data "
+                      "ON users_auth.id_user = data.id_user "
+                      "WHERE data.id_project = ? "
+                      "ORDER BY users_auth.name_user ASC", (id_project,)).fetchall()
+    info = {"data": [dict(d) for d in data]}
+    for d in info["data"]:
+        d["file_path"] = os.path.basename(d["file_path"])
+    return info
+
+
+def _get_project_analysis_summary(db, id_project: str) -> dict:
+    """Returns a summary of the analyses related to the id_project"""
+    analyses = db.execute("SELECT analysis_name "
+                          "FROM analysis "
+                          "WHERE id_project = ?", (id_project,)).fetchall()
+    summary = {"analysis": [a["analysis_name"] for a in analyses]}
+    return summary
+
+
+def _get_project_analysis_info(db, id_project: str) -> dict:
+    """Returns detailed info about analyses associated with the project"""
+    analyses = db.execute("SELECT A.analysis_name, A.id_analysis "
+                          "FROM analysis AS A "
+                          "WHERE id_project = ?", (id_project,)).fetchall()
+    return analyses
+
+
+def _get_project_jobs_summary(db, id_project: str) -> dict:
+    """Returns a summary of jobs"""
+    jobs = db.execute("SELECT id_job "
+                      "FROM submitted_jobs "
+                      "WHERE id_project = ?", (id_project,)).fetchall()
+    summary = {"jobs": [j for j in jobs if not j["is_complete"]]}
+    summary["completed_jobs"] = [j for j in jobs if j["is_complete"]]
+    return summary
+
+
+def _get_project_jobs_info(db, id_project: str) -> (dict, dict):
+    """Returns the details about computational jobs."""
+    running_jobs = db.execute("SELECT J.submitted_resource, J.server_response, J.date_submitted, U.name_user, A.analysis_name "
+                              "FROM submitted_jobs AS J INNER JOIN users_auth AS U ON J.id_user = U.id_user "
+                              "INNER JOIN analysis AS A ON J.id_analysis = A.id_analysis "
+                              "WHERE J.id_project = ? AND J.is_complete = 0 "
+                              "ORDER BY J.date_submitted ASC", (id_project,)).fetchall()
+    completed_jobs = db.execute("SELECT J.submitted_resource, J.server_response, J.date_submitted, U.name_user, "
+                                "A.analysis_name, J.date_completed "
+                                "FROM submitted_jobs AS J INNER JOIN users_auth AS U ON J.id_user = U.id_user "
+                                "INNER JOIN analysis AS A ON J.id_analysis = A.id_analysis "
+                                "WHERE J.id_project = ? AND J.is_complete = 0 "
+                                "ORDER BY J.date_submitted ASC", (id_project,)).fetchall()
+    info = {"jobs": running_jobs}
+    info["completed_jobs"] = completed_jobs
+    return info
+
+
+def _get_project_results_info(db, id_project: str) -> list:
+    """Returns details about results associated with the project"""
+    results = db.execute("SELECT R.file_path, A.analysis_name, R.is_published, R.is_peer_review "
+                         "FROM results AS R INNER JOIN analysis AS A ON R.id_analysis = A.id_analysis "
+                         "WHERE R.id_project = ?", (id_project,)).fetchall()
+    info = [dict(r) for r in results]
+    for r in info:
+        if r["is_published"]:
+            r["publication_status"] = "published"
+        elif r["is_peer_review"]:
+            r["publication_status"] = "peer review"
+        else:
+            r["publication_status"] = "private"
+    return info
+
+
+def _get_project_management_info(db, id_project: str) -> list:
+    """Returns info about managing the project"""
+    users = db.execute("SELECT PR.role, U.name_user "
+                       "FROM projects_roles AS PR INNER JOIN users_auth as U ON PR.id_user = U.id_user "
+                       "WHERE PR.id_project = ?", (id_project,)).fetchall()
+    project_info = {"users": users}
+    project_info["publication_status"] = _get_project_publication_status(db, id_project)
+    return project_info
+
+
+@bp.route("/<id_project>/tabs/<tab>", methods=["GET"])
+@login_required
+def get_tab_info(id_project, tab):
+    if check_user_permission(permission_name="data_read",
+                             permission_value=1,
+                             id_project=id_project):
+        # User has permission to access data
+        db = get_db()
+        if tab == "data":
+            data = _get_project_data_info(db, id_project)
+            return render_template("pscs/project_tabs/data.html", data_info=data["data"])
+        elif tab == "jobs":
+            jobs = _get_project_jobs_info(db, id_project)
+            return render_template("pscs/project_tabs/jobs.html",
+                                   running_jobs=jobs["jobs"],
+                                   completed_jobs=jobs["completed_jobs"])
+        elif tab == "analysis":
+            analysis = _get_project_analysis_info(db, id_project)
+            return render_template("pscs/project_tabs/analysis.html", analysis=analysis)
+        elif tab == "results":
+            results_info = _get_project_results_info(db, id_project)
+            return render_template("pscs/project_tabs/results.html", results=results_info)
+        elif tab == "project_management":
+            project_info = _get_project_management_info(db, id_project)
+            return render_template("pscs/project_tabs/project_management.html", project_info=project_info)
+    return

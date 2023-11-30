@@ -1,0 +1,24 @@
+<h4>Project Analyses</h4>
+<h5>Analysis summary</h5>
+<table>
+    <tr>
+        <th>Analysis Name</th>
+    </tr>
+    {% for a in analysis %}
+      <tr>
+          <td>{{a["analysis_name"]}}</td>
+      </tr>
+    {% endfor %}
+</table>
+<br>
+<a class="linkbutton" href="{{ url_for('pscs.pipeline_designer') }}">Create Analysis</a><br>
+
+<h5>Run Analysis</h5>
+<select name="analysis" id="analysis" autocomplete="off" onchange="parseAndCreateTable(this);">
+    <option value="default" selected disabled>Select analysis pipeline...</option>
+    <!--    Go through each available analysis -->
+    {% for a in analysis %}
+        <option value="{{a['id_analysis']}}">{{a["analysis_name"]}}</option>
+    {% endfor %}
+</select>
+<button onclick="executePipeline();" id="buttonRun" disabled="disabled">Run</button>

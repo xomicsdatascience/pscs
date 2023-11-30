@@ -1,0 +1,21 @@
+<h4>Results</h4>
+<div>
+    <table>
+        <tr>
+            <th>Result filename</th>
+            <th>Analysis</th>
+            <th>Publication Status</th>
+        </tr>
+        {% for r in results %}
+            <tr>
+                <td>{{r["file_path"] | basename}}</td>
+                <td>{{r["analysis_name"]}}</td>
+                <td>{{r["publication_status"]}}</td>
+                <td><button onclick="displayResult('{{r["file_path"]}}')">Display</button></td>
+            </tr>
+        {% endfor %}
+    </table>
+
+    <div id="container_results">
+    </div>
+</div>
