@@ -22,15 +22,15 @@ apt-get install -y -q --no-install-recommends \
 
 apt-get install -y -q --no-install-recommends build-essential
 apt-get install -y -q --no-install-recommends python3-setuptools
-apt-get install -y python3.10 python3.10-dev python3-pip
+apt-get install -y python3.11 python3.11-dev python3-pip
 apt-get install -y -q --no-install-recommends sudo wget
 
-pip install --upgrade pip
-pip install /pscs_api-latest-py3-none-any.whl
-pip install /pscs_scanpy-latest-py3-none-any.whl
+python3.11 -m pip install --upgrade pip
+python3.11 -m pip install /pscs_api-latest-py3-none-any.whl
+python3.11 -m pip install /pscs_scanpy-latest-py3-none-any.whl
 
 apt-get clean
 rm -rf /var/lib/apt/lists/*
 
 %runscript
-python3 /run_pscs_pipeline.py
+python3.11 /run_pscs_pipeline.py

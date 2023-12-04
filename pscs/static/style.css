@@ -3,7 +3,7 @@ html { font-family: sans-serif;
     padding: 1rem;}
 body { max-width: 1980px; margin: 0 auto; transition-duration: 0.2s; margin-left: 0px;
     background-image: url("pscs_logo2.svg");
-    background-color: rgba(255,255,255,1);
+    /*background-color: rgba(255,255,255,1);*/
     background-repeat: no-repeat;
     background-size: contain;
     background-position: left;}
@@ -41,7 +41,8 @@ nav ul li a, nav ul li span, header .action { display: block; padding: 0.5rem; }
 input.danger { color: #cc2f2e; }
 input[type=submit] { align-self: start; min-width: 10em; }
 input,textarea{min-width:200px; width:20%;display:block}
-table, th, td {border: 1px solid; }
+table, th, td {border: 1px solid; border-spacing: 1px;}
+td {padding: 5px;}
 tr:hover:not(:first-child,.post) {background-color: rgba(0,0,0, 0.2);}
 img {max-width:1600px;}
 .pscs {position:absolute; cursor: grab; z-index:2;}
@@ -96,4 +97,49 @@ img {max-width:1600px;}
     }
 .postline {
     border-bottom: 1px solid black;
+}
+
+.post {
+    overflow-wrap: break-word;
+    word-wrap: break-word;
+}
+
+
+.tab-ribbon{
+    display: flex;
+}
+
+.tab-button {
+    width: 50px;
+    height: 50px;
+    clip-path: polygon(
+            50% 0%,
+            100% 33%,
+            100% 100%,
+            0% 100%,
+            0% 33%
+    );
+    background-color: rgba(136, 136, 136, 1);
+    transition-duration: 0.4s;
+    overflow: hidden;
+    margin-bottom: 1px;
+    margin-left: 0px;
+    margin-right: 0px;
+    padding: 0px;
+    border: 0px;
+}
+
+.tab-selected {
+    background-color: rgba(136, 136, 136, 0.1);
+}
+
+.tab-button:hover:not(.tab-selected) {
+    background-color: rgba(136, 136, 136, 0.5);
+    transition-duration: 0.1s;
+}
+
+.tab-button img {
+    width: 100%;
+    height: 100%;
+    display: block;
 }

@@ -217,3 +217,17 @@ function displayResult(file_path){
   container.innerHTML = "<img src='/" + file_path + "'>" ;
   return
 }
+
+document.addEventListener('click', function(e) {
+  let target = e.target;
+  if(target.classList.contains("tab-button")){
+    // get all tabs
+    let tabs = document.getElementsByClassName("tab-button");
+    for(let t of tabs) {
+      t.classList.remove("tab-selected");
+    }
+    target.classList.add("tab-selected");
+  }
+}, false);
+
+
