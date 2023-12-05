@@ -64,10 +64,16 @@ def project(id_project):
                                              id_project=id_project)
             if has_perm:
                 # add user
-                user_to_invite = escape(request.json['inviteUser'])
-                # get user id
                 db = get_db()
-                id_user = db.execute("SELECT id_user FROM users_auth WHERE name_user = ?", (user_to_invite,)).fetchone()
+                user_to_invite = escape(request.json['inviteUser'])
+                # Get user id from email or username
+                try:
+                    email_validator.validate_email(user_to_invite)
+                    id_user = db.execute("SELECT id_user FROM users_auth WHERE email = ?", (user_to_invite,)).fetchone()
+                except EmailNotValidError:
+                    # not valid email; done by username
+                    id_user = db.execute("SELECT id_user FROM users_auth WHERE name_user = ?", (user_to_invite,)).fetchone()
+
                 if id_user is None:
                     # user doesn't exist
                     flash(f"User {user_to_invite} not found.")
