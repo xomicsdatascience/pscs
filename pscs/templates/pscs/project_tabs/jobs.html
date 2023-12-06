@@ -27,6 +27,7 @@
         <th>Submitted By</th>
         <th>Analysis</th>
         <th>Completed on</th>
+        <th>Logs</th>
     </tr>
     {% for j in completed_jobs %}
     <tr>
@@ -36,6 +37,18 @@
         <td>{{j["name_user"]}}</td>
         <td>{{j["analysis_name"]}}</td>
         <td>{{j["date_completed"]}}</td>
+        <td><button onclick="viewLog('{{j['id_job']}}')">View</button></td>
     </tr>
     {% endfor %}
 </table>
+
+<div id="log_display" class="flex-container" style="margin-top: 20px; display: none">
+    <div>
+        <label for="stdout_text">Output log:</label>
+        <textarea id="stdout_text" style="width: auto" cols="80" disabled></textarea>
+    </div>
+    <div>
+        <label for="stderr_text">Error log:</label>
+        <textarea id="stderr_text" style="width: auto" cols="100" disabled></textarea>
+    </div>
+</div>

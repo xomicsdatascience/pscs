@@ -218,6 +218,24 @@ function displayResult(file_path){
   return
 }
 
+function viewLog(id_job){
+  fetch(window.location.href + "/logs/" + id_job)
+      .then(response => response.json())
+      .then(data => setLogBoxes(data["stdout"], data["stderr"]))
+  return
+}
+
+function setLogBoxes(stdout_data, stderr_data){
+  const stdout_text = document.getElementById("stdout_text");
+  const stderr_text = document.getElementById("stderr_text");
+  stdout_text.value = stdout_data;
+  stderr_text.value = stderr_data;
+  const log_display = document.getElementById("log_display");
+  log_display.style.display = "flex";
+  return
+}
+
+
 document.addEventListener('click', function(e) {
   let target = e.target;
   if(target.classList.contains("tab-button")){

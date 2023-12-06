@@ -10,6 +10,7 @@ import os
 import sqlite3
 from collections import defaultdict as dd
 import argparse
+from werkzeug.utils import escape
 
 
 def check_for_submitted_jobs(db: sqlite3.Connection):
@@ -171,9 +172,82 @@ def fetch_data(remote_info: dict,
     return
 
 
+def fetch_logs(remote_info: dict,
+               id_job: str,
+               ssh_keypath: str,
+               local_results_dir: str,
+               stdout_log_path: str = "~/stdout/",
+               stderr_log_path: str = "~/stderr"):
+    """
+    Fetches the stdout/stderr logs for a particular job and copies them to the [RESULTS]/logs directory
+    Parameters
+    ----------
+    remote_info : dict
+        Info for connecting to the remote server: {"USER": user, "URL": host} as found in the .env file.
+    id_job : str
+        PSCS ID of the job to fetch; logs are named their PSCS ID.
+    ssh_keypath : str
+        Path to the SSH key to use for logging into the remote resource
+    local_results_dir : str
+        Location where results are stored; used to store the logs.
+    stdout_log_path : str
+        Path on the remote resource where the stdout log is stored.
+    stderr_log_path : str
+        Path on the remote resource where the stderr log is stored.
+
+    Returns
+    -------
+    None
+    """
+    remote_user = f"{remote_info['USER']}@{remote_info['URL']}"
+    out = subprocess.check_output(["rsync", "-e", f"ssh -i{ssh_keypath}",
+                                   f"{remote_user}:{stdout_log_path}/{id_job}.output",
+                                   f"{remote_user}:{stderr_log_path}/{id_job}.error",
+                                   local_results_dir])
+    return
+
+
+def read_logs(db: sqlite3.Connection, id_job: str) -> (str, str):
+    """
+    Returns the text contained in the stdout/stderr logs.
+    Parameters
+    ----------
+    db : sqlite3.Connection
+        Connection to the database.
+    id_job : str
+        ID of the job for which we should read the logs
+    Returns
+    -------
+    stdout : str
+        Contents of stdout log
+    stderr : str
+        Contents of stderr log
+    """
+    # Get path to logs
+    job_info = db.execute("SELECT stdout_log, stderr_log "
+                          "FROM submitted_jobs "
+                          "WHERE id_job = ?", (id_job,)).fetchone()
+    if job_info["stdout_log"] is None:
+        stdout_data = None
+    else:
+        f = open(job_info["stdout_log"], "r")
+        stdout_data = f.read()
+        f.close()
+
+    if job_info["stderr_log"] is None:
+        stderr_data = None
+    else:
+        f = open(job_info["stderr_log"], "r")
+        stderr_data = f.read()
+        f.close()
+
+    return stdout_data, stderr_data
+
+
 def update_db_job_complete(db: sqlite3.Connection,
                            resource: str,
-                           jobid: str):
+                           jobid: str,
+                           logs_directory: str = None):
     """
     Update the DB to mark the job as completed.
     Parameters
@@ -184,14 +258,17 @@ def update_db_job_complete(db: sqlite3.Connection,
         Resource on which the results were computed.
     jobid : str
         Remote job id.
-
+    logs_directory : str
+        Directory where the output/error logs are stored.
     Returns
     -------
     None
     """
+    stderr_log = os.path.join(logs_directory, jobid + ".error")
+    stdout_log = os.path.join(logs_directory, jobid + ".output")
     db.execute("UPDATE submitted_jobs "
-               "SET is_complete=1, date_completed=DATETIME('now') "
-               "WHERE submitted_resource = ? AND resource_job_id = ?", (resource, jobid))
+               "SET is_complete=1, date_completed=DATETIME('now'), stdout_log=?, stderr_log=? "
+               "WHERE submitted_resource = ? AND resource_job_id = ?", (stdout_log, stderr_log, resource, jobid))
     db.commit()
     return
 
@@ -249,7 +326,6 @@ def _poll_osp(env: dict) -> dict:
         Dict containing job status, keyed by job id
     """
     # Get condor history
-    # TODO: add env to input so we can fetch CRON_KEY
     login_dict = env["REMOTE_COMPUTING"]["osp"]
     login_str = f"{login_dict['USER']}@{login_dict['URL']}"
     cron_key = env["CRON_KEY"]
@@ -321,10 +397,11 @@ def main(db, env, debug=False):
         results_path = os.path.join(env["INSTANCE_PATH"], "projects", "{id_project}", "results", "{id_analysis}")
         results_path = results_path.format(id_project=job_info["id_project"], id_analysis=job_info["id_analysis"])
         Path(results_path).mkdir(exist_ok=True, parents=True)
-
+        logs_directory = env["LOG_DIRECTORY"].format(id_project=job_info["id_project"], id_analysis=job_info["id_analysis"])
         fetch_data(env["REMOTE_COMPUTING"][c_job[0]], job_info["remote_results_directory"], results_path, ssh_keypath=env["CRON_KEY"])
+        fetch_logs(env["REMOTE_COMPUTING"][c_job[0]], id_job=c_job[1], ssh_keypath=env["CRON_KEY"], local_results_dir=logs_directory)
         # register completion
-        update_db_job_complete(db, c_job[0], c_job[1])
+        update_db_job_complete(db, c_job[0], c_job[1], logs_directory)
         for result in os.listdir(results_path):
             print_debug(f"registering {result}", debug)
             id_result = get_unique_value_for_field(db, "id_result", "results")

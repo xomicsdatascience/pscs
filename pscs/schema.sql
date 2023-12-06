@@ -330,6 +330,8 @@ CREATE TABLE submitted_jobs(  -- logging submitted jobs
   server_response TEXT,  -- text response from the server
   remote_results_directory TEXT NOT NULL, -- directory where results are stored
   date_submitted TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  stdout_log VARCHAR(1024) DEFAULT NULL, -- stdout log of the result
+  stderr_log VARCHAR(1024) DEFAULT NULL, -- stderr log of the result
   is_complete BIT DEFAULT 0,
   date_completed TIMESTAMP
 );

@@ -14,6 +14,7 @@ from email_validator import EmailNotValidError
 from pscs.auth import login_required, is_logged_in
 from pscs.db import get_db
 from pscs.pscs import delete_data, check_user_permission, get_unique_value_for_field, add_user_to_project
+from pscs.transfers.fetching import read_logs
 from werkzeug.security import check_password_hash, generate_password_hash
 from pscs.messaging.mail import send_email
 import pscs
@@ -1474,14 +1475,15 @@ def _get_project_jobs_info(db, id_project: str) -> (dict, dict):
                               "INNER JOIN analysis AS A ON J.id_analysis = A.id_analysis "
                               "WHERE J.id_project = ? AND J.is_complete = 0 "
                               "ORDER BY J.date_submitted ASC", (id_project,)).fetchall()
-    completed_jobs = db.execute("SELECT J.submitted_resource, J.server_response, J.date_submitted, U.name_user, "
+    completed_jobs = db.execute("SELECT J.submitted_resource, J.server_response, J.date_submitted, J.id_job, U.name_user, "
                                 "A.analysis_name, J.date_completed "
                                 "FROM submitted_jobs AS J INNER JOIN users_auth AS U ON J.id_user = U.id_user "
                                 "INNER JOIN analysis AS A ON J.id_analysis = A.id_analysis "
                                 "WHERE J.id_project = ? AND J.is_complete = 1 "
                                 "ORDER BY J.date_submitted ASC", (id_project,)).fetchall()
+    completed_jobs_dicts = [dict(c) for c in completed_jobs]
     info = {"jobs": running_jobs}
-    info["completed_jobs"] = completed_jobs
+    info["completed_jobs"] = completed_jobs_dicts
     return info
 
 
@@ -1509,6 +1511,18 @@ def _get_project_management_info(db, id_project: str) -> list:
     project_info = {"users": users}
     project_info["publication_status"] = _get_project_publication_status(db, id_project)
     return project_info
+
+
+@bp.route("/<id_project>/logs/<id_job>", methods=["GET"])
+@login_required
+def get_logs(id_project, id_job):
+    if check_user_permission(permission_name="data_read",
+                             permission_value=1,
+                             id_project=id_project):
+        # User has permission to access data
+        db = get_db()
+        stdout_log, stderr_log = read_logs(db, id_job)
+        return jsonify({"stdout": stdout_log, "stderr": stderr_log})
 
 
 @bp.route("/<id_project>/tabs/<tab>", methods=["GET"])

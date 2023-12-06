@@ -272,7 +272,10 @@ def run_analysis():
         # sent out to OSG.
         output_dir = current_app.config['RESULTS_DIRECTORY'].format(id_project=session['CURRENT_PROJECT'],
                                                             id_analysis=pipeline_specs['id_analysis'])
-        pathlib.Path(output_dir).mkdir(exist_ok=True)
+        pathlib.Path(output_dir).mkdir(exist_ok=True, parents=True)
+        log_dir = current_app.config["LOG_DIRECTORY"].format(id_project=session["CURRENT_PROJECT"],
+                                                             id_analysis=pipeline_specs["id_analysis"])
+        pathlib.Path(log_dir).mkdir(exist_ok=True, parents=True)
         file_ids = pipeline_specs['file_paths']
         file_info = dict()
         for node_id, file_id in file_ids.items():
