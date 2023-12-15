@@ -116,9 +116,9 @@ function unpauseRun(elementIdToEnable){
   document.body.style.cursor = pauseStartCursor;
 }
 
-function startDeletion(id_data, name_data){
+function startDeletion(id_data, name_data, file_hash){
   // Asks user to confirm their choice, then sends a request for the data to be deleted.
-  const confirmationText = "Confirm deletion of:\n" + name_data
+  const confirmationText = "Confirm deletion of:\n" + name_data + "\nwith hash\n" + file_hash;
   if(confirm(confirmationText)){
     let data_spec = new Object();
     data_spec['deleteData'] = id_data;

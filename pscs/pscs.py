@@ -43,7 +43,7 @@ def allowed_file(filename):
 @bp.route(f"/upload/<id_project>/<name>", methods=['GET'])
 @login_required
 def download_file(id_project, name):
-    return send_from_directory(current_app.config['UPLOAD_FOLDER'].format(id_project=id_project), name)
+    return send_from_directory(current_app.config['DATA_DIRECTORY'].format(id_project=id_project), name)
 
 
 @bp.route('/upload', methods=['GET','POST'])
@@ -66,7 +66,7 @@ def upload():
                 flash("You do not have permission to upload files.")
                 return redirect(url_for("projects.project", id_project=session["CURRENT_PROJECT"]))
             filename = secure_filename(file.filename)
-            out_path = current_app.config['UPLOAD_FOLDER'].format(id_project=session["CURRENT_PROJECT"])
+            out_path = current_app.config['DATA_DIRECTORY'].format(id_project=session["CURRENT_PROJECT"])
             os.makedirs(out_path, exist_ok=True)
             out_file = os.path.join(out_path, filename)
             file.save(out_file)
@@ -162,6 +162,8 @@ def create_project():
             db.commit()
             proj_dir = pathlib.Path(current_app.config['PROJECTS_DIRECTORY'].format(id_project=id_project))
             proj_dir.mkdir(exist_ok=True)
+            data_dir = pathlib.Path(current_app.config["DATA_DIRECTORY"].format(id_project=id_project))
+            data_dir.mkdir(exist_ok=True)
             results_dir = pathlib.Path(os.path.join(current_app.config['PROJECTS_DIRECTORY'], 'results').format(id_project=id_project))
             results_dir.mkdir(exist_ok=True)
             return redirect(url_for('projects.project', id_project=id_project))
@@ -384,8 +386,6 @@ def pipeline_designer():
 
         if is_dest_project:
             pipeline_dir = current_app.config['PROJECTS_DIRECTORY'].format(id_project=id_project)
-        # else:
-            # pipeline_dir = current_app.config['UPLOAD_FOLDER'].format(userid=g['id_user'])
 
         output_name = pipeline_id + '.json'
         pipeline_file = os.path.join(pipeline_dir, output_name)

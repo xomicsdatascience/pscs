@@ -1,0 +1,45 @@
+{% extends 'base.html' %}
+
+{% block header %}
+<h1>{% block title %}Data Upload{% endblock %}</h1>
+{% endblock %}
+
+{% block content %}
+<label for="data_type_selector">Select the data uploader to use.</label>
+<select id="data_type_selector" autocomplete="off">
+    <option id="default" selected disabled>Select uploader...</option>
+    <option id="csv_h5ad">CSV -> H5AD</option>
+</select>
+<div id="uploader">
+</div>
+<div id="out">
+</div>
+<script src="/static/js/uploader/landing.js"></script>
+<script>
+    let el = document.getElementById("data_type_selector");
+    el.addEventListener("change", async function(){
+        let uploaderId = this.selectedOptions[0].id;
+        // get scripts, append to DOM
+
+        fetch(window.location.href + '/' + uploaderId)
+            .then(response => response.text())
+            .then(data => setUploader(data))
+
+        let response = fetch(window.location.href + '/' + uploaderId + '/script')
+                            .then(response => response.json())
+                            .then(scripts => {
+                                addScripts(scripts["js"]);
+                                // for(let scr of scripts["js"]){
+                                //     addScript(scr);
+                                // }
+                            })
+        await response;
+        document.dispatchEvent(new Event("uploaderLoaded"));
+
+    });
+    function setUploader(html){
+        const uploader = document.getElementById("uploader");
+        uploader.innerHTML = html;
+    }
+</script>
+{% endblock %}

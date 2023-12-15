@@ -1,4 +1,4 @@
-__version__ = "0.1.33"
+__version__ = "0.2.0"
 
 from flask import Flask
 import os
@@ -52,11 +52,11 @@ def create_app(test_config=None) -> Flask:
     app.config["STATIC_DIRECTORY"] = static_directory
     _makedir_until_format(app.config["STATIC_DIRECTORY"])
 
-    app.config['UPLOAD_FOLDER'] = join(app.instance_path, "upload", "{id_project}")
-    _makedir_until_format(app.config['UPLOAD_FOLDER'])
-
     app.config["PROJECTS_DIRECTORY"] = join(app.instance_path, "projects", "{id_project}")
     _makedir_until_format(app.config["PROJECTS_DIRECTORY"])
+
+    app.config["DATA_DIRECTORY"] = join(app.config["PROJECTS_DIRECTORY"], "data")
+    _makedir_until_format(app.config['DATA_DIRECTORY'])
 
     app.config["RESULTS_DIRECTORY"] = join(app.config["PROJECTS_DIRECTORY"], "results", "{id_analysis}")
     _makedir_until_format(app.config["RESULTS_DIRECTORY"])
@@ -83,7 +83,9 @@ def create_app(test_config=None) -> Flask:
     from pscs.blueprints import posts
     app.register_blueprint(posts.bp)
 
+    from pscs.blueprints import uploader
     from pscs.blueprints import projects
+    projects.bp.register_blueprint(uploader.bp)
     app.register_blueprint(projects.bp)
 
     app.jinja_env.filters['basename'] = os.path.basename

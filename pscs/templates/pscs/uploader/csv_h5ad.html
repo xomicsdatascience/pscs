@@ -1,0 +1,63 @@
+<script src="/static/js/uploader/csv_h5ad.js"></script>
+<script src="/static/js/external/papaparse/papaparse.min.js"></script>
+
+<p>The uploaded data should meet the following requirements:</p>
+<ul>
+    <li>Tabular comma-separated value file (.csv)</li>
+    <li>For the quantities file:
+    <ul>
+        <li>Every row is a different sample</li>
+        <li>Every column represents a different protein/gene (as appropriate).</li>
+    </ul>
+    </li>
+    <li>For the observation metadata, every row is a different sample and every column describes a sample property (e.g., "batch")</li>
+    <li>For the variable metadata, every row describes a protein/gene property (e.g., "mitochondrial") and every column is a protein/gene.</li>
+</ul>
+
+<form method=post enctype=multipart/form-data action="{{form_url}}">
+    <div style="display: flex;">
+        <div style="width: 200px;">
+            <label for="quantities">Quantities file</label><br>
+            <input id="quantities" name="quantities" type="file" accept=".csv, .tsv" style="max-width: 200px;"><br>
+            <input type="checkbox" id="quant_transpose" name="quant_transpose">Transpose
+
+        </div>
+        <div style="margin-left: 10px;">
+            <label for="quant_index">Index:</label>
+            <textarea id="quant_index" rows="1"  style="min-height: unset; resize: none;" disabled></textarea>
+            <label for="protein_names">Protein labels:</label>
+            <textarea id="protein_names" disabled cols="20" rows="5" style="white-space: pre; alignment: left"></textarea>
+        </div>
+    </div>
+
+    <div style="display: flex;">
+        <div style="width: 200px;">
+            <label for="obs_input">Observation metadata</label><br>
+            <input id="obs_input" name="obs_input" type="file" accept=".csv, .tsv" style="max-width: 200px;"><br>
+            <input type="checkbox" id="obs_transpose" name="obs_transpose">Transpose
+        </div>
+        <div style="margin-left: 10px;">
+            <label for="obs_index">Index:</label>
+            <textarea id="obs_index" rows="1" style="min-height: unset; resize: none;" disabled></textarea>
+            <label for="obs_features">Observation metadata:</label>
+            <textarea id="obs_features" disabled cols="20" rows="5" style="white-space: pre; alignment: left;"></textarea>
+        </div>
+    </div>
+    <div style="display: flex;">
+        <div style="width: 200px;">
+            <label for="var_input">Variable metadata</label><br>
+            <input id="var_input" name="var_input" type="file" accept=".csv, .tsv"><br>
+            <input type="checkbox" id="var_transpose" name="var_transpose">Transpose
+        </div>
+        <div style="margin-left: 10px;">
+            <label for="var_index">Index:</label>
+            <textarea id="var_index" rows="1" style="min-height: unset; resize: none;" disabled></textarea>
+            <label for="var_features">Variable metadata:</label>
+            <textarea id="var_features" disabled cols="20" rows="5" style="white-space: pre; alignment: left;"></textarea>
+        </div>
+    </div>
+    <input type="submit" value="Upload">
+</form>
+
+<div id="out"></div>
+

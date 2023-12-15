@@ -146,11 +146,17 @@ def manage_invitation():
     return redirect(url_for("pscs.index"))
 
 
-@bp.route("/<id_project>/upload", methods=["GET", "POST"])
+@bp.route("/<id_project>/upload", methods=["GET"])
 @login_required
 def upload(id_project):
     if request.method == "GET":
-        return render_template("pscs/upload.html")
+        return render_template("pscs/uploader/landing.html")
+
+
+def get_filestorage_size(f) -> int:
+    file_length = f.seek(0, os.SEEK_END)
+    f.seek(0)
+    return file_length
 
 
 def get_invitation(id_invitation: str):
@@ -447,11 +453,11 @@ def display_private_project(id_project):
                 project_inps[inp['node_id']] = inp['node_name']
             analysis_nodes[an['id_analysis']] = project_inps
         # Get files associated with project
-        project_data = db.execute('SELECT id_data, file_path FROM data WHERE id_project = ?',
+        project_data = db.execute('SELECT id_data, file_name FROM data WHERE id_project = ?',
                                   (id_project,)).fetchall()
         files = {}
         for project_file in project_data:
-            files[project_file['id_data']] = os.path.basename(project_file['file_path'])
+            files[project_file['id_data']] = project_file["file_name"]
         project_data_summary = db.execute(
             'SELECT id_data, file_path, data_type, file_hash, data_uploaded_time FROM data WHERE id_project = ?',
             (id_project,)).fetchall()
@@ -1421,16 +1427,16 @@ def _get_project_user_summary(db, id_project: str) -> dict:
 
 def _get_project_data_summary(db, id_project: str) -> dict:
     """Returns the names of the datasets related to the id_project"""
-    data = db.execute("SELECT file_path "
+    data = db.execute("SELECT file_name "
                       "FROM data "
                       "WHERE id_project = ?", (id_project,)).fetchall()
-    summary = {"data_names": [d["file_path"] for d in data]}
+    summary = {"data_names": [d["file_name"] for d in data]}
     return summary
 
 
 def _get_project_data_info(db, id_project: str) -> dict:
     """Returns full info of data related to the specified project."""
-    data = db.execute("SELECT data.id_data, users_auth.name_user, data.file_path, data.data_type, data.data_uploaded_time, data.file_hash "
+    data = db.execute("SELECT data.id_data, users_auth.name_user, data.file_path, data.data_type, data.data_uploaded_time, data.file_hash, data.file_name "
                       "FROM users_auth INNER JOIN data "
                       "ON users_auth.id_user = data.id_user "
                       "WHERE data.id_project = ? "
@@ -1535,7 +1541,7 @@ def get_tab_info(id_project, tab):
         db = get_db()
         if tab == "data":
             data = _get_project_data_info(db, id_project)
-            return render_template("pscs/project_tabs/data.html", data_info=data["data"])
+            return render_template("pscs/project_tabs/data.html", data_info=data["data"], id_project=id_project)
         elif tab == "jobs":
             jobs = _get_project_jobs_info(db, id_project)
             return render_template("pscs/project_tabs/jobs.html",

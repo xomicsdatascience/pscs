@@ -150,6 +150,7 @@ CREATE TABLE data (
     data_uploaded_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_published BIT DEFAULT 0,  -- whether this data has been published; prevents auto deletion
     is_peer_review BIT DEFAULT 0,  -- whether the data is under peer review
+    file_name VARCHAR(50) NOT NULL DEFAULT data,
     FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE,
     FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE
 );
