@@ -1133,7 +1133,13 @@ async function loadAnalysisFromId(id_analysis){
             paramValue = node["paramsValues"][paramName];
             load_params[paramName] = [paramType, paramValue];
         }
-        let psNode = nodeInfo["Scanpy"][node.module][node.procName];
+        let psNode;
+        if(node.module in nodeInfo["Scanpy"]){
+            psNode = nodeInfo["Scanpy"][node.module][node.procName];
+        }
+        else{
+            psNode = nodeInfo["Scanpy"][node.module + ".py"][node.procName];
+        }
         let nodeNum = extractIdNums(node["nodeId"]);
         let loadedNode = createPscsNode(nodeNum, node.labelText, node.module, load_params, node.pscsType, node.img, psNode);
         if(node.pscsType === "input"){
