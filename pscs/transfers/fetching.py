@@ -246,7 +246,7 @@ def read_logs(db: sqlite3.Connection, id_job: str) -> (str, str):
 
 def update_db_job_complete(db: sqlite3.Connection,
                            resource: str,
-                           jobid: str,
+                           id_job: str,
                            logs_directory: str = None):
     """
     Update the DB to mark the job as completed.
@@ -256,19 +256,19 @@ def update_db_job_complete(db: sqlite3.Connection,
         Database to update.
     resource : str
         Resource on which the results were computed.
-    jobid : str
-        Remote job id.
+    id_job : str
+        PSCS job id.
     logs_directory : str
         Directory where the output/error logs are stored.
     Returns
     -------
     None
     """
-    stderr_log = os.path.join(logs_directory, jobid + ".error")
-    stdout_log = os.path.join(logs_directory, jobid + ".output")
+    stderr_log = os.path.join(logs_directory, id_job + ".error")
+    stdout_log = os.path.join(logs_directory, id_job + ".output")
     db.execute("UPDATE submitted_jobs "
                "SET is_complete=1, date_completed=DATETIME('now'), stdout_log=?, stderr_log=? "
-               "WHERE submitted_resource = ? AND resource_job_id = ?", (stdout_log, stderr_log, resource, jobid))
+               "WHERE id_job = ?", (stdout_log, stderr_log, id_job))
     db.commit()
     return
 
@@ -387,7 +387,7 @@ def main(db, env, debug=False):
     print_debug(f"completed jobs: {complete_jobs}", debug)
     for c_job in complete_jobs:
         # Transfer data to local dir
-        job_info = db.execute("SELECT id_project, id_analysis, remote_results_directory "
+        job_info = db.execute("SELECT id_project, id_analysis, remote_results_directory, id_job "
                               "FROM submitted_jobs "
                               "WHERE submitted_resource = ? AND resource_job_id = ? AND is_complete = 0", c_job).fetchone()
         if job_info is None:
@@ -399,9 +399,10 @@ def main(db, env, debug=False):
         Path(results_path).mkdir(exist_ok=True, parents=True)
         logs_directory = env["LOG_DIRECTORY"].format(id_project=job_info["id_project"], id_analysis=job_info["id_analysis"])
         fetch_data(env["REMOTE_COMPUTING"][c_job[0]], job_info["remote_results_directory"], results_path, ssh_keypath=env["CRON_KEY"])
-        fetch_logs(env["REMOTE_COMPUTING"][c_job[0]], id_job=c_job[1], ssh_keypath=env["CRON_KEY"], local_results_dir=logs_directory)
+        fetch_logs(env["REMOTE_COMPUTING"][c_job[0]], id_job=job_info["id_job"], ssh_keypath=env["CRON_KEY"],
+                   local_results_dir=logs_directory)
         # register completion
-        update_db_job_complete(db, c_job[0], c_job[1], logs_directory)
+        update_db_job_complete(db, c_job[0], job_info["id_job"], logs_directory)
         for result in os.listdir(results_path):
             print_debug(f"registering {result}", debug)
             id_result = get_unique_value_for_field(db, "id_result", "results")
