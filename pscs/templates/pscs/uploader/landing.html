@@ -28,10 +28,7 @@
         let response = fetch(window.location.href + '/' + uploaderId + '/script')
                             .then(response => response.json())
                             .then(scripts => {
-                                addScripts(scripts["js"]);
-                                // for(let scr of scripts["js"]){
-                                //     addScript(scr);
-                                // }
+                                updateUploaderScripts(scripts["js"]);
                             })
         await response;
         document.dispatchEvent(new Event("uploaderLoaded"));

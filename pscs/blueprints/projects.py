@@ -12,14 +12,16 @@ from werkzeug.utils import secure_filename, escape
 import email_validator
 from email_validator import EmailNotValidError
 from pscs.auth import login_required, is_logged_in
-from pscs.db import get_db
-from pscs.pscs import delete_data, check_user_permission, get_unique_value_for_field, add_user_to_project
+from pscs.db import get_db, check_user_permission, check_analysis_published
+from pscs.pscs import delete_data, get_unique_value_for_field, add_user_to_project
 from pscs.transfers.fetching import read_logs
 from werkzeug.security import check_password_hash, generate_password_hash
 from pscs.messaging.mail import send_email
 import pscs
 from pscs.pscs import load_analysis_from_id
 import os
+from os.path import join
+import shutil
 import string
 from itsdangerous.url_safe import URLSafeTimedSerializer
 
@@ -273,6 +275,7 @@ def load_analysis(id_project):
         if "loadAnalysis" in request.json:
             id_analysis = request.json["loadAnalysis"]
             # Verify that the project is indeed public
+            db = get_db()
             status = _get_project_publication_status(db, id_project)
             has_peer_review_password = status == "peer review" and "project_review" in session.keys() and id_project in session["project_review"]
             if status == "public" or has_peer_review_password:
@@ -1556,4 +1559,48 @@ def get_tab_info(id_project, tab):
         elif tab == "project_management":
             project_info = _get_project_management_info(db, id_project)
             return render_template("pscs/project_tabs/project_management.html", project_info=project_info)
+    return
+
+@bp.route("/<id_project>/pipeline_import", methods=["POST"])
+@login_required
+def import_pipeline(id_project):
+    """Processes the request for an analysis and imports it to the specified project if allowed."""
+    # Get pipeline ID from the form
+    id_analysis = request.form["id_analysis"]
+    if check_analysis_published(id_analysis=id_analysis) or \
+        check_user_permission(permission_name="analysis_read",
+                             permission_value=1,
+                             id_project=id_project):
+        copy_pipeline(id_analysis, id_project_destination=id_project)
+        flash("Pipeline imported.")
+    else:
+        flash("Either the pipeline doesn't exist or you don't have permission to import it.")
+    return redirect(url_for("projects.project", id_project=id_project))
+
+
+def copy_pipeline(id_analysis, id_project_destination):
+    """Imports a pipeline into the specified project."""
+    # NOTE: Currently, the node_file and parameter_file are the same file. If that changes, this function
+    # needs to be updated.
+    db = get_db()
+    pipeline = dict(db.execute("SELECT analysis_name, node_file, analysis_hash, is_validated, initial_pscs_version "
+                               "FROM analysis WHERE id_analysis = ?", (id_analysis,)).fetchone())
+    # Get new id for analysis
+    new_id = get_unique_value_for_field(db, "id_analysis", "analysis")
+    node_file = pipeline["node_file"]
+    # Copy files to current project
+    project_path = current_app.config["PROJECTS_DIRECTORY"].format(id_project=id_project_destination)
+    new_node_file = join(project_path, new_id + ".json")
+    shutil.copy(node_file, new_node_file)
+    if pipeline:
+        try:
+            db.execute("INSERT INTO analysis (id_analysis, id_project, analysis_name, node_file, parameter_file, "
+                       "analysis_hash, is_validated, initial_pscs_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+                       (new_id, id_project_destination, pipeline["analysis_name"], new_node_file, new_node_file,
+                        pipeline["analysis_hash"], pipeline["is_validated"], pipeline["initial_pscs_version"]))
+            db.commit()
+        except Exception as e:
+            # Clean up file if something went wrong.
+            os.remove(new_node_file)
+            raise e
     return

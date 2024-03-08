@@ -6,6 +6,7 @@ from os.path import join, dirname
 import json
 import shutil
 import click
+import sqlite3
 
 
 def create_app(test_config=None) -> Flask:
@@ -70,6 +71,14 @@ def create_app(test_config=None) -> Flask:
     app.cli.add_command(update_flask_files)
     from . import db
     db.init_app(app)
+
+    # Get columns for user permissions
+    ddb = sqlite3.connect(app.config['DATABASE'])
+    cols = ddb.execute("PRAGMA table_info(projects_roles)").fetchall()
+    cols = set([c[1] for c in cols])
+    invalid_perms = {"id_project", "id_user", "role"}
+    app.config["PROJECT_PERMISSIONS"] = cols.difference(invalid_perms)
+    ddb.close()
 
     from . import auth
     app.register_blueprint(auth.bp)

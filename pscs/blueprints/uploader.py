@@ -8,8 +8,8 @@ from flask import (
 import pandas as pd
 import anndata as ad
 from pscs.auth import login_required, is_logged_in
-from pscs.pscs import delete_data, check_user_permission
-from pscs.db import get_unique_value_for_field, get_db
+from pscs.pscs import delete_data
+from pscs.db import get_unique_value_for_field, get_db, check_user_permission
 from pscs.pscs import calc_hash_of_file
 from os.path import join
 

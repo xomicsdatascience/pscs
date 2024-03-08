@@ -4,7 +4,7 @@ from flask import (
 from markdown import markdown
 from werkzeug.utils import secure_filename
 from pscs.auth import login_required, is_logged_in
-from pscs.db import get_db, get_unique_value_for_field
+from pscs.db import get_db, get_unique_value_for_field, check_user_permission
 from pscs.metadata.metadata import get_metadata
 import os
 from pscs.transfers.dispatching import dispatch, can_user_submit
@@ -568,34 +568,6 @@ def calc_hash_of_file(file: str) -> str:
         sha.update(dat)
         dat = f.read(1024)
     return sha.hexdigest()
-
-
-def check_user_permission(permission_name: str,
-                          permission_value: int,
-                          id_project: str) -> bool:
-    """
-    Checks that the user has the appropriate permission for the specified project.
-    Parameters
-    ----------
-    permission_name : str
-        Name of the permission to check.
-    permission_value
-        Value that the permission should have to be accepted.
-    id_project : str
-        ID of the project to check.
-
-    Returns
-    -------
-    bool
-        Whether the current user has permission.
-    """
-    db = get_db()
-    role_info = db.execute(f'SELECT {permission_name} FROM projects_roles WHERE id_user = ? and id_project = ?',
-                           (g.user['id_user'], id_project)).fetchone()
-    if role_info is None:
-        return False
-    return role_info[permission_name] == permission_value
-
 
 
 @bp.route('/projects/<id_project>/results/<id_analysis>/<path:filename>', methods=['GET'])

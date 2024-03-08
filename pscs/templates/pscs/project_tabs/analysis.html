@@ -3,15 +3,29 @@
 <table>
     <tr>
         <th>Analysis Name</th>
+        <th><a class="linkbutton" onclick="toggleClassDisplay('id_analysis')">Analysis ID</a></th>
     </tr>
     {% for a in analysis %}
       <tr>
           <td>{{a["analysis_name"]}}</td>
+          <td class="id_analysis" style="display: none" onclick="copyToClipboard('{{a['id_analysis']}}'); notifyCopy(event);">{{a["id_analysis"]}}</td>
       </tr>
     {% endfor %}
 </table>
 <br>
+
+
+
 <a class="linkbutton" href="{{ url_for('pscs.pipeline_designer') }}">Create Analysis</a><br>
+<a class="linkbutton" onclick="toggleDiv('pipeline_importer');">Import Pipeline</a><br>
+
+<div id="pipeline_importer" style="display: none">
+    <form action="{{url_for('projects.import_pipeline', id_project=session["CURRENT_PROJECT"])}}" method="post">
+        <label for="id_analysis">Enter pipeline ID to import:</label>
+        <input id="id_analysis" name="id_analysis" type="text" placeholder="Analysis ID">
+        <input type="submit" value="Import">
+    </form>
+</div>
 
 <h5>Run Analysis</h5>
 <select name="analysis" id="analysis" autocomplete="off" onchange="parseAndCreateTable(this);">

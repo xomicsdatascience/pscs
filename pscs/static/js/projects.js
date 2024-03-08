@@ -235,6 +235,54 @@ function setLogBoxes(stdout_data, stderr_data){
   return
 }
 
+function toggleDiv(divId){
+    let div = document.getElementById(divId);
+    if(div.style.display === "none"){
+        div.style.display = "block";
+    }
+    else{
+        div.style.display="none";
+    }
+}
+
+function toggleClassDisplay(className){
+  let elements = document.getElementsByClassName(className);
+  for(let el of elements){
+    if(el.style.display === "none"){
+      el.style.display = "block";
+    }
+    else{
+      el.style.display = "none";
+    }
+  }
+}
+
+function copyToClipboard(text){
+  navigator.clipboard.writeText(text)
+      .then(() => {})
+      .catch(err => {console.error("Unable to copy text to clipboard: ", err)});
+}
+
+
+
+function notifyCopy(event){
+  tempToolTip(event, "ID copied to clipboard.");
+}
+
+function tempToolTip(event, tempText){
+  let tooltip = document.createElement("span");
+  tooltip.innerHTML = tempText;
+  tooltip.style.position = "fixed";
+  tooltip.style.top = (event.clientY + 10) + "px";
+  tooltip.style.left = (event.clientX - 20) + "px";
+  tooltip.style.background = "#ddd";
+  tooltip.style.border = "2px solid #000"
+  tooltip.style.zIndex = 1000;
+  tooltip.style.userSelect = "none";
+  document.body.appendChild(tooltip);
+  setTimeout(function(){tooltip.remove();}, 2000);
+}
+
 
 document.addEventListener('click', function(e) {
   let target = e.target;
@@ -247,5 +295,3 @@ document.addEventListener('click', function(e) {
     target.classList.add("tab-selected");
   }
 }, false);
-
-

@@ -111,3 +111,42 @@ def delete_project(db: sqlite3.Connection, id_project: str):
     db.execute('DELETE FROM projects WHERE id_project = ?', (id_project,))
     db.commit()
     return
+
+
+def check_user_permission(permission_name: str,
+                          permission_value: int,
+                          id_project: str) -> bool:
+    """
+    Checks that the user has the appropriate permission for the specified project.
+    Parameters
+    ----------
+    permission_name : str
+        Name of the permission to check.
+    permission_value
+        Value that the permission should have to be accepted.
+    id_project : str
+        ID of the project to check.
+
+    Returns
+    -------
+    bool
+        Whether the current user has permission.
+    """
+    db = get_db()
+    if permission_name in current_app.config["PROJECT_PERMISSIONS"]:  # prevent SQL injection
+        role_info = db.execute(f'SELECT {permission_name} FROM projects_roles WHERE id_user = ? and id_project = ?',
+                               (g.user['id_user'], id_project)).fetchone()
+    else:
+        return False
+    if role_info is None:
+        return False
+    return role_info[permission_name] == permission_value
+
+
+def check_analysis_published(id_analysis: str) -> bool:
+    """Checks whether the analysis has been made publicly available."""
+    db = get_db()
+    analysis_info = db.execute('SELECT is_published FROM analysis WHERE id_analysis = ?', (id_analysis,)).fetchone()
+    if analysis_info is None:
+        return False
+    return analysis_info['is_published'] == 1
