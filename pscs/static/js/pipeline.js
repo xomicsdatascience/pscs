@@ -1432,3 +1432,39 @@ function getNodeType(pscsNode){
     else if(pscsNode["num_inputs"] === 1){return "simo"}
     else{return "mimo"}
 }
+
+function setTextContent(elementID, text){
+    document.getElementById(elementID).textContent = text;
+}
+
+function startImport(projectListID, importButtonID){
+  let projectList = document.getElementById(projectListID);
+  let importButton = document.getElementById(importButtonID);
+  projectList.style.display = "block";
+  importButton.style.display = "block";
+}
+
+async function importPipeline(analysisElemId, projectListElemID){
+    let analysisEl = document.getElementById(analysisElemId);
+    let projectEl = document.getElementById(projectListElemID);
+    let project = projectEl.options[projectEl.selectedIndex].value;
+    let analysis = analysisEl.options[analysisEl.selectedIndex].value;
+    let projectName = projectEl.options[projectEl.selectedIndex].text;
+    let analysisName = analysisEl.options[analysisEl.selectedIndex].text;
+    let importData = {"id_project": project, "id_analysis": analysis};
+    let response = await fetch("./public_pipeline_import", {
+                                            method: "POST",
+                                            headers: {
+                                                "Accept": "application/json",
+                                                "Content-Type": "application/json"
+                                            },
+                                            body: JSON.stringify(importData)
+                                            });
+    let resp = await response.json();
+    if(resp["success"] === 1){
+        alert("Pipeline \"" + analysisName + "\" has been imported to project \"" + projectName + "\"");
+    }
+    else{
+        alert("Pipeline not imported: " + response["message"]);
+    }
+}

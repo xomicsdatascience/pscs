@@ -27,11 +27,25 @@
 <br>
 <h3>Analysis Inspector</h3>
 <select id="analyses">
+  <option selected disabled>Select analysis...</option>
 {% for an in project_summary["analyses"] %}
-  <option value={{an["id_analysis"]}}>{{an["analysis_name"]}}</option>
+  <option value={{an["id_analysis"]}} onclick="setTextContent('id_analysis', '{{an["id_analysis"]}}')">{{an["analysis_name"]}}</option>
 {% endfor %}
 </select>
+
 <button id="loader" onclick="loadAnalysis()">Inspect analysis</button>
+{% if user_projects %}
+<button id="importer" onclick="startImport('projectList', 'buttonImport');">Import to project</button>
+<select id="projectList" style="display: none">
+    {% for proj in user_projects %}
+      <option value={{proj["id_project"]}}>{{proj["name_project"]}}</option>
+    {% endfor %}
+
+</select>
+<button id="buttonImport" onclick="importPipeline('analyses', 'projectList')" style="display: none">Import to project</button>
+{% endif %}
+
+<div>Analysis ID:<a id="id_analysis"></a></div>
 <div id="nodeContainer" class="container"></div>
 {% endblock %}
 

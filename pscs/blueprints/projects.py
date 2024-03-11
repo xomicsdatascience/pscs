@@ -346,8 +346,18 @@ def display_public_project(id_project):
         project_summary["results"][an_id].append(dict(r))
         project_summary["results"][an_id][-1]["file_name"] = os.path.basename(project_summary["results"][an_id][-1]["file_path"])
 
+    # For logged-in users, make it easy to import pipelines
+    # Get user's projects
+    if "id_user" in session and session["id_user"] is not None:
+        user_projects = db.execute("SELECT P.id_project, P.name_project "
+                                   "FROM projects AS P INNER JOIN "
+                                   "projects_roles AS PR ON P.id_project = PR.id_project WHERE "
+                                   "PR.id_user = ? AND PR.analysis_write = 1", (session["id_user"],)).fetchall()
+    else:
+        user_projects = None
     return render_template("pscs/project_public.html",
-                           project_summary=project_summary)
+                           project_summary=project_summary,
+                           user_projects=user_projects)
 
 
 @bp.route('/<id_project>/results/<id_analysis>/<path:filename>', methods=['GET'])
@@ -1565,17 +1575,35 @@ def get_tab_info(id_project, tab):
 @login_required
 def import_pipeline(id_project):
     """Processes the request for an analysis and imports it to the specified project if allowed."""
-    # Get pipeline ID from the form
-    id_analysis = request.form["id_analysis"]
-    if check_analysis_published(id_analysis=id_analysis) or \
-        check_user_permission(permission_name="analysis_read",
-                             permission_value=1,
-                             id_project=id_project):
-        copy_pipeline(id_analysis, id_project_destination=id_project)
-        flash("Pipeline imported.")
-    else:
-        flash("Either the pipeline doesn't exist or you don't have permission to import it.")
+    if request.method == "POST":
+        # Get pipeline ID from the form
+        id_analysis = request.form["id_analysis"]
+        if check_analysis_published(id_analysis=id_analysis) or \
+            check_user_permission(permission_name="analysis_read",
+                                 permission_value=1,
+                                 id_project=id_project):
+            copy_pipeline(id_analysis, id_project_destination=id_project)
+            flash("Pipeline imported.")
+        else:
+            flash("Either the pipeline doesn't exist or you don't have permission to import it.")
     return redirect(url_for("projects.project", id_project=id_project))
+
+@bp.route("/<id_project>/public_pipeline_import", methods=["POST"])
+@login_required
+def import_public_pipeline(id_project):
+    if request.method == "POST":
+        data = request.json
+        user_id_project = data["id_project"]
+        id_analysis = data["id_analysis"]
+        if check_analysis_published(id_analysis=id_analysis) and \
+            check_user_permission(permission_name="analysis_write",
+                                  permission_value=1,
+                                  id_project=user_id_project):
+            # Copy!
+            copy_pipeline(id_analysis=id_analysis, id_project_destination=user_id_project)
+            print("Copied!")
+            return jsonify({"success": 1, "message": ""})
+    return jsonify({"success": 0, "message": "Insufficient permissions."})
 
 
 def copy_pipeline(id_analysis, id_project_destination):

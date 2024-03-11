@@ -283,7 +283,6 @@ function tempToolTip(event, tempText){
   setTimeout(function(){tooltip.remove();}, 2000);
 }
 
-
 document.addEventListener('click', function(e) {
   let target = e.target;
   if(target.classList.contains("tab-button")){
