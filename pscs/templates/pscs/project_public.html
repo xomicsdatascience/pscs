@@ -24,6 +24,24 @@
 {% endfor %}
 </div>
 
+{% if project_data %}
+<br>
+<h3>Project Data</h3>
+<table>
+    <tr>
+        <th>File name</th>
+        <th>Download</th>
+    </tr>
+    {% for pd in project_data %}
+    <tr>
+        <td>{{pd["file_name"]}}</td>
+        <td><input class="downloadCheck" id="{{pd["id_data"]}}" type="checkbox"></td>
+    </tr>
+    {% endfor %}
+</table>
+<button id="buttonDownloadData" onclick="requestFiles('downloadCheck')">Download</button>
+{% endif %}
+
 <br>
 <h3>Analysis Inspector</h3>
 <select id="analyses">
@@ -40,7 +58,6 @@
     {% for proj in user_projects %}
       <option value={{proj["id_project"]}}>{{proj["name_project"]}}</option>
     {% endfor %}
-
 </select>
 <button id="buttonImport" onclick="importPipeline('analyses', 'projectList')" style="display: none">Import to project</button>
 {% endif %}

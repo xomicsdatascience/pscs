@@ -2,7 +2,7 @@ import sqlite3
 
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, url_for, Flask, session, current_app, send_from_directory,
-    jsonify
+    jsonify, send_file
 )
 from collections import defaultdict as dd
 import datetime
@@ -24,6 +24,10 @@ from os.path import join
 import shutil
 import string
 from itsdangerous.url_safe import URLSafeTimedSerializer
+from typing import Collection
+import zipfile
+import tempfile
+
 
 bp = Blueprint("projects", __name__, url_prefix="/project")
 
@@ -348,16 +352,32 @@ def display_public_project(id_project):
 
     # For logged-in users, make it easy to import pipelines
     # Get user's projects
+    user_projects = None
     if "id_user" in session and session["id_user"] is not None:
         user_projects = db.execute("SELECT P.id_project, P.name_project "
                                    "FROM projects AS P INNER JOIN "
                                    "projects_roles AS PR ON P.id_project = PR.id_project WHERE "
                                    "PR.id_user = ? AND PR.analysis_write = 1", (session["id_user"],)).fetchall()
-    else:
-        user_projects = None
+
+    # For projects that are under peer-review, or for public projects where the user is logged in, make it possible
+    # to download the published data.
+    project_status = _get_project_publication_status(db, id_project=id_project)
+    project_data_list = None
+    if (project_status == "peer_review") or (project_status == "public" and "id_user" in session and session["id_user"] is not None):
+        # Get list of data associated with the project
+        project_data = db.execute("SELECT D.id_data, D.file_name "
+                                  "FROM data AS D INNER JOIN projects AS P "
+                                  "ON D.id_project = P.id_project "
+                                  "WHERE D.id_project = ? AND (D.is_published = 1 OR D.is_peer_review = 1)", (id_project,)).fetchall()
+        project_data_list = []
+        for pd in project_data:
+            project_data_list.append({"id_data": pd["id_data"], "file_name": pd["file_name"]})
+
+
     return render_template("pscs/project_public.html",
                            project_summary=project_summary,
-                           user_projects=user_projects)
+                           user_projects=user_projects,
+                           project_data=project_data_list)
 
 
 @bp.route('/<id_project>/results/<id_analysis>/<path:filename>', methods=['GET'])
@@ -890,7 +910,7 @@ def _get_authors(id_project) -> (list, bool):
 def _get_data(id_project) -> list:
     """Returns the list of data that has been uploaded to the project."""
     db = get_db()
-    return db.execute("SELECT id_data, file_path, data_uploaded_time "
+    return db.execute("SELECT id_data, file_name, data_uploaded_time "
                       "FROM data "
                       "WHERE id_project = ?", (id_project,)).fetchall()
 
@@ -1601,9 +1621,59 @@ def import_public_pipeline(id_project):
                                   id_project=user_id_project):
             # Copy!
             copy_pipeline(id_analysis=id_analysis, id_project_destination=user_id_project)
-            print("Copied!")
             return jsonify({"success": 1, "message": ""})
     return jsonify({"success": 0, "message": "Insufficient permissions."})
+
+
+@bp.route("/<id_project>/file_request", methods=["POST"])
+def file_request(id_project):
+    if request.method == "POST":
+        # First check that the user is allowed to download these
+        req_files = request.json
+        db = get_db()
+        file_info = []
+        for id_data in req_files:
+            # Check if data is public
+            data = db.execute("SELECT is_published, is_peer_review, file_path, file_name FROM data WHERE id_data = ?", (id_data,)).fetchone()
+            if data["is_published"] == 1 or data["is_peer_review"] == 1:
+                file_info.append({"file_path": data["file_path"], "file_name": data["file_name"]})
+                continue
+            else:
+                return jsonify({"success": 0, "message": "You do not have permission to access the requested files."}), 403
+        else:
+            # Get file paths of each file; zip into archive, send to user
+            try:
+                # Get project name
+                zip_name = zip_files(file_info)
+                return send_file(zip_name, as_attachment=True, download_name=f"data_{id_project}.zip",
+                                 mimetype="application/zip")
+            finally:
+                os.remove(zip_name)
+            return jsonify({"success": 0, "message": "Unable to send file."})
+
+
+def zip_files(file_info_list: Collection[dict]):
+    """
+    Zips several files into a zip archive. Elements should be dicts with "file_path" and "file_name" keys.
+    Parameters
+    ----------
+    file_info_list : Collection[dict]
+        List of dicts with "file_path" and "file_name" keys defined. "file_path" points to the location of the file
+        on disk. "file_name" is the name that the file should be assigned in the file.
+
+    Returns
+    -------
+    str
+        Path to the zip archive.
+    """
+    zip_archive = tempfile.NamedTemporaryFile(suffix=".zip", prefix="pscs_filereq_", delete=False)
+    zip_writer = zipfile.ZipFile(zip_archive, "w")
+    for finfo in file_info_list:
+        zip_writer.write(finfo["file_path"], arcname=finfo["file_name"])
+    zip_writer.close()
+    return zip_archive.name
+
+
 
 
 def copy_pipeline(id_analysis, id_project_destination):

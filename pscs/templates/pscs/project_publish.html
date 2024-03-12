@@ -94,7 +94,7 @@
   {% for d in project_data %}
   <tr>
     <td><input class="dataCheckbox" type="checkbox" id="{{d['id_data']}}"></td>
-    <td>{{d['file_path'] | basename}}</td>
+    <td>{{d['file_name'] | basename}}</td>
     <td>{{d['data_uploaded_time']}}</td>
   </tr>
   {% endfor %}

@@ -1468,3 +1468,35 @@ async function importPipeline(analysisElemId, projectListElemID){
         alert("Pipeline not imported: " + response["message"]);
     }
 }
+
+async function requestFiles(checkClass) {
+    // For elements of the class `checkClass` that have been checked, gets their ID and sends a request to the server
+    // to download it.
+    let checks = document.getElementsByClassName(checkClass);
+    let requestedFiles = [];
+    for(let i = 0; i < checks.length; i++) {
+        if(checks[i].checked) {
+            requestedFiles.push(checks[i].id);
+        }
+    }
+    let response = await fetch("./file_request", {
+                                            method: "POST",
+                                            headers: {
+                                                "Accept": "application/json",
+                                                "Content-Type": "application/json"
+                                            },
+                                            body: JSON.stringify(requestedFiles)})
+        .then(response => {
+            let contentDisp = response.headers.get("Content-Disposition");
+            console.log(contentDisp);
+            let filename = contentDisp.split("filename=")[1];
+            console.log(filename);
+            response.blob().then(blob => {
+                let url = window.URL.createObjectURL(blob);
+                let pretendLink = document.createElement("a");
+                pretendLink.href = url;
+                pretendLink.download = filename;
+                pretendLink.click();
+            });
+        });
+}

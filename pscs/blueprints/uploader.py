@@ -80,7 +80,7 @@ def process_csv_h5ad(req, id_project: str):
     file_name = file_name[:current_app.config["MAX_FILENAME_CHARS"]]
     data_type = "h5ad"
     id_data = get_unique_value_for_field(db, "id_data", "data")
-    out_path = join(current_app.config["DATA_DIRECTORY"].format(id_project=id_project), id_data)
+    out_path = join(current_app.config["DATA_DIRECTORY"].format(id_project=id_project), id_data + ".h5ad")
 
     # AnnData (.h5ad) does not currently support __hash__
     # getting the hash otherwise requires us to convert the AnnData into bytes, which we don't want to support
