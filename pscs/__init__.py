@@ -1,4 +1,4 @@
-__version__ = "0.2.3"
+__version__ = "0.2.4"
 
 from flask import Flask
 import os
@@ -7,6 +7,7 @@ import json
 import shutil
 import click
 import sqlite3
+from .extensions.limiter import limiter
 
 
 def create_app(test_config=None) -> Flask:
@@ -101,6 +102,10 @@ def create_app(test_config=None) -> Flask:
     app.jinja_env.filters['dirname'] = os.path.dirname
 
     app.add_url_rule('/', endpoint='index')
+
+    # Add IP-specific rate limiter
+    limiter.init_app(app)
+
     return app
 
 

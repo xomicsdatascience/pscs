@@ -1489,6 +1489,14 @@ async function requestFiles(checkClass) {
         .then(response => {
             let contentDisp = response.headers.get("Content-Disposition");
             console.log(contentDisp);
+            let warningEl = document.getElementById("rateWarning");
+            if(response.status === 429){
+                warningEl.style.display = "block";
+                return
+            }
+            else{
+                warningEl.style.display = "none";
+            }
             let filename = contentDisp.split("filename=")[1];
             console.log(filename);
             response.blob().then(blob => {

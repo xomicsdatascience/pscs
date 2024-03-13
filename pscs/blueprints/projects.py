@@ -27,6 +27,7 @@ from itsdangerous.url_safe import URLSafeTimedSerializer
 from typing import Collection
 import zipfile
 import tempfile
+from pscs.extensions.limiter import limiter
 
 
 bp = Blueprint("projects", __name__, url_prefix="/project")
@@ -1626,6 +1627,7 @@ def import_public_pipeline(id_project):
 
 
 @bp.route("/<id_project>/file_request", methods=["POST"])
+@limiter.limit("1/minute")
 def file_request(id_project):
     if request.method == "POST":
         # First check that the user is allowed to download these
