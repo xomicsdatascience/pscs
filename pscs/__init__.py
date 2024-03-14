@@ -1,4 +1,4 @@
-__version__ = "0.2.4"
+__version__ = "0.2.5"
 
 from flask import Flask
 import os
@@ -7,7 +7,7 @@ import json
 import shutil
 import click
 import sqlite3
-from .extensions.limiter import limiter
+from pscs.extensions.limiter import limiter
 
 
 def create_app(test_config=None) -> Flask:
