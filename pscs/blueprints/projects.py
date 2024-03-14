@@ -364,6 +364,7 @@ def display_public_project(id_project):
     # to download the published data.
     project_status = _get_project_publication_status(db, id_project=id_project)
     project_data_list = None
+    analysis_list = None
     if (project_status == "peer_review") or (project_status == "public" and "id_user" in session and session["id_user"] is not None):
         # Get list of data associated with the project
         project_data = db.execute("SELECT D.id_data, D.file_name "
@@ -374,11 +375,18 @@ def display_public_project(id_project):
         for pd in project_data:
             project_data_list.append({"id_data": pd["id_data"], "file_name": pd["file_name"]})
 
+        # Get analysis for downloading results
+        analysis_data = db.execute("SELECT id_analysis, analysis_name "
+                                   "FROM analysis WHERE id_project=? AND (is_published = 1 OR is_peer_review = 1)", (id_project,)).fetchall()
+        analysis_list = []
+        for an in analysis_data:
+            analysis_list.append({"id_analysis": an["id_analysis"], "analysis_name": an["analysis_name"]})
 
     return render_template("pscs/project_public.html",
                            project_summary=project_summary,
                            user_projects=user_projects,
-                           project_data=project_data_list)
+                           project_data=project_data_list,
+                           project_analysis=analysis_list)
 
 
 @bp.route('/<id_project>/results/<id_analysis>/<path:filename>', methods=['GET'])
@@ -1586,7 +1594,8 @@ def get_tab_info(id_project, tab):
             return render_template("pscs/project_tabs/analysis.html", analysis=analysis)
         elif tab == "results":
             results_info = _get_project_results_info(db, id_project)
-            return render_template("pscs/project_tabs/results.html", results=results_info)
+            analysis = _get_project_analysis_info(db, id_project)
+            return render_template("pscs/project_tabs/results.html", results=results_info, analysis=analysis)
         elif tab == "project_management":
             project_info = _get_project_management_info(db, id_project)
             return render_template("pscs/project_tabs/project_management.html", project_info=project_info)
@@ -1651,8 +1660,49 @@ def file_request(id_project):
                                  mimetype="application/zip")
             finally:
                 os.remove(zip_name)
-            return jsonify({"success": 0, "message": "Unable to send file."})
+    return jsonify({"success": 0, "message": "Unable to send file."})
 
+
+@bp.route("/<id_project>/results_request", methods=["POST"])
+@limiter.limit("1/minute")
+def results_request(id_project):
+    if request.method == "POST":
+        print("here")
+        # Get request info
+        req_results = request.json
+        id_analysis = req_results["id_analysis"]
+        db = get_db()
+        # Check whether user is allowed to get results
+        # print(id_analy)
+        if is_user_allowed_read_results(id_analysis):
+            # Get results for the analysis; zip and send
+            # First get id_results
+            results_data = db.execute("SELECT id_result, file_path, file_name FROM results "
+                                    "WHERE id_analysis = ?", (id_analysis,)).fetchall()
+            results_list = []
+            for res in results_data:
+                results_list.append({"file_path": res["file_path"], "file_name": res["file_name"]})
+            try:
+                zip_name = zip_files(results_list)
+                print("Sending!")
+                return send_file(zip_name, as_attachment=True, download_name=f"results_{id_analysis}.zip",
+                                 mimetype="application/zip")
+            finally:
+                os.remove(zip_name)
+    return jsonify({"success": 0, "message": "Permission denied."}), 403
+
+
+def is_user_allowed_read_results(id_analysis):
+    db = get_db()
+    id_project = db.execute("SELECT id_project FROM analysis WHERE id_analysis = ?", (id_analysis,)).fetchone()["id_project"]
+    pub_status = _get_project_publication_status
+    if check_user_permission(permission_name="data_read",
+                             permission_value=1,
+                             id_project=id_project) or \
+        pub_status == "public" or \
+            (pub_status == "peer review" and "project_review" in session.keys() and id_project in session["project_review"]):
+        return True
+    return False
 
 def zip_files(file_info_list: Collection[dict]):
     """

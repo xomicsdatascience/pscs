@@ -2,6 +2,7 @@
 
 {% block header %}
 <script src="/static/js/pipeline.js"></script>
+<script src="/static/js/projects.js"></script>
 <h1>{{ project_summary["name_project"] }}</h1>
 {% endblock %}
 
@@ -22,6 +23,15 @@
       <img src="{{url_for('pscs.results', id_project=project_summary['id_project'], id_analysis=an['id_analysis'], filename=r['file_name'] )}}">
     {% endfor %}
 {% endfor %}
+
+<h4>Download results</h4>
+    <select id="resultDownload">
+    {% for an in project_analysis %}
+        <option value="{{an['id_analysis']}}">{{an['analysis_name']}}</option>
+    {% endfor %}
+    </select>
+    <button onclick="downloadResult('resultDownload', 'resultsRateWarning')">Download</button>
+    <p style="display: none; color: #ff2222" id="resultsRateWarning">Too many server requests; please allow some time to pass before requesting more data.</p>
 </div>
 
 {% if project_data %}
@@ -39,7 +49,7 @@
     </tr>
     {% endfor %}
 </table>
-<button id="buttonDownloadData" onclick="requestFiles('downloadCheck')">Download</button>
+<button id="buttonDownloadData" onclick="requestCheckedFiles('downloadCheck')">Download</button>
 <p style="display: none; color: #ff2222" id="rateWarning">Too many server requests; please allow some time to pass before requesting more data.</p>
 {% endif %}
 

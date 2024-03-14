@@ -18,4 +18,13 @@
 
     <div id="container_results">
     </div>
+    <br>
+    <h3>Download results</h3>
+    <select id="resultDownload">
+    {% for an in analysis %}
+        <option value="{{an['id_analysis']}}">{{an['analysis_name']}}</option>
+    {% endfor %}
+    </select>
+    <button onclick="downloadResult('resultDownload', 'rateWarning')">Download</button>
+    <p id="rateWarning" style="display: none">Too many server requests; allow some time to pass before trying again.</p>
 </div>

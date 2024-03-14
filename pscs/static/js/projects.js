@@ -5,7 +5,7 @@ the dynamic table creation based on analysis inputs.
 // consts
 const INPUTDROPDOWNCLASS = "fileinputs"  // class name for SELECT element
 const INPUTDROPDOWNPREFIX = "fileinput"  // id prefix for SELECT element
-const FIELDSEP = '-'
+const IDSEP = '-'
 
 
 lastTable = null;
@@ -29,7 +29,7 @@ function createTable(projectFiles, analysisInputs){
     td = tr.insertCell();
     dropClone = drop.cloneNode(true);
     dropClone.class = INPUTDROPDOWNCLASS;
-    dropClone.id = INPUTDROPDOWNPREFIX + FIELDSEP + inp.toString();
+    dropClone.id = INPUTDROPDOWNPREFIX + IDSEP + inp.toString();
     td.appendChild(dropClone);
   }
   buttonRun = document.getElementById('buttonRun');
@@ -43,7 +43,7 @@ function createDataDropdown(files){
 //  console.log(files);
   drop = document.createElement("select");
   drop.class = INPUTDROPDOWNCLASS;
-  drop.id = INPUTDROPDOWNPREFIX + FIELDSEP + 'master';
+  drop.id = INPUTDROPDOWNPREFIX + IDSEP + 'master';
   drop.style.maxWidth = '100px';
   for(var file in files){
     option = document.createElement("option");
@@ -133,7 +133,7 @@ function startDeletion(id_data, name_data, file_hash){
 }
 
 function parseFileInputId(id){
-  first_sep_idx = id.indexOf(FIELDSEP);
+  first_sep_idx = id.indexOf(IDSEP);
   return id.substr(first_sep_idx+1);
 }
 
@@ -294,3 +294,41 @@ document.addEventListener('click', function(e) {
     target.classList.add("tab-selected");
   }
 }, false);
+
+async function downloadResult(selectElID, warningElID){
+  let sel = document.getElementById(selectElID);
+  let analysis_obj = {"id_analysis": sel.options[sel.selectedIndex].value};
+  let url = window.location.pathname;
+  let urlcomp = url.split("/");
+  let idx = urlcomp.indexOf("project");
+  let project_url = urlcomp.slice(0, idx+2).join("/") + "/results_request"
+  console.log(project_url)
+  let response = await fetch(project_url, {
+    method: "POST",
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(analysis_obj)
+  })
+  .then(response => {
+            let contentDisp = response.headers.get("Content-Disposition");
+            let warningEl = document.getElementById(warningElID);
+            if(response.status === 429){
+                warningEl.style.display = "block";
+                return
+            }
+            else{
+                warningEl.style.display = "none";
+            }
+            let filename = contentDisp.split("filename=")[1];
+            response.blob().then(blob => {
+                let url = window.URL.createObjectURL(blob);
+                let pretendLink = document.createElement("a");
+                pretendLink.href = url;
+                pretendLink.download = filename;
+                pretendLink.click();
+            });
+        })
+  return
+}

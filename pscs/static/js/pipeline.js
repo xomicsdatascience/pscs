@@ -1469,9 +1469,7 @@ async function importPipeline(analysisElemId, projectListElemID){
     }
 }
 
-async function requestFiles(checkClass) {
-    // For elements of the class `checkClass` that have been checked, gets their ID and sends a request to the server
-    // to download it.
+async function requestCheckedFiles(checkClass){
     let checks = document.getElementsByClassName(checkClass);
     let requestedFiles = [];
     for(let i = 0; i < checks.length; i++) {
@@ -1479,7 +1477,13 @@ async function requestFiles(checkClass) {
             requestedFiles.push(checks[i].id);
         }
     }
-    let response = await fetch("./file_request", {
+    await requestFiles(requestedFiles);
+}
+
+async function requestFiles(requestedFiles) {
+    // For elements of the class `checkClass` that have been checked, gets their ID and sends a request to the server
+    // to download it.
+    await fetch("./file_request", {
                                             method: "POST",
                                             headers: {
                                                 "Accept": "application/json",
@@ -1488,7 +1492,6 @@ async function requestFiles(checkClass) {
                                             body: JSON.stringify(requestedFiles)})
         .then(response => {
             let contentDisp = response.headers.get("Content-Disposition");
-            console.log(contentDisp);
             let warningEl = document.getElementById("rateWarning");
             if(response.status === 429){
                 warningEl.style.display = "block";
@@ -1498,7 +1501,6 @@ async function requestFiles(checkClass) {
                 warningEl.style.display = "none";
             }
             let filename = contentDisp.split("filename=")[1];
-            console.log(filename);
             response.blob().then(blob => {
                 let url = window.URL.createObjectURL(blob);
                 let pretendLink = document.createElement("a");
