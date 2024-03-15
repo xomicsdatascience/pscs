@@ -473,7 +473,6 @@ def display_private_project(id_project):
     """
     db = get_db()
     user_read = check_user_permission('data_read', 1, id_project)
-    user_write = check_user_permission('data_write', 1, id_project)
     id_user = g.user['id_user']
     if user_read:  # Check that user has read permission
         # Display files for this project only

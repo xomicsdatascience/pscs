@@ -1,4 +1,4 @@
-__version__ = "0.2.5"
+__version__ = "0.2.6"
 
 from flask import Flask
 import os
@@ -45,6 +45,9 @@ def create_app(test_config=None) -> Flask:
         app.config.from_pyfile('config.py', silent=True)
     else:
         app.config.from_mapping(test_config)
+
+    # Type conversions
+    app.config["SUPPORTED_IMAGE_EXTS"] = set(app.config["SUPPORTED_IMAGE_EXTS"])
 
     # Make sure path exists
     _makedir_until_format(app.instance_path)
@@ -105,7 +108,6 @@ def create_app(test_config=None) -> Flask:
 
     # Add IP-specific rate limiter
     limiter.init_app(app)
-
     return app
 
 

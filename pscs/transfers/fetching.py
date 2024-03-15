@@ -10,7 +10,8 @@ import os
 import sqlite3
 from collections import defaultdict as dd
 import argparse
-from werkzeug.utils import escape
+from pscs.utils.file_metadata import get_file_type
+from typing import Union
 
 
 def check_for_submitted_jobs(db: sqlite3.Connection):
@@ -394,24 +395,43 @@ def main(db, env, debug=False):
             print_debug(c_job, debug)
             continue
         print_debug("fetching!", debug)
-        results_path = os.path.join(env["INSTANCE_PATH"], "projects", "{id_project}", "results", "{id_analysis}")
-        results_path = results_path.format(id_project=job_info["id_project"], id_analysis=job_info["id_analysis"])
-        Path(results_path).mkdir(exist_ok=True, parents=True)
+        results_directory = Path(env["RESULTS_DIRECTORY"].format(id_project=job_info["id_project"], id_analysis=job_info["id_analysis"]))
+        results_directory.mkdir(exist_ok=True, parents=True)
         logs_directory = env["LOG_DIRECTORY"].format(id_project=job_info["id_project"], id_analysis=job_info["id_analysis"])
-        fetch_data(env["REMOTE_COMPUTING"][c_job[0]], job_info["remote_results_directory"], results_path, ssh_keypath=env["CRON_KEY"])
+        fetch_data(env["REMOTE_COMPUTING"][c_job[0]], job_info["remote_results_directory"], results_directory, ssh_keypath=env["CRON_KEY"])
         fetch_logs(env["REMOTE_COMPUTING"][c_job[0]], id_job=job_info["id_job"], ssh_keypath=env["CRON_KEY"],
                    local_results_dir=logs_directory)
         # register completion
         update_db_job_complete(db, c_job[0], job_info["id_job"], logs_directory)
-        for result in os.listdir(results_path):
-            print_debug(f"registering {result}", debug)
-            id_result = get_unique_value_for_field(db, "id_result", "results")
-            file_path = os.path.join("projects", job_info["id_project"], "results", job_info["id_analysis"], result)
-            result_type = "result"  # TODO
-            db.execute("INSERT INTO results "       
-                       "(id_result, id_project, id_analysis, file_path, result_type) "
-                       "VALUES (?,?,?,?,?)", (id_result, job_info["id_project"], job_info["id_analysis"], file_path, result_type))
-            db.commit()
+        register_results(db,
+                         id_project=job_info["id_project"],
+                         id_analysis=job_info["id_analysis"],
+                         results_directory=results_directory)
+    return
+
+
+def register_results(db: sqlite3.Connection,
+                     id_project: str,
+                     id_analysis: str,
+                     results_directory: Union[Path, str]):
+    """Register the files in the results directory into the database."""
+    for result in os.listdir(results_directory):
+        # Get data to register file
+        id_result = get_unique_value_for_field(db, field="id_result", table="results")
+        file_path = Path(os.path.join(results_directory, result))
+        file_name = file_path.name
+        _, ext = os.path.splitext(file_path)
+        new_path = results_directory / (id_result + ext)
+        file_path.rename(new_path)
+
+        result_type = get_file_type(result)
+
+        # Insert into DB
+        db.execute("INSERT INTO results "
+                   "(id_result, id_project, id_analysis, file_path, result_type, file_name) "
+                   "VALUES (?,?,?,?,?,?) ",
+                   (id_result, id_project, id_analysis, new_path, result_type, file_name))
+    db.commit()
     return
 
 
