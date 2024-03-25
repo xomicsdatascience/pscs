@@ -154,3 +154,14 @@ img {max-width:1600px;}
     height: 100%;
     display: block;
 }
+
+.invalidMarker {
+    position: absolute;
+    top: 0;
+    right: 0;
+    width: 15px;
+    height: 15px;
+    background-color: #aa0000;
+    border-radius: 50%;
+    z-index: 3;
+}

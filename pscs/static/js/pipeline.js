@@ -155,6 +155,7 @@ function createPscsNode(idNum, processName, module, params, pscsType, img, pscsN
     // Get Id for node
     let pageEl = document.createElement("img");
     pageEl.class = NODE;
+    pageEl.classList.add(NODE);
     applyClassCSS(pageEl);
     let nodeId = null;
     // check if input ID is valid
@@ -187,6 +188,9 @@ function createPscsNode(idNum, processName, module, params, pscsType, img, pscsN
     }
     if(pscsNode !== null) {
         pageEl.important_parameters = pscsNode["important_parameters"];
+        pageEl.required_parameters = pscsNode["required_parameters"];
+        pageEl.num_inputs = pscsNode["num_inputs"];
+        pageEl.num_outputs = pscsNode["num_outputs"];
     }
     pageEl.title = pageEl.params.toString();
     pageEl.pscsType = pscsType;
@@ -197,6 +201,7 @@ function createPscsNode(idNum, processName, module, params, pscsType, img, pscsN
     pageEl.src = img;
     pageEl.srcConnectors = [];
     pageEl.dstConnectors = [];
+    pageEl.coMove = [];  // list of things to move at the same time
 
     // Create label
     pageEl.labelText = pageEl.procName;  // user can set label name, but not procName
@@ -220,6 +225,7 @@ function createPscsNode(idNum, processName, module, params, pscsType, img, pscsN
     pageEl.label = createLabel(pageEl, pageEl.labelText, 0, NODE_HEIGHT);
     pageEl.del = del;
     pageEl.ondblclick = openPanel;
+    pageEl.setInvalid = setInvalid;
 
     // define methods
     let startX = 0;
@@ -285,6 +291,9 @@ function createPscsNode(idNum, processName, module, params, pscsType, img, pscsN
           let connector = document.getElementById(pageEl.dstConnectors[idx]);
           connector.moveDst(moveX, moveY);
       }
+      for(let idx=0; idx<pageEl.coMove.length; idx++){
+          pageEl.coMove[idx].move(moveX, moveY);
+      }
     }
     function del(){
         // delete this node and all attached elements
@@ -297,6 +306,9 @@ function createPscsNode(idNum, processName, module, params, pscsType, img, pscsN
         for(let idx=pageEl.dstConnectors.length-1; idx>=0; idx--){
         // for(let idx=0; idx<pageEl.dstConnectors.length; idx++){
             document.getElementById(pageEl.dstConnectors[idx]).del();
+        }
+        for(let idx=pageEl.coMove.length-1; idx>=0; idx--){
+            pageEl.coMove[idx].remove();
         }
         pageEl.remove();
     }
@@ -461,6 +473,30 @@ function createPscsNode(idNum, processName, module, params, pscsType, img, pscsN
         }
         pageEl.label.update(pageEl.labelText);
     }
+
+    function setInvalid(text){
+        // If the node is determined to be invalid, mark it with a dot that can be hovered over to identify the problem
+        let dot = document.createElement("span");
+        dot.classList.add("invalidMarker");
+        dot.move = moveElement;
+        dot.title = text;
+        dot.style.opacity = "0%";
+        addElementToContainer(dot);
+
+        // Make centers align
+        let dotWidth = 15;
+        let dotHeight = 15;
+        let parentRec = pageEl.getBoundingClientRect();
+        let centerX = parentRec.left + parentRec.width/2;
+        let centerY = parentRec.top + parentRec.height/2;
+        const [contX, contY] = getContainerOffset();
+        dot.style.left = (centerX - dotWidth/2-contX) + "px";
+        dot.style.top = (centerY - dotHeight/2-contY) + "px";
+        pageEl.coMove.push(dot);
+        dot.style.transitionDuration = "1s";
+        dot.style.transitionProperty = "opacity";
+        dot.style.opacity = "100%";
+    }
     return pageEl;
 }
 
@@ -482,7 +518,7 @@ function updateContainerSize(){
 
 function getNumInputOutputs(nodeEl){
     // gets the number of input/output ports
-    return [1,1]  // placeholder
+    return [nodeEl.num_inputs, nodeEl.num_outputs]
 }
 
 function createLabel(nodeEl, labelText, xPos=0, yPos=0){
@@ -1442,6 +1478,108 @@ function startImport(projectListID, importButtonID){
   let importButton = document.getElementById(importButtonID);
   projectList.style.display = "block";
   importButton.style.display = "block";
+}
+
+function validatePipeline(labelId){
+    // Verifies that all nodes have the appropriate parameters set.
+    // First remove any existing markers
+    let markers = document.getElementsByClassName("invalidMarker");
+    while(markers.length > 0){
+        markers[0].remove();
+    }
+    let allNodes = document.getElementsByClassName(NODE);
+    let pipelineValid = true;
+    for(let i=0; i<allNodes.length; i++){
+        let [nodeIsValid, invalidReasons] = validateNode(allNodes[i]);
+        if(!nodeIsValid){
+            pipelineValid = false;
+            allNodes[i].setInvalid(invalidReasons.join("\n"));
+        }
+    }
+    if(!pipelineValid){
+        document.getElementById(labelId).style.display = "block";
+    }
+    else{
+        document.getElementById(labelId).style.display = "none";
+    }
+
+}
+
+function validateNode(nodeEl){
+    // Verifies that a node has the appropriate parameters set, isn't hanging, etc.
+    let undefinedParams = getUndefinedRequiredParameters(nodeEl);
+    let inputsConnected = areInputsConnected(nodeEl);
+    let outputsConnected = areOutputsConnected(nodeEl);
+    let uniquePortConnections = doPortsHaveOneConnection(nodeEl);
+    let isValid = (undefinedParams.length === 0) && inputsConnected && outputsConnected && uniquePortConnections;
+    let invalidReasons = [];
+    if(!isValid) {
+        if (undefinedParams.length !== 0) {
+            invalidReasons.push("Undefined parameters: " + undefinedParams.join(", ") + ".");
+        }
+        if (!inputsConnected) {
+            invalidReasons.push("Not all inputs are connected.");
+        }
+        if (!outputsConnected) {
+            invalidReasons.push("Not all outputs are connected.");
+        }
+        if (!uniquePortConnections) {
+            invalidReasons.push("Input ports have multiple connections.");
+        }
+    }
+    return [isValid, invalidReasons]
+}
+
+function getUndefinedRequiredParameters(nodeEl){
+    let undefinedParams = [];
+    let requiredParams = nodeEl.required_parameters;
+    for(let i = 0; i < requiredParams.length; i++){
+        if(nodeEl.paramsValues[requiredParams[i]] === null){
+            undefinedParams.push(requiredParams[i]);
+        }
+    }
+    return undefinedParams
+}
+
+function areInputsConnected(nodeEl){
+    // For each port, there should be an entry in .dstConnectors
+    let portsWithConnections = new Set();
+    let idInfo = "";
+    let this_port = "";
+    for(let i=0; i<nodeEl.dstConnectors.length; i++){
+        this_port = extractIdNums(nodeEl.dstConnectors[i])[1][1];
+        // not checking if port has multiple connections in this function
+        portsWithConnections.add(this_port);
+    }
+    return portsWithConnections.size === nodeEl.num_inputs;
+}
+
+function doPortsHaveOneConnection(nodeEl){
+    let inputPortConnections = new Set();
+    let this_port = "";
+    for(let i= 0; i<nodeEl.dstConnectors.length; i++){
+        this_port = extractIdNums(nodeEl.dstConnectors[i])[1][1];
+        if(inputPortConnections.has(this_port)){
+            return false;
+        }
+        else {
+            inputPortConnections.add(this_port);
+        }
+    }
+    return true;
+}
+
+function areOutputsConnected(nodeEl){
+    // For each port, there should be an entry in .dstConnectors
+    let portsWithConnections = new Set();
+    let idInfo = "";
+    let this_port = "";
+    for(let i=0; i<nodeEl.srcConnectors.length; i++){
+        this_port = extractIdNums(nodeEl.id)[0][1];
+        // not checking if port has multiple connections in this function
+        portsWithConnections.add(this_port);
+    }
+    return portsWithConnections.size === nodeEl.num_outputs;
 }
 
 async function importPipeline(analysisElemId, projectListElemID){
