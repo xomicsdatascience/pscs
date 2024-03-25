@@ -195,6 +195,6 @@ if __name__ == "__main__":
                                                     db_disk_usage_pct=db_disk_usage_pct,
                                                     db_disk_warning=db_disk_warning)
     if args["email"] is not None:
-        send_email(args["email"], subject="PSCS Weekly Update", body=update_text)
+        send_email([args["email"]], subject="PSCS Weekly Update", body=update_text)
     else:
         print(update_text)
