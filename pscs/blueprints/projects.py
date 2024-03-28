@@ -905,8 +905,10 @@ def _get_authors(id_project) -> (list, bool):
                                  "WHERE id_project = ? AND email = ?", (id_project, au["email"])).fetchone()["name"]
             au_summ = {"name": au_name, "name_user": au["email"], "author_position": au["author_position"], "id_user": None}
             author_list.append(au_summ)
-
-    author_list.sort(key=lambda x: x["author_position"])
+    try:
+        author_list.sort(key=lambda x: x["author_position"])
+    except KeyError:
+        pass
     missing_name = False
     for a in authors:
         if a["name"] is None or len(a["name"]) == 0:

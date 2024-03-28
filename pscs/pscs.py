@@ -8,6 +8,7 @@ from pscs.db import get_db, get_unique_value_for_field, check_user_permission
 from pscs.metadata.metadata import get_metadata
 import os
 from pscs.transfers.dispatching import dispatch, can_user_submit
+from pscs.utils.pipeline.validation import validate_pipeline
 from flask import send_from_directory
 import json
 import hashlib
@@ -370,22 +371,28 @@ def pipeline_designer():
                                    current_project=url_for("projects.project", id_project=session["CURRENT_PROJECT"]))
     elif request.method == 'POST':
         pipeline_summary = request.json
-        is_dest_project = pipeline_summary['isDestProject']
         id_project = pipeline_summary['saveId']
-        # Go through nodes to find which ones have path keyword as arguments; this identifies inputs
+        # First check that the user is allowed to save analyses
+        if not check_user_permission("analysis_write", 1, id_project):
+            flash("You do not have permission to save analyses to this project.")
+            return jsonify({"error": "User does not have permission to save pipeline to this project"}), 403
+        # Validate the pipeline
+        is_valid, invalid_pipeline_reasons, invalid_node_reasons = validate_pipeline(pipeline_summary["nodes"])
+        if not is_valid:
+            flash("The pipeline has problems that could prevent it from executing correctly.")
+
+        # Identify input nodes
         input_nodes = {}
         for n in pipeline_summary['nodes']:
-            params = n['paramsValues']
-            if PATH_KEYWORD in params.keys():  # TODO: vestigeal; instead check if node is input
+            if n["pscsType"] == "input":
                 input_nodes[n['nodeId']] = n['labelText']  # labelText is what is displayed to the user
-        # TODO: saveID is from the user; need to validate that the user has access to it
+
         # Create new pipeline ID
         db = get_db()
         id_analysis = get_unique_value_for_field(db, "id_analysis", "analysis")
         pipeline_id = id_analysis
 
-        if is_dest_project:
-            pipeline_dir = current_app.config['PROJECTS_DIRECTORY'].format(id_project=id_project)
+        pipeline_dir = current_app.config['PROJECTS_DIRECTORY'].format(id_project=id_project)
 
         output_name = pipeline_id + '.json'
         pipeline_file = os.path.join(pipeline_dir, output_name)
@@ -396,20 +403,19 @@ def pipeline_designer():
         pipeline_hash = calc_hash_of_file(pipeline_file)
         pipe_name = secure_filename(pipeline_summary['name'])
         # send to database
-        if is_dest_project:
+        db.execute(
+            'INSERT INTO analysis '
+            '(id_analysis, id_project, analysis_name, node_file, parameter_file, analysis_hash, is_validated)'
+            ' VALUES (?,?,?,?,?,?,?)',
+            (id_analysis, id_project, pipe_name, pipeline_file, pipeline_file, pipeline_hash, is_valid))
+        for inp_id, inp_name in input_nodes.items():
+            # get uuid
+            id_input = get_unique_value_for_field(db, 'id_input', 'analysis_inputs')
             db.execute(
-                'INSERT INTO analysis '
-                '(id_analysis, id_project, analysis_name, node_file, parameter_file, analysis_hash)'
-                ' VALUES (?,?,?,?,?,?)',
-                (id_analysis, id_project, pipe_name, pipeline_file, pipeline_file, pipeline_hash))
-            for inp_id, inp_name in input_nodes.items():
-                # get uuid
-                id_input = get_unique_value_for_field(db, 'id_input', 'analysis_inputs')
-                db.execute(
-                    'INSERT INTO analysis_inputs (id_input, id_analysis, node_id, node_name)'
-                    ' VALUES (?,?,?,?)', (id_input, id_analysis, inp_id, inp_name)
-                )
-            db.commit()
+                'INSERT INTO analysis_inputs (id_input, id_analysis, node_id, node_name)'
+                ' VALUES (?,?,?,?)', (id_input, id_analysis, inp_id, inp_name)
+            )
+        db.commit()
         return render_template("pscs/pipeline.html")
 
 
