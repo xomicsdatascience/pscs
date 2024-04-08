@@ -183,17 +183,17 @@ function createPscsNode(idNum, img, nodeInfo){
     pageEl.module = module;
 
     nodeIds.push(pageEl.id);  // add id to the list -- should probably remove this and use querySelectorAll instead
-    let params_dict = parseParams(params);
     pageEl.params = [];
     pageEl.important_parameters = [];
     pageEl.paramsValues = {};
     pageEl.paramsTypes = {};
     // store param names, values into pageEl
-    for(const p in params_dict){
-        pageEl.params.push(p);
-        pageEl.paramsTypes[p] = params_dict[p][0];
-        pageEl.paramsValues[p] = params_dict[p][1];
+    for(let p of params){
+        pageEl.params.push(p["name"]);
+        pageEl.paramsTypes[p["name"]] = p["type"];
+        pageEl.paramsValues[p["name"]] = p["default"];
     }
+
     if(nodeInfo !== null) {
         pageEl.important_parameters = nodeInfo["important_parameters"];
         pageEl.required_parameters = nodeInfo["required_parameters"];
@@ -1427,7 +1427,6 @@ function makeSidebarNode(parentDiv, nodeInfo, depth){
     let nodeType = nodeInfo["type"];
     const imgPath = "/static/nodes/" + nodeType + ".png";
     p.addEventListener('click',
-                    // function () {createPscsNode(null, nodeName, module, pscsNode["parameters"], nodeType, imgPath, nodeInfo);});
                         function () {createPscsNode(null, imgPath, nodeInfo);});
     p.textContent = nodeInfo["name"];
     p.style.fontSize = getFontSize(depth);
@@ -1453,7 +1452,6 @@ function makeNestedSidebarModule(parentDiv, moduleInfo, depth){
 
 async function populateSidebar(sidebarId) {
     // Adds node info to the sidebar
-    console.log(nodeInfo);
     for (let pkg of nodeInfo) {
         let pkg_name = pkg["display_name"];
         let modules = pkg["modules"];
