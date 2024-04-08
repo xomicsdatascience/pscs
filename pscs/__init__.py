@@ -1,4 +1,4 @@
-__version__ = "0.2.8"
+__version__ = "0.3.0"
 
 from flask import Flask
 import os
@@ -56,6 +56,8 @@ def create_app(test_config=None) -> Flask:
 
     app.config["STATIC_DIRECTORY"] = static_directory
     _makedir_until_format(app.config["STATIC_DIRECTORY"])
+    app.config["NODE_DIRECTORY"] = join(app.config["STATIC_DIRECTORY"], "node_data")
+    _makedir_until_format(app.config["NODE_DIRECTORY"])
 
     app.config["PROJECTS_DIRECTORY"] = join(app.instance_path, "projects", "{id_project}")
     _makedir_until_format(app.config["PROJECTS_DIRECTORY"])

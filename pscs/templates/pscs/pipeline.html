@@ -35,8 +35,9 @@
     <button id="validate" onclick="validatePipeline('validateLabel');">Validate Pipeline</button>
     <label for="validate" id="validateLabel" style="display: none;">Some nodes of the pipeline are not configured correctly.</label>
 </div>
+
 <script>
-document.addEventListener('nodesLoaded', function () {loadSidebarNodes("sidebar");})
+document.addEventListener('nodesLoaded', function () {populateSidebar("sidebar");})
 document.addEventListener('nodesLoaded', function () {toggleSidebar();})
 </script>
 {% endblock %}

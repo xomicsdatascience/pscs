@@ -38,9 +38,13 @@ const HORIZONTAL_SPACING = 100;
 const VERTICAL_JIGGLE = 10;
 const HORIZONTAL_JIGGLE = 15;
 
-// const nodeData = getNodeInfo();
+let PADDING_LEVEL = 10;  // sidebar padding
+let START_FONTSIZE = 20;  // sidebar fontsize for top-level module
+let DECREASE_STEP_FONTSIZE = 4;  // decrease fontsize by this amount for every nested module
+let MIN_FONTSIZE = 12;  // minimum font size for nested module
+
+
 let nodeInfo = null;
-// let nodeInfo = null;
 getNodeInfo();
 
 // document listeners
@@ -145,13 +149,17 @@ function getValueFromPx(pxString){
   return parseFloat(pxString.split("px")[0]);
 }
 
-function createPscsNode(idNum, processName, module, params, pscsType, img, pscsNode = null){
+function createPscsNode(idNum, img, nodeInfo){
   // idNum: int - optional; if defined, will attempt to make a node with this id: NODE-idNum
   // processName: string - name of the function; used for initial labelText
   // module: string - name of the Python module that the process came from
   // params: string - JSON string containing process parameters of form: paramName: [paramType, paramValue]
   // pscsType: string - type of node: {"input", "output", "simo", "mimo"}
   // img: string - path to the image to use for this node
+    let processName = nodeInfo["name"];
+    let module = nodeInfo["module"];
+    let params = nodeInfo["parameters"];
+    let pscsType = nodeInfo["type"];
     // Get Id for node
     let pageEl = document.createElement("img");
     pageEl.class = NODE;
@@ -186,11 +194,11 @@ function createPscsNode(idNum, processName, module, params, pscsType, img, pscsN
         pageEl.paramsTypes[p] = params_dict[p][0];
         pageEl.paramsValues[p] = params_dict[p][1];
     }
-    if(pscsNode !== null) {
-        pageEl.important_parameters = pscsNode["important_parameters"];
-        pageEl.required_parameters = pscsNode["required_parameters"];
-        pageEl.num_inputs = pscsNode["num_inputs"];
-        pageEl.num_outputs = pscsNode["num_outputs"];
+    if(nodeInfo !== null) {
+        pageEl.important_parameters = nodeInfo["important_parameters"];
+        pageEl.required_parameters = nodeInfo["required_parameters"];
+        pageEl.num_inputs = nodeInfo["num_inputs"];
+        pageEl.num_outputs = nodeInfo["num_outputs"];
     }
     pageEl.title = pageEl.params.toString();
     pageEl.pscsType = pscsType;
@@ -1361,23 +1369,6 @@ function clearNodes() {
     nodeIds = [];
 }
 
-function reorderNodeInfo(nodeInfo){
-    // Reorders node info so that it is in the order of Package:Module:Node instead of Package:Node[Module]
-    let redata = {};
-    let module_name = "";
-    for(let pack in nodeInfo){
-        redata[pack] = {}
-        for(let pscsNode in nodeInfo[pack]){
-            module_name = nodeInfo[pack][pscsNode]['module'];
-            if(redata[pack][module_name] === undefined){
-                redata[pack][module_name] = {};
-            }
-            redata[pack][module_name][pscsNode] = nodeInfo[pack][pscsNode];
-        }
-    }
-    return redata;
-}
-
 async function getNodeInfo(){
     // fetches the node information from the server
     let response = await fetch("/pipeline/fetch_nodes", {
@@ -1387,7 +1378,8 @@ async function getNodeInfo(){
             "Content-Type": "application/json"
         }
     })
-    nodeInfo = reorderNodeInfo(await response.json());
+    nodeInfo = await response.json()
+    nodeInfo = nodeInfo["packages"];
     document.dispatchEvent(new Event('nodesLoaded'));
     return nodeInfo;
 }
@@ -1412,6 +1404,8 @@ async function loadSidebarNodes(sidebarId){
                 const imgPath = "/static/nodes/" + nodeType + ".png";
                 p.addEventListener('click',
                     function () {createPscsNode(null, nodeName, module, pscsNode["parameters"], nodeType, imgPath, pscsNode);});
+                    // function createPscsNode(idNum, img, nodeInfo){
+
                 p.textContent = nodeName;
                 p.style.fontSize = "12px";
                 let img = document.createElement("img");
@@ -1425,15 +1419,72 @@ async function loadSidebarNodes(sidebarId){
     }
 }
 
-function addCollapsibleSection(parentDiv, title=""){
+function makeSidebarNode(parentDiv, nodeInfo, depth){
+    // make HTML element
+    let p = document.createElement("p");
+    p.title = JSON.stringify(nodeInfo["name"]);
+    p.style.paddingLeft = String(depth*PADDING_LEVEL) + "px";
+    let nodeType = nodeInfo["type"];
+    const imgPath = "/static/nodes/" + nodeType + ".png";
+    p.addEventListener('click',
+                    // function () {createPscsNode(null, nodeName, module, pscsNode["parameters"], nodeType, imgPath, nodeInfo);});
+                        function () {createPscsNode(null, imgPath, nodeInfo);});
+    p.textContent = nodeInfo["name"];
+    p.style.fontSize = getFontSize(depth);
+    p.style.cursor = "pointer";
+    let img = document.createElement("img");
+    img.src = imgPath;
+    img.width = 20;
+    img.height = 20;
+    p.appendChild(img);
+    parentDiv.appendChild(p);
+}
+
+function makeNestedSidebarModule(parentDiv, moduleInfo, depth){
+    // adds the module to the sidebar; if the module has modules, adds those, too
+    let top_div = addCollapsibleSection(parentDiv, moduleInfo["name"], depth);
+    for(let n of moduleInfo["nodes"]){
+        makeSidebarNode(top_div, n, depth+1);
+    }
+    for(let m of moduleInfo["modules"]) {
+        makeNestedSidebarModule(top_div, m, depth+1);
+    }
+}
+
+async function populateSidebar(sidebarId) {
+    // Adds node info to the sidebar
+    console.log(nodeInfo);
+    for (let pkg of nodeInfo) {
+        let pkg_name = pkg["display_name"];
+        let modules = pkg["modules"];
+        let top_div = document.getElementById(sidebarId);
+        let depth = 0
+        top_div = addCollapsibleSection(top_div, pkg_name, depth);
+        modules = modules["modules"];
+        for (let m of modules) {
+            makeNestedSidebarModule(top_div, m, depth+1);
+        }
+    }
+}
+
+function getFontSize(depth){
+    return String(Math.max(START_FONTSIZE-DECREASE_STEP_FONTSIZE*depth, MIN_FONTSIZE)) + "px";
+}
+
+function addCollapsibleSection(parentDiv, title="", depth){
     // Adds a collapsible subsection to the div specified by divId
     let section_title = document.createElement("p");
     section_title.textContent = title;
+    section_title.style.fontSize = getFontSize(depth);
     section_title.addEventListener("click", toggleDisplay);
+    section_title.style.paddingLeft = String(depth*PADDING_LEVEL) + "px";
+    section_title.style.cursor = "pointer";
     parentDiv.appendChild(section_title);
     let collap = document.createElement("div");
     collap.classList.add("sidebar-section");
+    collap.style.paddingLeft = String(depth*PADDING_LEVEL) + "px";
     parentDiv.appendChild(collap);
+    section_title.click();  // collapse section
     return collap;
 }
 

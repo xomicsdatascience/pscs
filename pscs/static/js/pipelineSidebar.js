@@ -1,21 +1,24 @@
-var sidebarIsOpen = false;
+let sidebarIsOpen = false;
 
 function toggleSidebar() {
-  sidebar = document.getElementById("sidebar");
+  let sidebar = document.getElementById("sidebar");
+  let toggleBtn = document.getElementById("sideToggle");
   if(!sidebarIsOpen){
     // sidebar is closed; open it
     applyClassCSS(sidebar, "sidebar-open");
+    sidebar.classList.remove("sidebar-closed")
+    sidebar.classList.add("sidebar-open");
     // move toggle button
-    toggleBtn = document.getElementById("sideToggle");
+
     toggleBtn.style.left = addTwoPx(getComputedStyle(toggleBtn).left, getComputedStyle(sidebar).width);
     toggleBtn.innerHTML = "&larr;";
     sidebarIsOpen = true;
   }
   else {
     applyClassCSS(sidebar, "sidebar-closed");
+    sidebar.classList.remove("sidebar-open");
+    sidebar.classList.add("sidebar-closed")
     sidebarIsOpen = false;
-    toggleBtn = document.getElementById("sideToggle");
-//    toggleBtn.style.left = addTwoPx(getComputedStyle(toggleBtn).left, getComputedStyle(sidebar).width);
     toggleBtn.style.left = addToPx(getComputedStyle(toggleBtn).left, -getPxValue(getComputedStyle(sidebar).width));
     toggleBtn.innerHTML = "&rarr;";
   }

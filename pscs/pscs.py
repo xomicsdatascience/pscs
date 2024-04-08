@@ -423,11 +423,13 @@ def pipeline_designer():
 def fetch_nodes():
     # This function loads the node data and returns it as a JSON object
     if request.method == "POST":
-        static_path = current_app.config["STATIC_DIRECTORY"]
-        f = open(os.path.join(static_path, "node_data.json"), 'r')
-        nodes = json.load(f)
-        f.close()
-        return jsonify(nodes)
+        package_json = {"packages": []}
+        node_path = current_app.config["NODE_DIRECTORY"]
+        for node_file in os.listdir(node_path):
+            f = open(os.path.join(node_path, node_file), 'r')
+            package_json["packages"].append(json.load(f))
+            f.close()
+        return jsonify(package_json)
 
 
 def load_node_specs(json_file: str) -> dict:
