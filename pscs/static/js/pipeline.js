@@ -149,17 +149,17 @@ function getValueFromPx(pxString){
   return parseFloat(pxString.split("px")[0]);
 }
 
-function createPscsNode(idNum, img, nodeInfo){
+function createPscsNode(idNum, img, nodeData){
   // idNum: int - optional; if defined, will attempt to make a node with this id: NODE-idNum
   // processName: string - name of the function; used for initial labelText
   // module: string - name of the Python module that the process came from
   // params: string - JSON string containing process parameters of form: paramName: [paramType, paramValue]
   // pscsType: string - type of node: {"input", "output", "simo", "mimo"}
   // img: string - path to the image to use for this node
-    let processName = nodeInfo["name"];
-    let module = nodeInfo["module"];
-    let params = nodeInfo["parameters"];
-    let pscsType = nodeInfo["type"];
+    let processName = nodeData["name"];
+    let module = nodeData["module"];
+    let params = nodeData["parameters"];
+    let pscsType = nodeData["type"];
     // Get Id for node
     let pageEl = document.createElement("img");
     pageEl.class = NODE;
@@ -194,11 +194,11 @@ function createPscsNode(idNum, img, nodeInfo){
         pageEl.paramsValues[p["name"]] = p["default"];
     }
 
-    if(nodeInfo !== null) {
-        pageEl.important_parameters = nodeInfo["important_parameters"];
-        pageEl.required_parameters = nodeInfo["required_parameters"];
-        pageEl.num_inputs = nodeInfo["num_inputs"];
-        pageEl.num_outputs = nodeInfo["num_outputs"];
+    if(nodeData !== null) {
+        pageEl.important_parameters = nodeData["important_parameters"];
+        pageEl.required_parameters = nodeData["required_parameters"];
+        pageEl.num_inputs = nodeData["num_inputs"];
+        pageEl.num_outputs = nodeData["num_outputs"];
     }
     pageEl.title = pageEl.params.toString();
     pageEl.pscsType = pscsType;
@@ -506,6 +506,38 @@ function createPscsNode(idNum, img, nodeInfo){
         dot.style.opacity = "100%";
     }
     return pageEl;
+}
+
+function selectPackage(packageName, packageList){
+    for(let p of packageList){
+        if(p["modules"]["name"]){
+            return p
+        }
+    }
+    return null
+}
+
+
+function getNodeDataFromModule(nodeModule, nodeName, moduleInfo){
+    let split = nodeModule.split(".");
+    let sub = split.slice(1).join(".");
+    let top = split[0];
+    for (let m of moduleInfo["modules"]) {
+        if (m["name"] === top) {
+            if(nodeModule.includes(".")) {
+                return getNodeDataFromModule(sub, nodeName, m);
+            }
+        }
+        else{
+            // bottom level; go through nodes
+            for(let n of m["nodes"]){
+                if(n["name"] === nodeName){
+                    return n
+                }
+            }
+        }
+    }
+    return null
 }
 
 function updateContainerSize(){
@@ -1177,15 +1209,15 @@ async function loadAnalysisFromId(id_analysis){
             paramValue = node["paramsValues"][paramName];
             load_params[paramName] = [paramType, paramValue];
         }
-        let psNode;
-        if(node.module in nodeInfo["Scanpy"]){
-            psNode = nodeInfo["Scanpy"][node.module][node.procName];
-        }
-        else{
-            psNode = nodeInfo["Scanpy"][node.module + ".py"][node.procName];
-        }
+        let pkgName = node["module"].split(".")[0]
+        let pkg = selectPackage(pkgName, nodeInfo);
+        let psNode = getNodeDataFromModule(node["module"], node["procName"], pkg["modules"]);
+
         let nodeNum = extractIdNums(node["nodeId"]);
-        let loadedNode = createPscsNode(nodeNum, node.labelText, node.module, load_params, node.pscsType, node.img, psNode);
+        let loadedNode = createPscsNode(null, node["img"], psNode);
+        for(let paramName in load_params){
+            loadedNode.paramsValues[paramName] = load_params[paramName][1];
+        }
         if(node.pscsType === "input"){
             loadedNode.depth = 0;
         }
@@ -1382,41 +1414,6 @@ async function getNodeInfo(){
     nodeInfo = nodeInfo["packages"];
     document.dispatchEvent(new Event('nodesLoaded'));
     return nodeInfo;
-}
-
-async function loadSidebarNodes(sidebarId){
-    const sidebar = document.getElementById(sidebarId);
-    // Add nodes to sidebar
-    for(let pack in nodeInfo){
-        // Top-level package
-        let packageDiv = addCollapsibleSection(sidebar, pack)
-        packageDiv.style.fontSize = "25px";
-        for(let module in nodeInfo[pack]){
-            // Module in package
-            let moduleDiv = addCollapsibleSection(packageDiv, module);
-            moduleDiv.style.fontSize = "20px";
-            for(let nodeName in nodeInfo[pack][module]){
-                // Actual node
-                let pscsNode = nodeInfo[pack][module][nodeName];
-                let p = document.createElement("p");
-                p.title = JSON.stringify(pscsNode["parameters"]);
-                let nodeType = getNodeType(pscsNode);
-                const imgPath = "/static/nodes/" + nodeType + ".png";
-                p.addEventListener('click',
-                    function () {createPscsNode(null, nodeName, module, pscsNode["parameters"], nodeType, imgPath, pscsNode);});
-                    // function createPscsNode(idNum, img, nodeInfo){
-
-                p.textContent = nodeName;
-                p.style.fontSize = "12px";
-                let img = document.createElement("img");
-                img.src = imgPath;
-                img.width = 20;
-                img.height = 20;
-                p.appendChild(img);
-                moduleDiv.appendChild(p);
-            }
-        }
-    }
 }
 
 function makeSidebarNode(parentDiv, nodeInfo, depth){

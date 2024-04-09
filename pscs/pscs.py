@@ -352,6 +352,7 @@ def load_analysis_from_id(id_analysis):
 
 
 @bp.route('/pipeline', methods=['GET', 'POST'])
+@login_required
 def pipeline_designer():
     if request.method == 'GET':
         proj_dests, user_dests = get_save_destinations()
