@@ -4,6 +4,8 @@ From: ubuntu:22.04
 %files
 pscs_api-latest-py3-none-any.whl /pscs_api-latest-py3-none-any.whl
 pscs_scanpy-latest-py3-none-any.whl /pscs_scanpy-latest-py3-none-any.whl
+pscs_milopy-latest-py3-none-any.whl /pscs_milopy-latest-py3-none-any.whl
+milopy-latest-py3-none-any.whl /milopy-latest-py3-none-any.whl
 
 run_pscs_pipeline.py /run_pscs_pipeline.py
 
@@ -25,9 +27,28 @@ apt-get install -y -q --no-install-recommends python3-setuptools
 apt-get install -y python3.11 python3.11-dev python3-pip
 apt-get install -y -q --no-install-recommends sudo wget
 
+# Install R
+apt-get install -y gfortran libblas-dev liblapack-dev libpcre2-dev libbz2-dev zlib1g-dev liblzma-dev libbz2-dev libicu-dev
+ 
+
 python3.11 -m pip install --upgrade pip
+
+DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata
+dpkg-reconfigure --frontend noninteractive tzdata
+apt install -y --no-install-recommends software-properties-common dirmngr
+wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | sudo tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc
+sudo add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
+sudo apt install -y --no-install-recommends r-base
+
+
 python3.11 -m pip install /pscs_api-latest-py3-none-any.whl
 python3.11 -m pip install /pscs_scanpy-latest-py3-none-any.whl
+python3.11 -m pip install /milopy-latest-py3-none-any.whl
+python3.11 -m pip install /pscs_milopy-latest-py3-none-any.whl
+python3.11 -m pip install rpy2
+R -e 'install.packages("BiocManager")'
+R -e 'BiocManager::install("edgeR")'
+R -e 'install.packages("statmod")'
 
 apt-get clean
 rm -rf /var/lib/apt/lists/*

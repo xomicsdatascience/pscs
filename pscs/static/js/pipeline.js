@@ -510,7 +510,7 @@ function createPscsNode(idNum, img, nodeData){
 
 function selectPackage(packageName, packageList){
     for(let p of packageList){
-        if(p["modules"]["name"]){
+        if(p["modules"]["name"] === packageName){
             return p
         }
     }
@@ -521,18 +521,17 @@ function selectPackage(packageName, packageList){
 function getNodeDataFromModule(nodeModule, nodeName, moduleInfo){
     let split = nodeModule.split(".");
     let sub = split.slice(1).join(".");
-    let top = split[0];
+    let next = split[1];
     for (let m of moduleInfo["modules"]) {
-        if (m["name"] === top) {
-            if(nodeModule.includes(".")) {
+        if (m["name"] === next) {
+            if (sub.includes(".")) {
                 return getNodeDataFromModule(sub, nodeName, m);
-            }
-        }
-        else{
-            // bottom level; go through nodes
-            for(let n of m["nodes"]){
-                if(n["name"] === nodeName){
-                    return n
+            } else {
+                // bottom level; go through nodes
+                for (let n of m["nodes"]) {
+                    if (n["name"] === nodeName) {
+                        return n
+                    }
                 }
             }
         }
@@ -1214,7 +1213,8 @@ async function loadAnalysisFromId(id_analysis){
         let psNode = getNodeDataFromModule(node["module"], node["procName"], pkg["modules"]);
 
         let nodeNum = extractIdNums(node["nodeId"]);
-        let loadedNode = createPscsNode(null, node["img"], psNode);
+        
+        let loadedNode = createPscsNode(nodeNum, node["img"], psNode);
         for(let paramName in load_params){
             loadedNode.paramsValues[paramName] = load_params[paramName][1];
         }
@@ -1255,7 +1255,6 @@ async function loadAnalysisFromId(id_analysis){
             srcAreaNum = parsedConnectorId[0][1];
             dstNodeNum = parsedConnectorId[1][0];
             dstAreaNum = parsedConnectorId[1][1];
-
             srcAreaId = formatId(IAREA_OUT, srcNodeNum, srcAreaNum);
             srcCenter = getCenterOfArea(document.getElementById(srcAreaId), true);
             dstAreaId = formatId(IAREA_IN, dstNodeNum, dstAreaNum);
