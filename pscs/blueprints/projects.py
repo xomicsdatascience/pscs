@@ -23,8 +23,9 @@ import os
 from os.path import join
 import shutil
 import string
+import random
 from itsdangerous.url_safe import URLSafeTimedSerializer
-from typing import Collection
+from typing import Collection, Optional
 import zipfile
 import tempfile
 from pscs.extensions.limiter import limiter
@@ -335,8 +336,9 @@ def display_public_project(id_project):
     project_summary["authors"].sort(key=lambda x: x["author_position"])
     # get analyses
     analyses = db.execute("SELECT id_analysis, analysis_name "
-                          "FROM analysis "
-                          "WHERE id_project = ? AND (is_peer_review=1 OR is_published=1)", (id_project,)).fetchall()
+                          "FROM analysis AS A "
+                          "WHERE A.id_project = ? AND (is_peer_review=1 OR is_published=1)",
+                          (id_project,)).fetchall()
     project_summary["analyses"] = [dict(an) for an in analyses]
     public_analysis_id = set()
     for an in project_summary["analyses"]:
@@ -516,9 +518,9 @@ def display_private_project(id_project):
         results_files = []
         for r in results_rows:
             rr = dict(r)
+            rr["file_path"] = rr["file_path"][len(current_app.config["INSTANCE_PATH"]):]
             rr["file_name"] = os.path.basename(r["file_path"])
             results_files.append(rr)
-
         # Get users associated with project
         users = db.execute("SELECT name_user "
                            "FROM users_auth INNER JOIN projects_roles "
@@ -545,6 +547,11 @@ def display_private_project(id_project):
     else:
         flash("The requested project is not available.")
         return redirect(url_for("pscs.index"))
+
+
+def _get_publication_project(id_publication):
+    db = get_db()
+    return db.execute("SELECT id_project FROM publications WHERE id_publication = ?", (id_publication,)).fetchone()["id_project"]
 
 
 @bp.route('/<id_project>/publish', methods=["GET", "POST"])
@@ -614,14 +621,14 @@ def project_publish(id_project):
         valid_analyses = validate_analyses(publication_info["analyses"], id_project=id_project)
         valid_data = validate_data(publication_info["data"], id_project=id_project)
         all_valid = valid_pubtype and valid_authors and valid_analyses and valid_data
-        # Get author names
         if all_valid:
             # Fetch results associated with analyses
             publication_info["results"] = {}
             for an_id in publication_info["analyses"]:
-                publication_info["results"][an_id] = db.execute("SELECT id_result "
-                                                                "FROM results "
-                                                                "WHERE id_analysis = ? AND id_project = ?", (an_id, id_project))
+                buf = db.execute("SELECT id_result "
+                                 "FROM results "
+                                 "WHERE id_analysis = ? AND id_project = ?", (an_id, id_project)).fetchall()
+                publication_info["results"][an_id] = [b["id_result"] for b in buf]
             if publication_info["publication_type"] == "peer review":
                 # Log everything into db
                 prepare_publication(id_project, publication_info)
@@ -637,17 +644,23 @@ def project_publish(id_project):
                     project_peer_review(id_project)
             elif publication_info["publication_type"] == "public":
                 # Log everything into db
-                prepare_publication(id_project, publication_info)
+                id_publication = prepare_publication(id_project, publication_info)
                 # If project is currently in peer review, move forward. Otherwise, get confirmation from external author
                 has_ext_auth = _contains_external_authors(publication_info["authorlist"])
                 current_pub_status = _get_project_publication_status(db, id_project)
                 if not has_ext_auth or (has_ext_auth and current_pub_status == "peer review"):
-                    project_public(id_project)
+                    project_public(id_project, id_publication)
+                    return_url = url_for("publications.request_publication", id_publication=id_publication)
+                    response_json = {"url": return_url, "publish_success": 1, "success_message": ""}
+                    return jsonify(response_json)
                 else:
                     _set_hold(id_project, 1, commit=True)
                     notify_external_authors(id_project)
                     flash("The project is staged to be public; it will be publicly viewable once the external "
                           "authors confirm their association with the project.")
+            elif publication_info["publication_type"] == "update":
+                # Data, analyses, and results should be published as new version
+                prepare_publication(id_project, publication_info=publication_info)
 
             return_url = url_for('pscs.index')
             response_json = {"url": return_url, "publish_success": 1, "success_message": ""}
@@ -673,27 +686,21 @@ def project_publish(id_project):
 
 def _get_project_publication_status(db, id_project) -> str:
     """Returns the publication status of the specified project. Returns either "public", "peer review", or "private"."""
-    pub_status = db.execute("SELECT is_published, is_peer_review, is_on_hold "
-                            "FROM projects "
-                            "WHERE id_project=?", (id_project,)).fetchone()
-    if pub_status["is_published"] == 1:
-        public_status = "public"
-        if pub_status["is_on_hold"] == 1:
-            public_status += " on_hold"
-    elif pub_status["is_peer_review"] == 1:
-        public_status = "peer review"
-        if pub_status["is_on_hold"] == 1:
-            public_status += " on_hold"
+    status = db.execute("SELECT status "
+                      "FROM publications "
+                      "WHERE id_project = ? "
+                      "ORDER BY creation_time DESC", (id_project,)).fetchone()
+    if status is None:
+        return "private"
     else:
-        public_status = "private"
-    return public_status
+        return status["status"]
 
 
 def validate_publication_type(pubtype: str, id_project: str) -> bool:
     """Returns whether the project can be set to the specified publication type."""
     db = get_db()
     public_status = _get_project_publication_status(db, id_project)
-    valid_pubtypes = ["private", "peer review", "public"]
+    valid_pubtypes = ["private", "peer review", "public", "update"]
     if pubtype == public_status:
         return False
     elif pubtype not in valid_pubtypes:
@@ -702,6 +709,10 @@ def validate_publication_type(pubtype: str, id_project: str) -> bool:
         return True  # if it's private, any publication is fine
     elif public_status == "peer review" and pubtype == "public":
         return True  # if it's under peer review, only 'public' is valid
+    elif public_status == "public" and pubtype == "update":
+        return True  # currently public, but is getting a new version
+    elif pubtype == "update":
+        return False  # no other updates are allowed
     else:
         # There is the rare circumstance where projects that are published or set for peer review need to be private
         # Users can do this only within the window specified in the data use agreement.
@@ -960,9 +971,63 @@ def _get_analyses(id_project):
 
 
 def prepare_publication(id_project: str,
+                        publication_info: dict) -> str:
+    """
+    Sets a project to peer review or public. Selected data, analyses, and results are placed behind a password prompt that does
+    not require login.
+    Parameters
+    ----------
+    id_project : str
+        ID of the project to be published.
+    publication_info : dict
+        Dict containing what from the project should be made available.
+    Returns
+    -------
+    None
+    """
+    db = get_db()
+    # Get title, etc. from project being published
+    project_info = db.execute("SELECT name_project, description FROM projects WHERE id_project = ?", (id_project,)).fetchone()
+    if publication_info["publication_type"] == "update":
+        status = "public"
+    else:
+        status = publication_info["publication_type"]
+    # Generate publication ID
+    id_publication = get_unique_value_for_field(db, "id_publication", "publications")
+    db.execute("INSERT INTO publications (id_publication, id_project, title, description, status) "
+               "VALUES (?,?,?,?,?)", (id_publication, id_project, project_info["name_project"], project_info["description"], status))
+
+    # Move data into publication
+    for id_data in publication_info["data"]:
+        db.execute("INSERT INTO publications_data (id_publication, id_data) VALUES (?,?)", (id_publication, id_data))
+    # Move analysis into publication
+    for id_analysis in publication_info["analyses"]:
+        db.execute("INSERT INTO publications_analysis (id_publication, id_analysis) VALUES (?,?)", (id_publication, id_analysis))
+    # Move results into publication
+    for id_analysis, results_list in publication_info["results"].items():
+        for id_result in results_list:
+            db.execute("INSERT INTO publications_results (id_publication, id_result) VALUES (?,?)", (id_publication, id_result))
+    pscs_authors, external_authors = _split_authlist(publication_info["authorlist"])
+    # Set authors for publication
+    for author in pscs_authors:
+        db.execute("INSERT INTO publications_authors (id_publication, id_user, author_position, confirmed) VALUES (?,?,?,?)",
+                   (id_publication, author["id"], author["position"], 1))
+    for author in external_authors:
+        db.execute("INSERT INTO publications_external_authors (id_publication, email, author_position) VALUES (?,?,?)",
+                   (id_publication, author["email"], author["position"]))
+    # Make shortid
+    _ = make_shortid(db, id_publication)
+
+    db.commit()
+    return id_publication
+
+
+
+
+def prepare_publication_old(id_project: str,
                         publication_info: dict):
     """
-    Sets a project to peer review. Selected data, analyses, and results are placed behind a password prompt that does
+    Sets a project to peer review or public. Selected data, analyses, and results are placed behind a password prompt that does
     not require login.
     Parameters
     ----------
@@ -979,10 +1044,24 @@ def prepare_publication(id_project: str,
         peer, public = 1, 0
     elif publication_info["publication_type"] == "public":
         peer, public = 0, 1
+    elif publication_info["publication_type"] == "update":
+        peer, public = 0, 1
     else:
         raise ValueError(f"Invalid publication type: {publication_info['publication_type']}")
-    # Mark project as under peer review
-    _set_project_status(id_project, is_peer_review=peer, is_published=public)
+    if publication_info["publication_type"] != "update":
+        # Flag project as peer/public
+        _set_project_status(id_project, is_peer_review=peer, is_published=public, project_version=0)
+    else:
+        # The project has already been published and is being updated.
+        # Create copy of line in DB
+        proj_data = dict(db.execute("SELECT * FROM projects"
+                                    " WHERE id_project = ? ORDER BY version DESC", (id_project,)).fetchall()[0])
+        cols = proj_data.keys()
+        entries = ', '.join(cols)
+        placeholders = ', '.join(['?'] * len(cols))
+        proj_data_values = [proj_data[c] for c in cols]
+        db.execute(f"INSERT INTO projects ({entries}) VALUES ({placeholders})", proj_data_values)
+
     # Mark each datum
     for id_data in publication_info["data"]:
         _set_data_status(id_data, is_peer_review=peer, is_published=public)
@@ -1057,13 +1136,15 @@ def project_peer_review(id_project: str):
     return
 
 
-def project_public(id_project):
+def project_public(id_project, id_publication):
     """
     Publishes the specified project to be publicly viewable.
     Parameters
     ----------
     id_project : str
         ID of the project to be made public.
+    id_publication : str
+        ID of the associated publication.
     Returns
     -------
     None
@@ -1071,7 +1152,6 @@ def project_public(id_project):
     db = get_db()
     # Remove hold, if any:
     _set_hold(id_project, value=0)
-
     # Remove peer review password, if any
     _remove_peer_review_password(id_project)
     from pscs.templates.misc import publication_notification
@@ -1080,7 +1160,7 @@ def project_public(id_project):
     project_url_html = f"<a href='{project_url}'>{project_url}</a>"
     notif_email = publication_notification.format(name_project=project_info["name_project"],
                                                   project_url=project_url_html)
-    author_addresses = get_author_emails(id_project)
+    author_addresses = get_author_emails(id_publication)
     send_email(author_addresses, subject="PSCS Project Publication", body=notif_email)
     db.commit()
     return
@@ -1102,48 +1182,48 @@ def generate_password(length: int = 32) -> str:
 
 
 # NOTE: These are constructed as separate functions to avoid parameterizing the SQL string.
-def _set_project_status(id_project, is_peer_review=None, is_published=None, commit=False):
+def _set_project_status(id_project, is_peer_review=None, is_published=None, project_version=0, commit=False):
     """Sets the publication status bits (is_peer_review, is_published) for the specified project. If None, their value
     is unchanged."""
     db = get_db()
     if is_peer_review is not None and is_published is not None:
         db.execute("UPDATE projects "
-                   "SET is_peer_review = ?, is_published = ? "
-                   "WHERE id_project = ?", (is_peer_review, is_published, id_project))
+                   "SET is_peer_review = ?, is_published = ?, version = ? "
+                   "WHERE id_project = ?", (is_peer_review, is_published, project_version, id_project))
     elif is_peer_review is not None:
         db.execute("UPDATE projects SET is_peer_review = ? WHERE id_project = ?", (is_peer_review, id_project))
     elif is_published is not None:
-        db.execute("UPDATE projects SET is_published = ? WHERE id_project = ?", (is_published, id_project))
+        db.execute("UPDATE projects SET is_published = ?, version = ? WHERE id_project = ?", (is_published, project_version, id_project))
     if commit:
         db.commit()
     return
 
 
-def _set_data_status(id_data, is_peer_review=None, is_published=None, commit=False):
+def _set_data_status(id_data, is_peer_review=None, is_published=None, project_version=0, commit=False):
     """Sets the publication status bits (is_peer_review, is_published) for the specified datum. If None, their value is
     unchanged."""
     db = get_db()
     if is_peer_review is not None and is_published is not None:
         db.execute("UPDATE data "
-                   "SET is_peer_review = ?, is_published = ? "
-                   "WHERE id_data = ?", (is_peer_review, is_published, id_data))
+                   "SET is_peer_review = ?, is_published = ?, project_version = ? "
+                   "WHERE id_data = ?", (is_peer_review, is_published, project_version, id_data))
     elif is_peer_review is not None:
         db.execute("UPDATE projects SET is_peer_review = ? WHERE id_data = ?", (is_peer_review, id_data))
     elif is_published is not None:
-        db.execute("UPDATE projects SET is_published = ? WHERE id_data = ?", (is_published, id_data))
+        db.execute("UPDATE projects SET is_published = ?, project_version = ? WHERE id_data = ?", (is_published, id_data))
     if commit:
         db.commit()
     return
 
 
-def _set_analysis_status(id_analysis, is_peer_review=None, is_published=None, commit=False):
+def _set_analysis_status(id_analysis, is_peer_review=None, is_published=None, project_version=0, commit=False):
     """Sets the publication bits (is_peer_review, is_published) for the specified analysis. If None, their value is
     unchanged."""
     db = get_db()
     if is_peer_review is not None and is_published is not None:
         db.execute("UPDATE analysis "
-                   "SET is_peer_review = ?, is_published = ? "
-                   "WHERE id_analysis = ?", (is_peer_review, is_published, id_analysis))
+                   "SET is_peer_review = ?, is_published = ?, project_version = ? "
+                   "WHERE id_analysis = ?", (is_peer_review, is_published, project_version, id_analysis))
     elif is_peer_review is not None:
         db.execute("UPDATE analysis SET is_peer_review = ? WHERE id_analysis = ?", (is_peer_review, id_analysis))
     elif is_published is not None:
@@ -1265,17 +1345,17 @@ def _set_hold(id_project: str, value=1, commit=False):
         db.commit()
 
 
-def get_author_emails(id_project: str) -> list:
+def get_author_emails(id_publication: str) -> list:
     """Returns the emails of authors associated with the specified project."""
     db = get_db()
     # Get PSCS users
     pscs_authors = db.execute("SELECT users_auth.email "
-                              "FROM users_auth INNER JOIN publication_authors "
-                              "ON users_auth.id_user = publication_authors.id_user "
-                              "WHERE publication_authors.id_project = ?", (id_project,)).fetchall()
+                              "FROM users_auth INNER JOIN publications_authors "
+                              "ON users_auth.id_user = publications_authors.id_user "
+                              "WHERE publications_authors.id_publication = ?", (id_publication,)).fetchall()
     external_authors = db.execute("SELECT email "
-                                  "FROM publication_external_authors "
-                                  "WHERE id_project = ?", (id_project,)).fetchall()
+                                  "FROM publications_external_authors "
+                                  "WHERE id_publication = ?", (id_publication,)).fetchall()
     return [au["email"] for au in pscs_authors + external_authors]
 
 
@@ -1301,7 +1381,11 @@ def notify_external_authors(id_project: str):
 
 def build_full_url(local_url: str) -> str:
     """Builds the full URL including https://[domain] before the local URL."""
-    return "https://" + current_app.config["CURRENT_URL"] + local_url
+    # If current_url is localhost, use non-secure http
+    protocol = "https://"
+    if current_app.config["CURRENT_URL"].split(":")[0] == "localhost":
+        protocol = "http://"
+    return protocol + current_app.config["CURRENT_URL"] + local_url
 
 
 @bp.route("<id_project>/external_author/<token>", methods=["GET", "POST"])
@@ -1552,7 +1636,7 @@ def _get_project_results_info(db, id_project: str) -> list:
     return info
 
 
-def _get_project_management_info(db, id_project: str) -> list:
+def _get_project_management_info(db, id_project: str) -> dict:
     """Returns info about managing the project"""
     users = db.execute("SELECT PR.role, U.name_user "
                        "FROM projects_roles AS PR INNER JOIN users_auth as U ON PR.id_user = U.id_user "
@@ -1560,6 +1644,19 @@ def _get_project_management_info(db, id_project: str) -> list:
     project_info = {"users": users}
     project_info["publication_status"] = _get_project_publication_status(db, id_project)
     return project_info
+
+
+def _get_publication_info(db, id_project: str) -> list:
+    publications = db.execute("SELECT P.title, P.description, P.creation_time, P.id_publication,"
+                              " PS.id_publication_short FROM publications AS P INNER JOIN "
+                              "publications_shortid AS PS ON P.id_publication = PS.id_publication "
+                              "WHERE P.id_project = ? "
+                              "ORDER BY P.creation_time ASC", (id_project,)).fetchall()
+    pub_dict = [dict(p) for p in publications]
+    for d in pub_dict:
+        d["url"] = url_for("publications.request_publication", id_publication=d["id_publication"])
+        d["shorturl"] = url_for("publications_short.short_publication", id_publication_short=d["id_publication_short"])
+    return pub_dict
 
 
 @bp.route("/<id_project>/logs/<id_job>", methods=["GET"])
@@ -1595,11 +1692,19 @@ def get_tab_info(id_project, tab):
             return render_template("pscs/project_tabs/analysis.html", analysis=analysis)
         elif tab == "results":
             results_info = _get_project_results_info(db, id_project)
+            for r in results_info:
+                r["file_path"] = r["file_path"][len(current_app.config["INSTANCE_PATH"]):]
             analysis = _get_project_analysis_info(db, id_project)
             return render_template("pscs/project_tabs/results.html", results=results_info, analysis=analysis)
         elif tab == "project_management":
             project_info = _get_project_management_info(db, id_project)
-            return render_template("pscs/project_tabs/project_management.html", project_info=project_info)
+            publication_info = _get_publication_info(db, id_project)
+            for p in publication_info:
+                p["url"] = build_full_url(p["url"])
+                p["shorturl"] = build_full_url(p["shorturl"])
+            return render_template("pscs/project_tabs/project_management.html",
+                                   project_info=project_info,
+                                   publication_info=publication_info)
     return
 
 @bp.route("/<id_project>/pipeline_import", methods=["POST"])
@@ -1647,12 +1752,15 @@ def file_request(id_project):
         for id_data in req_files:
             # Check if data is public
             data = db.execute("SELECT is_published, is_peer_review, file_path, file_name FROM data WHERE id_data = ?", (id_data,)).fetchone()
-            if data["is_published"] == 1 or data["is_peer_review"] == 1:
+            data_read = check_user_permission("data_read", permission_value=1, id_project=id_project)
+            if data_read or data["is_published"] == 1 or data["is_peer_review"] == 1:
                 file_info.append({"file_path": data["file_path"], "file_name": data["file_name"]})
                 continue
             else:
                 return jsonify({"success": 0, "message": "You do not have permission to access the requested files."}), 403
         else:
+            if len(file_info) == 0:
+                return jsonify({"success": 0, "message": "The files could not be sent."})
             # Get file paths of each file; zip into archive, send to user
             try:
                 # Get project name
@@ -1668,35 +1776,34 @@ def file_request(id_project):
 @limiter.limit("1/minute")
 def results_request(id_project):
     if request.method == "POST":
-        print("here")
         # Get request info
         req_results = request.json
         id_analysis = req_results["id_analysis"]
         db = get_db()
         # Check whether user is allowed to get results
-        # print(id_analy)
         if is_user_allowed_read_results(id_analysis):
             # Get results for the analysis; zip and send
             # First get id_results
-            results_data = db.execute("SELECT id_result, file_path, file_name FROM results "
+            results_data = db.execute("SELECT id_result, file_path FROM results "
                                     "WHERE id_analysis = ?", (id_analysis,)).fetchall()
             results_list = []
+            zip_name = None
             for res in results_data:
-                results_list.append({"file_path": res["file_path"], "file_name": res["file_name"]})
+                results_list.append({"file_path": res["file_path"]})
             try:
                 zip_name = zip_files(results_list)
-                print("Sending!")
                 return send_file(zip_name, as_attachment=True, download_name=f"results_{id_analysis}.zip",
                                  mimetype="application/zip")
             finally:
-                os.remove(zip_name)
+                if zip_name is not None:
+                    os.remove(zip_name)
     return jsonify({"success": 0, "message": "Permission denied."}), 403
 
 
 def is_user_allowed_read_results(id_analysis):
     db = get_db()
     id_project = db.execute("SELECT id_project FROM analysis WHERE id_analysis = ?", (id_analysis,)).fetchone()["id_project"]
-    pub_status = _get_project_publication_status
+    pub_status = _get_project_publication_status(db, id_project)
     if check_user_permission(permission_name="data_read",
                              permission_value=1,
                              id_project=id_project) or \
@@ -1722,11 +1829,9 @@ def zip_files(file_info_list: Collection[dict]):
     zip_archive = tempfile.NamedTemporaryFile(suffix=".zip", prefix="pscs_filereq_", delete=False)
     zip_writer = zipfile.ZipFile(zip_archive, "w")
     for finfo in file_info_list:
-        zip_writer.write(finfo["file_path"], arcname=finfo["file_name"])
+        zip_writer.write(finfo["file_path"], arcname=os.path.basename(finfo["file_path"]))
     zip_writer.close()
     return zip_archive.name
-
-
 
 
 def copy_pipeline(id_analysis, id_project_destination):
@@ -1755,3 +1860,40 @@ def copy_pipeline(id_analysis, id_project_destination):
             os.remove(new_node_file)
             raise e
     return
+
+
+def make_shortid(db: sqlite3.Connection,
+                 id_publication: str,
+                 num_chars: int = 5,
+                 charset: Optional[str] = None):
+    """
+    For a project that is getting published, get a short ID that can be used for sharing links.
+    Parameters
+    ----------
+    db : sqlite3.Connection
+        DB against which to check for the short ID.
+    id_publication : str
+        ID of the publication for which to create the link.
+    num_chars : int
+        Number of characters for the shortlink. Default: 5.
+    charset: Collection[str]
+        The character set from which to choose to make the short ID. Default: 0-9, a-z, A-Z.
+
+    Returns
+    -------
+    bool
+        Whether the operation succeeded.
+    """
+    if charset is None:
+        charset = string.digits + string.ascii_letters
+    attempt_count = 0
+    while attempt_count < 50:
+        attempt_count += 1
+        short_id = "".join(random.sample(charset, num_chars))
+        # Ensure shortid is unique
+        count = db.execute("SELECT COUNT(*) FROM publications_shortid WHERE id_publication_short = ?", (short_id,)).fetchone()[0]
+        if count == 0:
+            db.execute("INSERT INTO publications_shortid (id_publication, id_publication_short) VALUES(?,?)", (id_publication, short_id))
+            db.commit()
+            return short_id
+    raise IOError(f"Unable to create short ID for publication {id_publication}")

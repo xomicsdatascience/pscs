@@ -21,7 +21,24 @@
     Current status: {{project_info["publication_status"]}}.
     <button onclick="window.location.href=window.location.href + '/publish'">Publishing options</button>
 </div>
-
+{% if publication_info | length > 0 %}
+    <h5>Previous Publications</h5>
+    <p>This project has been previously-published:</p>
+    <table>
+    <tr>
+        <th>Title</th>
+        <th>Publication Date</th>
+        <th>Short URL</th>
+    </tr>
+    {% for p in publication_info %}
+        <tr>
+            <td><a href="{{ p['url'] }}">{{ p["title"] }}</a></td>
+            <td>{{ p["creation_time"] }}</td>
+            <td><a href="{{ p['shorturl'] }}">{{ p["shorturl"] }}</a></td>
+        </tr>
+    {% endfor %}
+    </table>
+{% endif %}
 <h5>Project Management</h5>
 <div>
     <input type="text" id="inputRename" placeholder="New project name" style="display: inline-block"><button onclick="renameProject();">Rename project</button>

@@ -150,7 +150,7 @@ CREATE TABLE data (
     data_uploaded_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     is_published BIT DEFAULT 0,  -- whether this data has been published; prevents auto deletion
     is_peer_review BIT DEFAULT 0,  -- whether the data is under peer review
-    file_name VARCHAR(50) NOT NULL DEFAULT data,
+    file_name VARCHAR(100) NOT NULL DEFAULT 'data',
     FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE,
     FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE
 );
@@ -426,11 +426,89 @@ CREATE TABLE external_author_affiliation(
 	affiliation TEXT NOT NULL);
 
 CREATE TABLE project_invitations(
-    id_invitation TEXT NO NULL,
+    id_invitation TEXT NOT NULL,
     id_invitee TEXT NOT NULL,  -- user being invited
     id_inviter TEXT NOT NULL,  -- user inviting
     id_project TEXT NOT NULL,  -- id of project to which the user is being invited
     time_sent TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE,
-    CONSTRAINT invite_key PRIMARY KEY(id_invitee, id_project)
+    CONSTRAINT invite_key PRIMARY KEY(id_invitee, id_project));
+
+CREATE TABLE publications(
+    id_publication VARCHAR(36) UNIQUE NOT NULL,
+    id_project VARCHAR(36) NOT NULL,
+    title VARCHAR(200) NOT NULL,
+    description TEXT NOT NULL,
+    creation_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    status VARCHAR(50) DEFAULT 'private',  -- if not specified, keep private
+    FOREIGN KEY (id_project) REFERENCES projects(id_project));
+
+CREATE TABLE publications_shortid(
+    id_publication VARCHAR(36) UNIQUE NOT NULL,
+    id_publication_short VARCHAR(5) UNIQUE NOT NULL,
+    FOREIGN KEY (id_publication) REFERENCES publications(id_publication));
+
+CREATE TABLE publications_analysis(
+    id_publication VARCHAR(36) NOT NULL,
+    id_analysis VARCHAR(36) NOT NULL,
+    FOREIGN KEY (id_publication) REFERENCES publications(id_publication),
+    FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis));
+
+CREATE TABLE publications_data(
+    id_publication VARCHAR(36) NOT NULL,
+    id_data VARCHAR(36) NOT NULL,
+    FOREIGN KEY (id_publication) REFERENCES publications(id_publication),
+    FOREIGN KEY (id_data) REFERENCES data(id_data));
+
+CREATE TABLE publications_results(
+    id_publication VARCHAR(36) NOT NULL,
+    id_result VARCHAR(36) NOT NULL,
+    FOREIGN KEY (id_publication) REFERENCES publications(id_publication),
+    FOREIGN KEY (id_result) REFERENCES results(id_result));
+
+CREATE TABLE publications_authors(
+    id_publication VARCHAR(36) NOT NULL,
+    id_user TEXT NOT NULL,
+    author_position INT NOT NULL,  -- 0-indexed position of the user in the author list
+    confirmed BIT DEFAULT 0,
+    CONSTRAINT author_key PRIMARY KEY(id_publication, id_user),
+    FOREIGN KEY (id_publication) REFERENCES publications(id_publication),
+    FOREIGN KEY (id_user) REFERENCES users_auth(id_user));
+
+CREATE TABLE publications_authors_affiliation (
+    id_publication VARCHAR(36) NOT NULL,
+    id_user TEXT NOT NULL,
+    affiliation TEXT NOT NULL,
+    CONSTRAINT author_aff PRIMARY KEY (id_publication, id_user),
+    FOREIGN KEY (id_publication) REFERENCES publications(id_publication),
+    FOREIGN KEY (id_user) REFERENCES users_auth(id_user));
+
+CREATE TABLE publications_external_authors(
+	id_publication VARCHAR(36) NOT NULL,
+	email TEXT NOT NULL,
+	author_position INTEGER NOT NULL,
+	confirmed BIT DEFAULT 0,
+	FOREIGN KEY (id_publication) REFERENCES publications(id_publication),
+	CONSTRAINT author_key PRIMARY KEY(id_publication, email));
+
+CREATE TABLE publications_external_author_info(
+	id_publication VARCHAR(36) NOT NULL,
+	email TEXT NOT NULL,
+	name TEXT NOT NULL,
+	confirmed_datause BIT DEFAULT 0,
+	confirmed_phi BIT DEFAULT 0,
+	creation_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+	ip TEXT NOT NULL,
+	FOREIGN KEY (id_publication) REFERENCES publications(id_publication),
+	CONSTRAINT author_key PRIMARY KEY(id_publication, email));
+
+CREATE TABLE publications_external_author_affiliation(
+	id_publication VARCHAR(36) NOT NULL,
+	email TEXT NOT NULL,
+	affiliation TEXT NOT NULL);
+
+CREATE TABLE publications_peer_review(
+    id_publication VARCHAR(36) NOT NULL,
+    peer_password TEXT NOT NULL,  -- password supplied to journal/reviewers
+    FOREIGN KEY (id_publication) REFERENCES publications(id_publication) ON DELETE CASCADE
 );

@@ -109,7 +109,7 @@ def projects_summary():
                                    "projects.id_project, projects.num_members, projects_roles.role "
                                    "FROM projects INNER JOIN projects_roles "
                                    "ON projects.id_project=projects_roles.id_project "
-                                   "AND projects_roles.id_user=?", (g.user['id_user'],))
+                                   "WHERE projects_roles.id_user=?", (g.user['id_user'],))
         invitations_sent = get_project_invitations_sent(g.user["id_user"])
         invitations_received = get_project_invitations_received(g.user["id_user"])
         return render_template('pscs/projects_summary.html', projects=user_projects,

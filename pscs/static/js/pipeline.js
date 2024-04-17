@@ -1213,7 +1213,7 @@ async function loadAnalysisFromId(id_analysis){
         let psNode = getNodeDataFromModule(node["module"], node["procName"], pkg["modules"]);
 
         let nodeNum = extractIdNums(node["nodeId"]);
-        
+
         let loadedNode = createPscsNode(nodeNum, node["img"], psNode);
         for(let paramName in load_params){
             loadedNode.paramsValues[paramName] = load_params[paramName][1];
@@ -1666,7 +1666,7 @@ async function requestCheckedFiles(checkClass){
 async function requestFiles(requestedFiles) {
     // For elements of the class `checkClass` that have been checked, gets their ID and sends a request to the server
     // to download it.
-    await fetch("./file_request", {
+    await fetch(window.location.pathname + "/file_request", {
                                             method: "POST",
                                             headers: {
                                                 "Accept": "application/json",

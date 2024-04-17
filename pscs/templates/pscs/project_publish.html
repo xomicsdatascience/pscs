@@ -20,7 +20,7 @@
 <!--Author list-->
 <script src="/static/js/publish.js"></script>
 <h3 class="postline">Author list</h3>
-<p>Author list will appear in the order below. Use the buttons to change the order of the authors.</p>
+<p>The author list will appear in the order below. Use the buttons to change the order of the authors.</p>
 <div>
 <select id="authorlist" size="5" style="display: inline-block">
   {% for a in authors %}
@@ -117,4 +117,13 @@
 {% if "on_hold" in public_status %}
   <p>Modifications to publication status are blocked until external authors have supplied the requested information.</p>
 {% endif %}
+{% if public_status == "public" %}
+    <h4>Update Publication</h4>
+    <p>The project has already been published, but a new version can be added. Previous versions will be viewable as they currently are.</p>
+    <label for="update">Confirm updating the project by entering the project title:</label>
+    <input name="update" id="update" placeholder="Project Titlte">
+    <button onclick="parsePublicationPage('update')">Update project</button>
+
+{% endif %}
+
 {% endblock %}

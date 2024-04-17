@@ -9,7 +9,7 @@ async function resetPassword(name_user){
         body:JSON.stringify(msg)
     })
         .then(response => {return response.json()})
-        .then(response => {console.log(response.url); window.location.href = response.url});
+        .then(response => {window.location.href = response.url});
 }
 
 async function getUserAndReset(elId){

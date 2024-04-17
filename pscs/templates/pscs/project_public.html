@@ -17,24 +17,24 @@
 
 <div id="results">
 <h3>Results</h3>
-{% for an in project_summary["analyses"] %}
+{% for an in project_summary["analysis"] %}
   <h5>Results for Analysis: {{an["analysis_name"]}}</h5>
     {% for r in project_summary["results"][an["id_analysis"]] %}
-      <img src="{{url_for('pscs.results', id_project=project_summary['id_project'], id_analysis=an['id_analysis'], filename=r['file_name'] )}}">
+      <img src="{{url_for('pscs.results', id_project=project_summary['id_project'], id_analysis=an['id_analysis'], filename=r['file_path']|basename) }}">
     {% endfor %}
 {% endfor %}
 
 <h4>Download results</h4>
     <select id="resultDownload">
-    {% for an in project_analysis %}
+    {% for an in project_summary["analysis"] %}
         <option value="{{an['id_analysis']}}">{{an['analysis_name']}}</option>
     {% endfor %}
     </select>
-    <button onclick="downloadResult('resultDownload', 'resultsRateWarning')">Download</button>
+    <button onclick="downloadPublishedResult('resultDownload', 'resultsRateWarning')">Download</button>
     <p style="display: none; color: #ff2222" id="resultsRateWarning">Too many server requests; please allow some time to pass before requesting more data.</p>
 </div>
 
-{% if project_data %}
+{% if project_summary["data"] | length > 0 %}
 <br>
 <h3>Project Data</h3>
 <table>
@@ -42,7 +42,7 @@
         <th>File name</th>
         <th>Download</th>
     </tr>
-    {% for pd in project_data %}
+    {% for pd in project_summary["data"] %}
     <tr>
         <td>{{pd["file_name"]}}</td>
         <td><input class="downloadCheck" id="{{pd["id_data"]}}" type="checkbox"></td>
@@ -57,7 +57,7 @@
 <h3>Analysis Inspector</h3>
 <select id="analyses">
   <option selected disabled>Select analysis...</option>
-{% for an in project_summary["analyses"] %}
+{% for an in project_summary["analysis"] %}
   <option value={{an["id_analysis"]}} onclick="setTextContent('id_analysis', '{{an["id_analysis"]}}')">{{an["analysis_name"]}}</option>
 {% endfor %}
 </select>

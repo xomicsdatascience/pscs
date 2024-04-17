@@ -40,7 +40,6 @@ function createTable(projectFiles, analysisInputs){
 function createDataDropdown(files){
 // Creates a SELECT menu based on the input "files" object; keys are used for the option.value, and values are used
 // as the text.
-//  console.log(files);
   drop = document.createElement("select");
   drop.class = INPUTDROPDOWNCLASS;
   drop.id = INPUTDROPDOWNPREFIX + IDSEP + 'master';
@@ -295,6 +294,40 @@ document.addEventListener('click', function(e) {
   }
 }, false);
 
+
+async function downloadPublishedResult(selectElID, warningElID){
+  let sel = document.getElementById(selectElID);
+  let analysis_obj = {"id_analysis": sel.options[sel.selectedIndex].value};
+  let dest_url = window.location.pathname + "/request_results";
+  await fetch(dest_url, {
+    method: "POST",
+    headers: {
+      "Accept": "application/json",
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify(analysis_obj)
+  })
+      .then(response => {
+            let contentDisp = response.headers.get("Content-Disposition");
+            let warningEl = document.getElementById(warningElID);
+            if(response.status === 429){
+                warningEl.style.display = "block";
+                return
+            }
+            else{
+                warningEl.style.display = "none";
+            }
+            let filename = contentDisp.split("filename=")[1];
+            response.blob().then(blob => {
+                let url = window.URL.createObjectURL(blob);
+                let pretendLink = document.createElement("a");
+                pretendLink.href = url;
+                pretendLink.download = filename;
+                pretendLink.click();
+            });
+        })
+}
+
 async function downloadResult(selectElID, warningElID){
   let sel = document.getElementById(selectElID);
   let analysis_obj = {"id_analysis": sel.options[sel.selectedIndex].value};
@@ -302,7 +335,6 @@ async function downloadResult(selectElID, warningElID){
   let urlcomp = url.split("/");
   let idx = urlcomp.indexOf("project");
   let project_url = urlcomp.slice(0, idx+2).join("/") + "/results_request"
-  console.log(project_url)
   let response = await fetch(project_url, {
     method: "POST",
     headers: {
