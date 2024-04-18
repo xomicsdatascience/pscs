@@ -1,4 +1,4 @@
-__version__ = "0.6.1"
+__version__ = "0.6.2"
 
 from flask import Flask
 import os
@@ -79,12 +79,13 @@ def create_app(test_config=None) -> Flask:
     db.init_app(app)
 
     # Get columns for user permissions
-    ddb = sqlite3.connect(app.config['DATABASE'])
-    cols = ddb.execute("PRAGMA table_info(projects_roles)").fetchall()
-    cols = set([c[1] for c in cols])
-    invalid_perms = {"id_project", "id_user", "role"}
-    app.config["PROJECT_PERMISSIONS"] = cols.difference(invalid_perms)
-    ddb.close()
+    if os.path.exists(app.config["DATABASE"]):
+        ddb = sqlite3.connect(app.config['DATABASE'])
+        cols = ddb.execute("PRAGMA table_info(projects_roles)").fetchall()
+        cols = set([c[1] for c in cols])
+        invalid_perms = {"id_project", "id_user", "role"}
+        app.config["PROJECT_PERMISSIONS"] = cols.difference(invalid_perms)
+        ddb.close()
 
     from . import auth
     app.register_blueprint(auth.bp)
