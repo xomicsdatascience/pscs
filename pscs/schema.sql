@@ -181,6 +181,7 @@ CREATE TABLE results(
     id_project TEXT NOT NULL,
     id_analysis TEXT,  -- ID specific to analysis
     file_path TEXT NOT NULL,  -- where the result can be found
+    file_name VARCHAR(200),  -- display-friendly name
     result_type TEXT NOT NULL,
     description TEXT,  -- description of result
     title TEXT,
