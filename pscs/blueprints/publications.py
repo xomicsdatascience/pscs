@@ -155,7 +155,6 @@ def display_publication(id_publication):
         v["publication_url"] = url_for("publications.request_publication", id_publication=v["id_publication"])
 
     publication_summary["versions"] = other_versions
-    print(f"len: {len(other_versions)}")
 
     return render_template("pscs/project_public.html",
                            project_summary=publication_summary)

@@ -352,6 +352,7 @@ def display_public_project(id_project):
         an_id = r["id_analysis"]
         project_summary["results"][an_id].append(dict(r))
         project_summary["results"][an_id][-1]["file_name"] = os.path.basename(project_summary["results"][an_id][-1]["file_path"])
+        project_summary["results"][an_id][-1]["id_job"] = os.path.split(project_summary["results"][an_id][-1]["file_path"])[-1]
 
     # For logged-in users, make it easy to import pipelines
     # Get user's projects
@@ -391,8 +392,8 @@ def display_public_project(id_project):
                            project_analysis=analysis_list)
 
 
-@bp.route('/<id_project>/results/<id_analysis>/<path:filename>', methods=['GET'])
-def results(filename, id_project, id_analysis):
+@bp.route('/<id_project>/results/<id_analysis>/<id_job>/<path:filename>', methods=['GET'])
+def results(filename, id_project, id_job, id_analysis):
     # If logged in and has permission, don't need to check public
     if is_logged_in() and check_user_permission("data_read", 1, id_project):
         return private_results(filename, id_project, id_analysis)
@@ -414,7 +415,8 @@ def private_results(filename, id_project, id_analysis):
         has_perm = check_user_permission("data_read", 1, id_project)
         if not has_perm:
             return
-        res_dir = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=id_analysis)
+        id_job = filename.split(os.path.extsep)[0]
+        res_dir = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=id_analysis, id_job=id_job)
         return send_from_directory(res_dir, secure_filename(filename))
     else:
         return

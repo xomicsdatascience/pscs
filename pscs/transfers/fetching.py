@@ -397,14 +397,17 @@ def main(db, env, debug=False):
             continue
         print_debug("fetching!", debug)
 
-        results_directory = Path(join(env["INSTANCE_PATH"], "projects", "{id_project}", "results", "{id_analysis}").format(id_project=job_info["id_project"],
-                                                                                                                                id_analysis=job_info["id_analysis"]))
+        results_directory = Path(join(env["INSTANCE_PATH"], "projects", "{id_project}", "results", "{id_analysis}", "{id_job}").format(id_project=job_info["id_project"],
+                                                                                                                                       id_analysis=job_info["id_analysis"],
+                                                                                                                                       id_job=job_info["id_job"]))
         results_directory.mkdir(exist_ok=True, parents=True)
-        logs_directory = Path(env["LOG_DIRECTORY"].format(id_project=job_info["id_project"], id_analysis=job_info["id_analysis"]))
+        logs_directory = Path(env["LOG_DIRECTORY"].format(id_project=job_info["id_project"], id_analysis=job_info["id_analysis"], id_job=job_info["id_job"]))
         logs_directory.mkdir(exist_ok=True, parents=True)
+        if not os.path.exists(str(logs_directory)):
+            os.mkdir(str(logs_directory))
         fetch_data(env["REMOTE_COMPUTING"][c_job[0]], job_info["remote_results_directory"], results_directory, ssh_keypath=env["CRON_KEY"])
         fetch_logs(env["REMOTE_COMPUTING"][c_job[0]], id_job=job_info["id_job"], ssh_keypath=env["CRON_KEY"],
-                   local_results_dir=logs_directory)
+                   local_results_dir=str(logs_directory))
         # register completion
         update_db_job_complete(db, c_job[0], job_info["id_job"], logs_directory)
         register_results(db,
@@ -419,10 +422,14 @@ def register_results(db: sqlite3.Connection,
                      id_analysis: str,
                      results_directory: Union[Path, str]):
     """Register the files in the results directory into the database."""
+    if isinstance(results_directory, str):
+        results_directory = Path(results_directory)
     for result in os.listdir(results_directory):
         # Get data to register file
-        id_result = get_unique_value_for_field(db, field="id_result", table="results")
         file_path = Path(os.path.join(results_directory, result))
+        if not file_path.is_file():
+            continue
+        id_result = get_unique_value_for_field(db, field="id_result", table="results")
         file_name = file_path.name
         _, ext = os.path.splitext(file_path)
         new_path = results_directory / (id_result + ext)

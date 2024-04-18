@@ -579,11 +579,11 @@ def calc_hash_of_file(file: str) -> str:
     return sha.hexdigest()
 
 
-@bp.route('/projects/<id_project>/results/<id_analysis>/<path:filename>', methods=['GET'])
-def results(filename, id_project, id_analysis):
+@bp.route('/projects/<id_project>/results/<id_analysis>/<id_job>/<path:filename>', methods=['GET'])
+def results(filename, id_project, id_job, id_analysis):
     # If logged in and has permission, don't need to check public
     if is_logged_in() and check_user_permission("data_read", 1, id_project):
-        return private_results(filename, id_project, id_analysis)
+        return private_results(secure_filename(filename), secure_filename(id_project), secure_filename(id_analysis),secure_filename(id_job))
     db = get_db()
     public_status = db.execute("SELECT is_published, is_peer_review "
                                "FROM projects "
@@ -597,12 +597,14 @@ def results(filename, id_project, id_analysis):
 
 
 # @login_required
-def private_results(filename, id_project, id_analysis):
+def private_results(filename, id_project, id_analysis, id_job):
     if is_logged_in():
         has_perm = check_user_permission("data_read", 1, id_project)
         if not has_perm:
             return
-        res_dir = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=id_analysis)
+        res_dir = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project,
+                                                                 id_analysis=id_analysis,
+                                                                 id_job=id_job)
         return send_from_directory(res_dir, secure_filename(filename))
     else:
         return

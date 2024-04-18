@@ -1,4 +1,4 @@
-__version__ = "0.6.8"
+__version__ = "0.6.9"
 
 from flask import Flask
 import os
@@ -65,7 +65,7 @@ def create_app(test_config=None) -> Flask:
     app.config["DATA_DIRECTORY"] = join(app.config["PROJECTS_DIRECTORY"], "data")
     _makedir_until_format(app.config['DATA_DIRECTORY'])
 
-    app.config["RESULTS_DIRECTORY"] = join(app.config["PROJECTS_DIRECTORY"], "results", "{id_analysis}")
+    app.config["RESULTS_DIRECTORY"] = join(app.config["PROJECTS_DIRECTORY"], "results", "{id_analysis}", "{id_job}")
     _makedir_until_format(app.config["RESULTS_DIRECTORY"])
     app.config["LOG_DIRECTORY"] = join(app.config["RESULTS_DIRECTORY"], "logs")
 
