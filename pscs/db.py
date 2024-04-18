@@ -146,7 +146,9 @@ def check_user_permission(permission_name: str,
 def check_analysis_published(id_analysis: str) -> bool:
     """Checks whether the analysis has been made publicly available."""
     db = get_db()
-    analysis_info = db.execute('SELECT is_published FROM analysis WHERE id_analysis = ?', (id_analysis,)).fetchone()
+    analysis_info = db.execute("SELECT status FROM publications AS P "
+                               "INNER JOIN publications_analysis AS PA on P.id_publication = A.id_publication "
+                               "WHERE PA.id_analysis = ?", (id_analysis,)).fetchall()
     if analysis_info is None:
         return False
-    return analysis_info['is_published'] == 1
+    return any([a["status"] == "public" for a in analysis_info])
