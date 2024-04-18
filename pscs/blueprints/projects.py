@@ -1383,7 +1383,9 @@ def notify_external_authors(id_project: str):
 def build_full_url(local_url: str) -> str:
     """Builds the full URL including https://[domain] before the local URL."""
     # If current_url is localhost, use non-secure http
-    protocol = "https://"
+    protocol = ""
+    if not current_app.config["CURRENT_URL"].startswith("https://"):
+        protocol = "https://"
     if current_app.config["CURRENT_URL"].split(":")[0] == "localhost":
         protocol = "http://"
     return protocol + current_app.config["CURRENT_URL"] + local_url
