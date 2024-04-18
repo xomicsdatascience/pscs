@@ -400,7 +400,8 @@ def main(db, env, debug=False):
         results_directory = Path(join(env["INSTANCE_PATH"], "projects", "{id_project}", "results", "{id_analysis}").format(id_project=job_info["id_project"],
                                                                                                                                 id_analysis=job_info["id_analysis"]))
         results_directory.mkdir(exist_ok=True, parents=True)
-        logs_directory = env["LOG_DIRECTORY"].format(id_project=job_info["id_project"], id_analysis=job_info["id_analysis"])
+        logs_directory = Path(env["LOG_DIRECTORY"].format(id_project=job_info["id_project"], id_analysis=job_info["id_analysis"]))
+        logs_directory.mkdir(exist_ok=True, parents=True)
         fetch_data(env["REMOTE_COMPUTING"][c_job[0]], job_info["remote_results_directory"], results_directory, ssh_keypath=env["CRON_KEY"])
         fetch_logs(env["REMOTE_COMPUTING"][c_job[0]], id_job=job_info["id_job"], ssh_keypath=env["CRON_KEY"],
                    local_results_dir=logs_directory)
@@ -432,7 +433,7 @@ def register_results(db: sqlite3.Connection,
         # Insert into DB
         db.execute("INSERT INTO results "
                    "(id_result, id_project, id_analysis, file_path, result_type) "
-                   "VALUES (?,?,?,?,?,?) ",
+                   "VALUES (?,?,?,?,?) ",
                    (id_result, id_project, id_analysis, new_path, result_type))
     db.commit()
     return
