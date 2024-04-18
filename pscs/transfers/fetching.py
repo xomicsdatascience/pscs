@@ -434,7 +434,7 @@ def register_results(db: sqlite3.Connection,
         db.execute("INSERT INTO results "
                    "(id_result, id_project, id_analysis, file_path, file_name, result_type) "
                    "VALUES (?,?,?,?,?,?) ",
-                   (id_result, id_project, id_analysis, new_path, file_name, result_type))
+                   (id_result, id_project, id_analysis, str(new_path), file_name, result_type))
     db.commit()
     return
 
