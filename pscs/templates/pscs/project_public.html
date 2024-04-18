@@ -3,10 +3,17 @@
 {% block header %}
 <script src="/static/js/pipeline.js"></script>
 <script src="/static/js/projects.js"></script>
-<h1>{{ project_summary["name_project"] }}</h1>
 {% endblock %}
 
 {% block content %}
+    <h1>{{ project_summary["title"] }}</h1>
+    <select id="versions" onchange="location = this.value">
+        <option selected disabled>Select version</option>
+    {% set num_version = project_summary["versions"] | length %}
+    {% for v in project_summary["versions"] %}
+        <option value="{{ v["publication_url"] }}">v{{ num_version-loop.index0 }} - {{ v["title"][:50] }}</option>
+    {% endfor %}
+    </select>
 <h2>Description:</h2>
 <p>{{ project_summary["description"] }}</p>
 <h5>Authors</h5>

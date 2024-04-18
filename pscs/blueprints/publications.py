@@ -14,7 +14,6 @@ import tempfile
 from typing import Collection
 from pscs.pscs import load_analysis_from_id, check_user_permission
 from collections import defaultdict as dd
-
 bp = Blueprint("publications", __name__, url_prefix="/publications")
 bp_short = Blueprint("publications_short", __name__, url_prefix="/p/")
 
@@ -25,6 +24,7 @@ def short_publication(id_publication_short):
     return redirect(url_for("publications.request_publication", id_publication=id_publication))
 
 
+
 @bp.route("/<id_publication>", methods=['GET', 'POST'])
 def request_publication(id_publication):
     if request.method == "GET":
@@ -32,10 +32,11 @@ def request_publication(id_publication):
         # Check if public or peer review
         status = db.execute("SELECT status FROM publications WHERE id_publication = ?", (id_publication,)).fetchone()
         if status is not None:
-            if status["status"] == "peer review":
-                return render_template("auth/prompt.html", prompt_label="Peer Review Password")
-            elif status["status"] == "public":
+            has_peer_reviewed = (status["status"] == "peer review") and ("publication_review" in session.keys() and id_publication in session["publication_review"])
+            if status["status"] == "public" or has_peer_reviewed:
                 return display_publication(id_publication)  # publication is public; show it
+            elif status["status"] == "peer review":
+                return render_template("auth/prompt.html", prompt_label="Peer Review Password")
         else:
             flash("There was a problem fetching the requested publication", "error")
             return redirect(url_for("pscs.index"))
@@ -46,10 +47,10 @@ def request_publication(id_publication):
         # Get passhash from db
         db = get_db()
         passhash = db.execute("SELECT peer_password "
-                              "FROM publications_peer_review WHERE id_publication = ?", (id_publication,)).fetchone()
+                              "FROM publications_peer_review WHERE id_publication = ?", (id_publication,)).fetchone()["peer_password"]
         if check_password_hash(passhash, submitted_password):
             # Password is correct; allow user to access publication without password
-            append_to_session("publication_review", id_publication)
+            set_session_key("publication_review", id_publication)
             return display_publication(id_publication)
         else:
             flash("Password is incorrect", "error")
@@ -68,7 +69,7 @@ def file_request(id_publication):
             # Check if data is public
             data_info = get_data_info(db, id_publication, id_data)
             is_public = data_info["status"] == "public"
-            is_peer = data_info["status"] == "peer" and is_peer_allowed(id_publication)
+            is_peer = data_info["status"] == "peer review" and is_peer_allowed(db, id_publication)
             if is_public or is_peer:
                 file_info.append({"file_path": data_info["file_path"], "file_name": data_info["file_name"]})
             else:
@@ -107,9 +108,13 @@ def zip_files(file_info_list: Collection[dict]):
     return zip_archive.name
 
 
-def is_peer_allowed(id_publication):
+def is_peer_allowed(db, id_publication):
     """Checks whether the specified publication can be viewed by the user."""
-    return False  # TODO
+    # Check if id_publication is in peer review and that the user has previously provided the password
+    status = db.execute("SELECT status FROM publications WHERE id_publication = ?", (id_publication,)).fetchone()["status"]
+    if status == "peer review" and "publication_review" in session.keys() and id_publication in session["publication_review"]:
+        return True
+    return False
 
 
 def get_data_info(db, id_publication, id_data):
@@ -125,23 +130,35 @@ def display_publication(id_publication):
     db = get_db()
     # Need to get for pub: title, description, authors, author affiliation, data, analyses, results
     # Need to get for user: user projects
-    project_summary = {}
+    publication_summary = {}
     descriptor = db.execute("SELECT title, description, id_project FROM publications WHERE id_publication = ?", (id_publication,)).fetchone()
-    project_summary |= dict(descriptor)
-    project_summary["authors"] = _get_publication_author_info(db, id_publication)
-    project_summary["affiliations"] = {}
-    for author in project_summary["authors"]:
-        project_summary["affiliations"][author["author_position"]] = author["affiliations"]
 
-    project_summary["data"] = _get_publication_data(db, id_publication)
-    project_summary["analysis"] = _get_publication_analysis(db, id_publication)
+    publication_summary |= dict(descriptor)
+    publication_summary["authors"] = _get_publication_author_info(db, id_publication)
+    publication_summary["affiliations"] = {}
+    for author in publication_summary["authors"]:
+        publication_summary["affiliations"][author["author_position"]] = author["affiliations"]
+
+    publication_summary["data"] = _get_publication_data(db, id_publication)
+    publication_summary["analysis"] = _get_publication_analysis(db, id_publication)
     results = _get_publication_results(db, id_publication)
-    project_summary["results"] = dd(list)
+    publication_summary["results"] = dd(list)
 
     for r in results:
-        project_summary["results"][r["id_analysis"]].append(r)
+        publication_summary["results"][r["id_analysis"]].append(r)
+
+    id_project = db.execute("SELECT id_project FROM publications WHERE id_publication = ?", (id_publication,)).fetchone()["id_project"]
+    other_versions = db.execute("SELECT title, description, creation_time, id_publication FROM publications WHERE id_project = ? "
+                                "ORDER BY creation_time DESC", (id_project,)).fetchall()
+    other_versions = [dict(v) for v in other_versions]
+    for v in other_versions:
+        v["publication_url"] = url_for("publications.request_publication", id_publication=v["id_publication"])
+
+    publication_summary["versions"] = other_versions
+    print(f"len: {len(other_versions)}")
+
     return render_template("pscs/project_public.html",
-                           project_summary=project_summary)
+                           project_summary=publication_summary)
 
 
 @bp.route('/<id_publication>/load_analysis', methods=["POST"])
@@ -154,7 +171,7 @@ def load_analysis(id_publication):
             status = db.execute("SELECT P.status FROM publications AS P "
                                 "INNER JOIN publications_analysis AS PA ON P.id_publication = PA.id_publication "
                                 "WHERE PA.id_analysis = ? AND P.id_publication = ?", (id_analysis, id_publication)).fetchone()["status"]
-            has_peer_review_password = status == "peer review" and "project_review" in session.keys() and id_publication in session["project_review"]
+            has_peer_review_password = status == "peer review" and "publication_review" in session.keys() and id_publication in session["publication_review"]
             if status == "public" or has_peer_review_password:
                 return load_analysis_from_id(id_analysis)
             return {"": ""}
@@ -168,7 +185,7 @@ def request_analysis_results(id_publication):
         db = get_db()
         publication_status = db.execute("SELECT status FROM publications AS P INNER JOIN publications_analysis AS PA "
                                         "ON P.id_publication = PA.id_publication WHERE PA.id_publication = ?", (id_publication,)).fetchone()["status"]
-        can_peer_review = publication_status == "peer review" and "publication" in session.keys() and id_publication in session["publication_review"]
+        can_peer_review = publication_status == "peer review" and "publication_review" in session.keys() and id_publication in session["publication_review"]
         if publication_status == "public" or can_peer_review:
             return send_results_for_analysis(db, id_analysis)
         flash("You do not have permission to download the requested results.", "warning")
@@ -236,8 +253,8 @@ def _get_publication_results(db, id_publication) -> list[dict]:
         return []
     return [dict(r) for r in result]
 
-def append_to_session(session_key: str,
-                      value):
+def set_session_key(session_key: str,
+                    value):
     """
     Appends `value` to the current session under the `session_key` list. If `session_key` is not defined, creates the
     list.
@@ -257,9 +274,5 @@ def append_to_session(session_key: str,
     ValueError
         If there is already a value under session_key and it is not a list.
     """
-    if session_key not in session.keys():
-        session[session_key] = []
-    if not isinstance(session[session_key], list):
-        raise ValueError(f"{session_key} is already used to store non-list data.")
-    session[session_key].append(value)
+    session[session_key] = [value]
     return

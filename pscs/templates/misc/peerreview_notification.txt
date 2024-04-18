@@ -4,8 +4,9 @@
 <p>Description: {description}</p>
 <p>Link: <a href="{publication_url}">{publication_shorturl}</a></p>
 <br>
-<p>The project can be viewed by users with the following password:</p>
-<p>{peer_review_password}</p>
-<p>Do not lose this password; it cannot be recovered. Your co-authors have been notified that you have this password.</p>
+<p>The password to view the publication anonymously has been sent to:<br>
+User: {publishing_user}<br>
+Name: {publishing_name}<br></p>
+<p>The password should only be shared with reviewers or those communicating with them.</p>
 <br>
 <p>Note: being marked for peer review only means that the project can be anonymously accessed and inspected. You can submit the URL and password to the peer-reviewed venue of your choice.</p>

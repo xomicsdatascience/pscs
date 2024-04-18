@@ -441,6 +441,7 @@ CREATE TABLE publications(
     description TEXT NOT NULL,
     creation_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(50) DEFAULT 'private',  -- if not specified, keep private
+    hold BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (id_project) REFERENCES projects(id_project));
 
 CREATE TABLE publications_shortid(

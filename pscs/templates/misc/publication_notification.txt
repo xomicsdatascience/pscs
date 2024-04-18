@@ -1,6 +1,6 @@
-<p>Congratulations on publishing your project, "{name_project}" ! This message is to notify
+<p>Congratulations on publishing your project, "{title}" ! This message is to notify
 all authors that the project is now publicly viewable. You can view the public page at the following
 address:<p>
-<p>{project_url}</p>
+<p><a href="{publication_url}">{publication_shorturl}</a></p>
 <br>
 <p> - PSCS</p>

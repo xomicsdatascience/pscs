@@ -629,54 +629,44 @@ def project_publish(id_project):
                                  "FROM results "
                                  "WHERE id_analysis = ? AND id_project = ?", (an_id, id_project)).fetchall()
                 publication_info["results"][an_id] = [b["id_result"] for b in buf]
-            if publication_info["publication_type"] == "peer review":
-                # Log everything into db
-                prepare_publication(id_project, publication_info)
-                # Wait for external authors to approve before proceeding
-                if _contains_external_authors(publication_info["authorlist"]):
-                    _set_hold(id_project, commit=True)
-                    # Notify external authors
-                    notify_external_authors(id_project)
-                    flash("The project is staged for peer review; it will be available for review once the external "
-                          "authors confirm their association with the project.")
-                else:
-                    # Proceed with peer review
-                    project_peer_review(id_project)
-            elif publication_info["publication_type"] == "public":
-                # Log everything into db
-                id_publication = prepare_publication(id_project, publication_info)
-                # If project is currently in peer review, move forward. Otherwise, get confirmation from external author
-                has_ext_auth = _contains_external_authors(publication_info["authorlist"])
-                current_pub_status = _get_project_publication_status(db, id_project)
-                if not has_ext_auth or (has_ext_auth and current_pub_status == "peer review"):
-                    project_public(id_project, id_publication)
-                    return_url = url_for("publications.request_publication", id_publication=id_publication)
-                    response_json = {"url": return_url, "publish_success": 1, "success_message": ""}
+            db = get_db()
+            id_publication = prepare_publication(id_project=id_project, publication_info=publication_info)
+            has_external_authors = _contains_external_authors(publication_info["authorlist"])
+            # Three possibilities: public, peer review, update
+            if not has_external_authors:
+                db.commit()
+                return_url = url_for("publications.request_publication", id_publication=id_publication)
+                response_json = {"url": return_url, "publish_success": 1, "success_message": ""}
+                if publication_info["publication_type"] == "public":
+                    notify_all_authors_public(id_publication)
+                    flash(f"The project has been set to \"{publication_info['publication_type']}\"")
                     return jsonify(response_json)
-                else:
-                    _set_hold(id_project, 1, commit=True)
-                    notify_external_authors(id_project)
-                    flash("The project is staged to be public; it will be publicly viewable once the external "
-                          "authors confirm their association with the project.")
-            elif publication_info["publication_type"] == "update":
-                # Data, analyses, and results should be published as new version
-                prepare_publication(id_project, publication_info=publication_info)
+                elif publication_info["publication_type"] == "peer review":
+                    # Only send password to publishing author.
+                    current_info = _get_publication_info(db, id_project=id_project)[-1]  # only get latest
+                    peer_review_password = generate_peer_review_password(id_publication=id_publication)
+                    notify_user_peer_review_password(id_user=session["id_user"],
+                                                     publication_info=current_info,
+                                                     peer_review_password=peer_review_password)
+                    notify_authors_peer_review(publication_info=current_info,
+                                               publishing_id_user=session["id_user"])
+                    flash(f"The project has been set to \"{publication_info['publication_type']}\"")
+                    return jsonify(response_json)
+                elif publication_info["publication_type"] == "update":
 
-            return_url = url_for('pscs.index')
-            response_json = {"url": return_url, "publish_success": 1, "success_message": ""}
-            return jsonify(response_json)
+                    return jsonify(response_json)
         else:
             # These only happen if the project changes while the user is trying to publish it, or sneaky user.
-            flash_msg = ""
+            flash_msg = []
             if not valid_pubtype:
-                flash_msg += f"Project can't be published as {publication_info['publication_type']} - "
+                flash_msg.append(f"Project can't be published as {publication_info['publication_type']}")
             if not valid_authors:
-                flash_msg += "Some of the authors are PSCS users that are not associated with the project. - "
+                flash_msg.append("Some of the authors are PSCS users that are not associated with the project.")
             if not valid_analyses:
-                flash_msg += "Some of the selected analyses can't be published. Ensure that they have been run first. - "
+                flash_msg.append("Some of the selected analyses can't be published. Ensure that they have been run first.")
             if not valid_data:
-                flash_msg += "Some of the selected data is not associated with the project. - "
-            flash_msg = flash_msg[:-3]
+                flash_msg.append("Some of the selected data is not associated with the project.")
+            flash_msg = " - ".join(flash_msg)
             flash(flash_msg)
             return_url = url_for('pscs.index')
             response_json = {"url": return_url, "publish_success": 0, "success_message": flash_msg}
@@ -700,19 +690,19 @@ def validate_publication_type(pubtype: str, id_project: str) -> bool:
     """Returns whether the project can be set to the specified publication type."""
     db = get_db()
     public_status = _get_project_publication_status(db, id_project)
-    valid_pubtypes = ["private", "peer review", "public", "update"]
+    valid_pubtypes = ["peer review", "public", "update"]
     if pubtype == public_status:
-        return False
+        return False  # not doing anything
     elif pubtype not in valid_pubtypes:
-        return False
+        return False  # bad string
     elif public_status == "private":
-        return True  # if it's private, any publication is fine
+        return True  # if it's private, any publication is fine (this one shouldn't happen)
     elif public_status == "peer review" and pubtype == "public":
         return True  # if it's under peer review, only 'public' is valid
     elif public_status == "public" and pubtype == "update":
         return True  # currently public, but is getting a new version
-    elif pubtype == "update":
-        return False  # no other updates are allowed
+    elif pubtype == "update" and public_status != "public":
+        return False  # only updates to public projects allowed
     else:
         # There is the rare circumstance where projects that are published or set for peer review need to be private
         # Users can do this only within the window specified in the data use agreement.
@@ -971,7 +961,8 @@ def _get_analyses(id_project):
 
 
 def prepare_publication(id_project: str,
-                        publication_info: dict) -> str:
+                        publication_info: dict,
+                        commit: bool = False) -> str:
     """
     Sets a project to peer review or public. Selected data, analyses, and results are placed behind a password prompt that does
     not require login.
@@ -981,6 +972,8 @@ def prepare_publication(id_project: str,
         ID of the project to be published.
     publication_info : dict
         Dict containing what from the project should be made available.
+    commit : bool
+        Whether to commit changes to database.
     Returns
     -------
     None
@@ -992,6 +985,14 @@ def prepare_publication(id_project: str,
         status = "public"
     else:
         status = publication_info["publication_type"]
+    # Get current status
+    current_publication = _get_publication_info(db, id_project)  # get latest
+    if current_publication is not None and len(current_publication) > 0 and current_publication[-1]["status"] == "peer review" and status == "public":
+        # Project is being moved from peer review to public
+        db.execute("UPDATE publications SET status = ? WHERE id_publication = ?", (status, current_publication[-1]["id_publication"]))
+        if commit:
+            db.commit()
+        return current_publication[-1]["id_publication"]
     # Generate publication ID
     id_publication = get_unique_value_for_field(db, "id_publication", "publications")
     db.execute("INSERT INTO publications (id_publication, id_project, title, description, status) "
@@ -1017,71 +1018,96 @@ def prepare_publication(id_project: str,
                    (id_publication, author["email"], author["position"]))
     # Make shortid
     _ = make_shortid(db, id_publication)
-
-    db.commit()
+    if commit:
+        db.commit()
     return id_publication
 
 
+def get_short_url(id_publication):
+    db = get_db()
+    id_pub_short = db.execute("SELECT id_publication_short FROM publications_shortid AS PS WHERE PS.id_publication = ?", (id_publication,)).fetchone()["id_publication_short"]
+    return build_full_url(url_for("publications_short.short_publication", id_publication_short=id_pub_short))
 
 
-def prepare_publication_old(id_project: str,
-                        publication_info: dict):
+def notify_user_peer_review_password(id_user: str,
+                                    publication_info: dict,
+                                    peer_review_password: str):
+    """Notifies the specified user that a publication has been set to peer review and gives them the password for submission."""
+    db = get_db()
+    user_email = db.execute("SELECT email FROM users_auth WHERE id_user = ?", (id_user,)).fetchone()["email"]
+    from pscs.templates.misc import peer_review_password_email
+    publication_url = build_full_url(url_for("publications.request_publication", id_publication=publication_info["id_publication"]))
+    publication_shorturl = get_short_url(publication_info["id_publication"])
+
+    peer_review_password_html = werkzeug.utils.escape(peer_review_password)
+
+    peer_email = peer_review_password_email.format(title=publication_info["title"],
+                                                   description=publication_info["description"],
+                                                   publication_url=publication_url,
+                                                   publication_shorturl=publication_shorturl,
+                                                   peer_review_password=peer_review_password_html)
+    send_email([user_email], "PSCS Project Set for Peer Review", body=peer_email)
+    return
+
+
+def notify_authors_peer_review(publication_info: dict,
+                               publishing_id_user: str):
+    """NOtifies authors associated with a publication that it has been set for peer review. The publishing author is
+    excluded since they should receive the notification email containing the password."""
+    emails = set(get_publication_author_emails(publication_info["id_publication"]))
+    db = get_db()
+    publishing_user_info = db.execute("SELECT name, name_user, email FROM users_auth WHERE id_user = ?", (publishing_id_user,)).fetchone()
+    emails = emails.difference(set([publishing_user_info['email']]))
+    if len(emails) == 0:
+        return  # if there is only one author
+    publication_url = build_full_url(url_for("publications.request_publication", id_publication=publication_info["id_publication"]))
+    publication_shorturl = get_short_url(publication_info["id_publication"])
+
+    from pscs.templates.misc import peerreview_notification
+    peer_email = peerreview_notification.format(title=publication_info["title"],
+                                                description=publication_info["description"],
+                                                publication_url=publication_url,
+                                                publication_shorturl=publication_shorturl,
+                                                publishing_user=publishing_user_info["name_user"],
+                                                publishing_name=publishing_user_info["name"])
+    send_email(emails, "PSCS Project Set for Peer Review", body=peer_email)
+    return
+
+
+def notify_all_authors_public(id_publication):
     """
-    Sets a project to peer review or public. Selected data, analyses, and results are placed behind a password prompt that does
-    not require login.
+    Publishes the specified project to be publicly viewable.
     Parameters
     ----------
-    id_project : str
-        ID of the project to be published.
-    publication_info : dict
-        Dict containing what from the project should be made available.
+    id_publication : str
+        ID of the associated publication.
     Returns
     -------
     None
     """
     db = get_db()
-    if publication_info["publication_type"] == "peer review":
-        peer, public = 1, 0
-    elif publication_info["publication_type"] == "public":
-        peer, public = 0, 1
-    elif publication_info["publication_type"] == "update":
-        peer, public = 0, 1
-    else:
-        raise ValueError(f"Invalid publication type: {publication_info['publication_type']}")
-    if publication_info["publication_type"] != "update":
-        # Flag project as peer/public
-        _set_project_status(id_project, is_peer_review=peer, is_published=public, project_version=0)
-    else:
-        # The project has already been published and is being updated.
-        # Create copy of line in DB
-        proj_data = dict(db.execute("SELECT * FROM projects"
-                                    " WHERE id_project = ? ORDER BY version DESC", (id_project,)).fetchall()[0])
-        cols = proj_data.keys()
-        entries = ', '.join(cols)
-        placeholders = ', '.join(['?'] * len(cols))
-        proj_data_values = [proj_data[c] for c in cols]
-        db.execute(f"INSERT INTO projects ({entries}) VALUES ({placeholders})", proj_data_values)
-
-    # Mark each datum
-    for id_data in publication_info["data"]:
-        _set_data_status(id_data, is_peer_review=peer, is_published=public)
-    # Mark each analysis
-    for id_analysis in publication_info["analyses"]:
-        _set_analysis_status(id_analysis, is_peer_review=peer, is_published=public)
-    # Mark each result
-    for id_an, results_list in publication_info["results"].items():
-        for id_result in results_list:
-            _set_result_status(id_result["id_result"], is_peer_review=peer, is_published=public)
-
-    # Store authors in order
-    pscs_authors, external_authors = _split_authlist(publication_info["authorlist"])
-    _store_pscs_authors(id_project, pscs_authors, drop_previous=True)
-    _store_external_authors(id_project, external_authors, drop_previous=True)
-
-    # We've now done everything we need to do to prepare. Pass to next step.
+    # Format notification email
+    from pscs.templates.misc import publication_notification
+    id_project = db.execute("SELECT id_project FROM publications WHERE id_publication = ?", (id_publication,)).fetchone()["id_project"]
+    publication_info = _get_publication_info(db, id_project)[-1]  # get last publication
+    publication_url = build_full_url(url_for("publications.request_publication", id_publication=id_publication))
+    publication_shorturl = get_short_url(id_publication=id_publication)
+    notif_email = publication_notification.format(title=publication_info["title"],
+                                                  publication_url=publication_url,
+                                                  publication_shorturl=publication_shorturl)
+    author_addresses = get_publication_author_emails(id_publication)
+    send_email(author_addresses, subject="PSCS Project Publication", body=notif_email)
     db.commit()
     return
 
+
+def generate_peer_review_password(id_publication: str):
+    peer_review_password = generate_password(length=32)
+    pass_hash = generate_password_hash(peer_review_password)
+    db = get_db()
+    db.execute("INSERT INTO publications_peer_review (id_publication, peer_password) VALUES(?,?)", (id_publication, pass_hash))
+    db.commit()
+    return peer_review_password
 
 def project_peer_review(id_project: str):
     """
@@ -1130,40 +1156,13 @@ def project_peer_review(id_project: str):
                                                    description=project_info["description"],
                                                    project_url=project_url,
                                                    peer_review_password=peer_review_password_html)
-    author_addresses = get_author_emails(id_project)
+    author_addresses = get_publication_author_emails(id_project)
     send_email(author_addresses, subject="PSCS Project Set for Peer Review", body=peer_email)
     db.commit()
     return
 
 
-def project_public(id_project, id_publication):
-    """
-    Publishes the specified project to be publicly viewable.
-    Parameters
-    ----------
-    id_project : str
-        ID of the project to be made public.
-    id_publication : str
-        ID of the associated publication.
-    Returns
-    -------
-    None
-    """
-    db = get_db()
-    # Remove hold, if any:
-    _set_hold(id_project, value=0)
-    # Remove peer review password, if any
-    _remove_peer_review_password(id_project)
-    from pscs.templates.misc import publication_notification
-    project_info = get_project_summary(db, id_project)
-    project_url = build_full_url(url_for("projects.public_project", id_project=id_project))
-    project_url_html = f"<a href='{project_url}'>{project_url}</a>"
-    notif_email = publication_notification.format(name_project=project_info["name_project"],
-                                                  project_url=project_url_html)
-    author_addresses = get_author_emails(id_publication)
-    send_email(author_addresses, subject="PSCS Project Publication", body=notif_email)
-    db.commit()
-    return
+
 
 
 def _remove_peer_review_password(id_project, commit=False):
@@ -1175,9 +1174,11 @@ def _remove_peer_review_password(id_project, commit=False):
     return
 
 
-def generate_password(length: int = 32) -> str:
-    """Generates a password"""
-    charset = string.digits + string.ascii_letters + string.punctuation
+def generate_password(length: int = 32,
+                      charset: str = None) -> str:
+    """Generates a password of the specified length. Defaults"""
+    if charset is None:
+        charset = string.digits + string.ascii_letters
     return ''.join(secrets.choice(charset) for _ in range(length))
 
 
@@ -1337,15 +1338,15 @@ def _store_external_authors(id_project: str, ext_authors: list, drop_previous: b
         db.commit()
 
 
-def _set_hold(id_project: str, value=1, commit=False):
+def _set_hold(id_publication: str, value=1, commit=False):
     """Notes that the project is being held (e.g., waiting for external users)."""
     db = get_db()
-    db.execute("UPDATE projects SET is_on_hold = ? WHERE id_project = ?", (value, id_project))
+    db.execute("UPDATE publications SET hold = ? WHERE id_publication = ?", (value, id_publication))
     if commit:
         db.commit()
 
 
-def get_author_emails(id_publication: str) -> list:
+def get_publication_author_emails(id_publication: str) -> list:
     """Returns the emails of authors associated with the specified project."""
     db = get_db()
     # Get PSCS users
@@ -1647,7 +1648,7 @@ def _get_project_management_info(db, id_project: str) -> dict:
 
 
 def _get_publication_info(db, id_project: str) -> list:
-    publications = db.execute("SELECT P.title, P.description, P.creation_time, P.id_publication,"
+    publications = db.execute("SELECT P.title, P.description, P.creation_time, P.id_publication, P.status, "
                               " PS.id_publication_short FROM publications AS P INNER JOIN "
                               "publications_shortid AS PS ON P.id_publication = PS.id_publication "
                               "WHERE P.id_project = ? "
