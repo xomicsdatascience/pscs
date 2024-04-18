@@ -12,6 +12,7 @@ from collections import defaultdict as dd
 import argparse
 from pscs.utils.file_metadata import get_file_type
 from typing import Union
+from os.path import join
 
 
 def check_for_submitted_jobs(db: sqlite3.Connection):
@@ -395,7 +396,9 @@ def main(db, env, debug=False):
             print_debug(c_job, debug)
             continue
         print_debug("fetching!", debug)
-        results_directory = Path(env["RESULTS_DIRECTORY"].format(id_project=job_info["id_project"], id_analysis=job_info["id_analysis"]))
+
+        results_directory = Path(join(env["INSTANCE_PATH"], "projects", "{id_project}", "results", "{id_analysis}").format(id_project=job_info["id_project"],
+                                                                                                                                id_analysis=job_info["id_analysis"]))
         results_directory.mkdir(exist_ok=True, parents=True)
         logs_directory = env["LOG_DIRECTORY"].format(id_project=job_info["id_project"], id_analysis=job_info["id_analysis"])
         fetch_data(env["REMOTE_COMPUTING"][c_job[0]], job_info["remote_results_directory"], results_directory, ssh_keypath=env["CRON_KEY"])
