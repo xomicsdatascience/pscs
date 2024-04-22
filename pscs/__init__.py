@@ -1,4 +1,4 @@
-__version__ = "0.6.9"
+__version__ = "0.6.10"
 
 from flask import Flask
 import os
