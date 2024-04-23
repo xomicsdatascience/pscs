@@ -318,6 +318,7 @@ function createPscsNode(idNum, img, nodeData){
         for(let idx=pageEl.coMove.length-1; idx>=0; idx--){
             pageEl.coMove[idx].remove();
         }
+        nodeIds = nodeIds.filter(id => id !== pageEl.nodeId);
         pageEl.remove();
     }
     function openPanel(){
