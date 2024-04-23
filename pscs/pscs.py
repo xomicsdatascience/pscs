@@ -273,12 +273,7 @@ def run_analysis():
         # This next section gets the relevant paths for input and output.
         # Instead, it should create the output paths (as needed), gather the input files, and trigger for them to be
         # sent out to OSG.
-        output_dir = current_app.config['RESULTS_DIRECTORY'].format(id_project=session['CURRENT_PROJECT'],
-                                                            id_analysis=pipeline_specs['id_analysis'])
-        pathlib.Path(output_dir).mkdir(exist_ok=True, parents=True)
-        log_dir = current_app.config["LOG_DIRECTORY"].format(id_project=session["CURRENT_PROJECT"],
-                                                             id_analysis=pipeline_specs["id_analysis"])
-        pathlib.Path(log_dir).mkdir(exist_ok=True, parents=True)
+
         file_ids = pipeline_specs['file_paths']
         file_info = dict()
         for node_id, file_id in file_ids.items():
@@ -288,12 +283,21 @@ def run_analysis():
             file_info[node_id]["id"] = file_id
 
         # Dispatch to OSP
-        dispatch(pipeline_json=pipeline_json,
-                 id_user=g.user['id_user'],
-                 file_info=file_info,
-                 id_project=id_project,
-                 id_analysis=id_analysis,
-                 resource='osp')
+        pscs_job_id = dispatch(pipeline_json=pipeline_json,
+                               id_user=g.user['id_user'],
+                               file_info=file_info,
+                               id_project=id_project,
+                               id_analysis=id_analysis,
+                               resource='osp')
+        output_dir = current_app.config['RESULTS_DIRECTORY'].format(id_project=session['CURRENT_PROJECT'],
+                                                                    id_analysis=pipeline_specs['id_analysis'],
+                                                                    id_job=pscs_job_id)
+        pathlib.Path(output_dir).mkdir(exist_ok=True, parents=True)
+        log_dir = current_app.config["LOG_DIRECTORY"].format(id_project=session["CURRENT_PROJECT"],
+                                                             id_analysis=pipeline_specs["id_analysis"],
+                                                             id_job=pscs_job_id)
+        pathlib.Path(log_dir).mkdir(exist_ok=True, parents=True)
+
         response_json = {"url": url_for('projects.project', id_project=session['CURRENT_PROJECT']),
                          "redirect": True}
         return jsonify(response_json)

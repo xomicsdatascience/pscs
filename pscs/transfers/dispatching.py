@@ -84,7 +84,7 @@ def dispatch(pipeline_json: str,
                    "(id_job, id_data, node_name) "
                    "VALUES (?, ?, ?)", (pscs_job_id, id_data, id_node))
     db.commit()
-    return
+    return pscs_job_id
 
 
 # 1 job(s) submitted to cluster 36045774
