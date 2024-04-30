@@ -4,13 +4,21 @@
 {% endblock %}
 
 
+
 {% block content %}
-<p id="textInstructions">Click on nodes in the panel to add them to the pipeline.<br>
-    Drag connections from the output of a node (blue) to the input (orange) to connect two nodes.<br>
-    Double-click on nodes to view or set their parameters.<br>
-    The "delete" key will remove the last-selected element, including connections between nodes.<br>
+<p id="textInstructions">
+    <h4 id="gettingStarted" onclick="toggleVisibility('instructionList'); toggleIcon('gettingStarted')" style="cursor: pointer;">-Getting started</h4>
+    <ol id="instructionList">
+        <li>Click on nodes in the panel to add them to the pipeline.</li>
+        <li>Load your data using a loading node (e.g., AnnDataOps/loaders/AnnDataLoader)</li>
+        <li>Drag connections from the output of a node (blue) to the input (orange) to connect two nodes.</li>
+        <li>Double-click on nodes to view or set their parameters.</li>
+        <li>The "delete" key will remove the last-selected element, including connections between nodes. The element is indicated by the green dot.</li>
+        <li>Validate your pipeline using the "Validate" button below the designer.</li>
+    </ol>
 </p>
 
+{#<span class="selectionMarker" id="selectionMarker" style="height: 50px; width: 50px; border-radius: 50%; background-color: #aaaa00; display: none; position: absolute; z-index: 1;"></span>#}
 <button id="sideToggle" class="sidebar-toggle" onclick="toggleSidebar()" style="height:100px">&rarr;</button>
 <script src="static/js/pipeline.js"></script>
 <script src="static/js/pipelineSidebar.js"></script>

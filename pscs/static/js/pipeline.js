@@ -9,6 +9,7 @@ let movingNode = false;
 const SEP = "-";  // separating different fields in id string
 const FIELDSEP = ".";  // separates data within a field (e.g. 5.2 for node 5, area 2)
 const NODE = "pscs";
+const NODECLASS="pscsNode";
 const CONNECTOR = "connector";
 const IMAP = "imagemap";
 const IAREA = "imagearea";
@@ -169,6 +170,7 @@ function createPscsNode(idNum, img, nodeData){
     let pageEl = document.createElement("img");
     pageEl.class = NODE;
     pageEl.classList.add(NODE);
+    pageEl.classList.add(NODECLASS);
     applyClassCSS(pageEl);
     let nodeId = null;
     // check if input ID is valid
@@ -226,7 +228,7 @@ function createPscsNode(idNum, img, nodeData){
     pageEl.imagemap = createImageMap(pageEl.id, numInput, numOutput);
     pageEl.useMap = "#" + pageEl.imagemap.id;
     // add element to page
-    pageEl.style.zIndex = "2";
+    pageEl.style.zIndex = "3";
     pageEl.style.left = "0px";
     pageEl.style.top = "0px";
     addElementToContainer(pageEl);
@@ -247,7 +249,15 @@ function createPscsNode(idNum, img, nodeData){
     // signals that the element has been clicked on and should follow the cursor
       event.preventDefault();
       event.target.style.cursor = "grabbing";
-      lastSelectedElement = event.target;  // for deletion
+      if(lastSelectedElement !== null) {
+          lastSelectedElement.coMove = lastSelectedElement.coMove.filter(el => el.id !== "selectionMarker");
+          document.getElementById("selectionMarker").remove();
+      }
+      lastSelectedElement = pageEl;  // for deletion
+        let selectionMarker = makeSelectionMarker();
+        alignElementCenterToOther(selectionMarker, pageEl);
+        lastSelectedElement.coMove.push(selectionMarker);
+
       startX = event.clientX;  // where mouse started
       startY = event.clientY; // where mouse started
       document.onmouseup = release;  // for when user releases mouse
@@ -324,6 +334,11 @@ function createPscsNode(idNum, img, nodeData){
             pageEl.coMove[idx].remove();
         }
         nodeIds = nodeIds.filter(id => id !== pageEl.nodeId);
+        lastSelectedElement = null;
+        let delMarker = document.getElementById("selectionMarker");
+        if(delMarker !== null){
+            delMarker.remove();
+        }
         pageEl.remove();
     }
     function openPanel(){
@@ -583,6 +598,7 @@ function createLabel(nodeEl, labelText, xPos=0, yPos=0){
     labelEl.style.top = yPos.toString() + "px";
     labelEl.style.position = "absolute";
     labelEl.onmousedown = nodeEl.onmousedown;
+    labelEl.style.zIndex = nodeEl.style.zIndex;
     // attach methods
     labelEl.move = moveElement;
     labelEl.del = del;
@@ -826,7 +842,17 @@ function createConnector(srcAreaId){
   connector.disconnect = disconnect;
   connector.moveSrc = moveSrc;
   connector.moveDst = moveDst;
-  connector.onmousedown = function(){lastSelectedElement = connector};
+  connector.coMove = [];
+  connector.onmousedown = function(){
+    if(lastSelectedElement !== null) {
+        lastSelectedElement.coMove = lastSelectedElement.coMove.filter(el => el.id !== "selectionMarker");
+        document.getElementById("selectionMarker").remove();
+      }
+      lastSelectedElement = connector;
+    let selectionMarker = makeSelectionMarker(20,20);
+    alignElementCenterToOther(selectionMarker, connector);
+      connector.coMove.push(selectionMarker);
+  };
   addElementToContainer(connector);
   return connector;
   function grab(event){
@@ -886,6 +912,10 @@ function createConnector(srcAreaId){
       // need to look at dstNode, srcNode and remove
       connector.disconnect();
       connector.remove();
+      let delMarker = document.getElementById("selectionMarker");
+      if(delMarker !== null){
+          delMarker.remove();
+      }
   }
 
   function disconnect(){
@@ -1698,4 +1728,48 @@ async function requestFiles(requestedFiles) {
                 pretendLink.click();
             });
         });
+}
+
+function toggleVisibility(elId){
+    el = document.getElementById(elId);
+    el.style.display = (el.style.display === "none") ? "block" : "none";
+    return
+}
+
+function toggleIcon(elId){
+    let el = document.getElementById(elId);
+    if(el.innerText.startsWith("-")){
+        el.innerText = el.innerText.replace("-", "+");
+    }
+    else if(el.innerText.startsWith("+")){
+        el.innerText = el.innerText.replace("+", "-");
+    }
+    return
+}
+
+
+function makeSelectionMarker(height=null, width=null){
+    let marker = document.createElement("span");
+    marker.classList.add("selectionMarker");
+    if(height !== null){
+        marker.style.height = height + "px";
+    }
+    if(width !== null){
+        marker.style.width = width + "px";
+    }
+    marker.id = "selectionMarker";
+    marker.move = moveElement;
+    marker.moveTo = moveElementToPos
+    addElementToContainer(marker);
+    return marker
+}
+
+function alignElementCenterToOther(el0, el1){
+    let srcRec = el0.getBoundingClientRect();
+    let targetRec = el1.getBoundingClientRect();
+    let targetCenterX = targetRec.left + targetRec.width/2;
+    let targetCenterY = targetRec.top + targetRec.height/2;
+    const [containerX, containerY] = getContainerOffset();
+    el0.style.left = (targetCenterX - srcRec.width/2-containerX) + "px";
+    el0.style.top = (targetCenterY - srcRec.height/2-containerY) + "px";
 }

@@ -40,12 +40,14 @@ wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | sud
 sudo add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
 sudo apt install -y --no-install-recommends r-base
 
+python3.11 -m pip install igraph
+python3.11 -m pip install leidenalg
+python3.11 -m pip install rpy2==3.5.12
 
 python3.11 -m pip install /pscs_api-latest-py3-none-any.whl
 python3.11 -m pip install /pscs_scanpy-latest-py3-none-any.whl
 python3.11 -m pip install /milopy-latest-py3-none-any.whl
 python3.11 -m pip install /pscs_milopy-latest-py3-none-any.whl
-python3.11 -m pip install rpy2
 R -e 'install.packages("BiocManager")'
 R -e 'BiocManager::install("edgeR")'
 R -e 'install.packages("statmod")'

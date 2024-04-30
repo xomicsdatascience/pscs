@@ -5,7 +5,7 @@
     <li>Number of new publications: {new_publications}</li>
     <li>Submitted jobs: {new_submitted_jobs}</li>
     <li>Data disk usage: {data_disk_usage_gb_used} GB / {data_disk_usage_gb_total} GB  -  {data_disk_usage_pct}% <span style="color: #990000; background-color: #222222;">{data_disk_warning}</span> </li>
-    <li>DB disk usage: {db_disk_usage_gb_used} GB / {db_disk_usage_gb_total} GB  -  {db_disk_usage_pct} <span style="color: #990000; background-color: #222222;">{db_disk_warning}</span></li>
+    <li>DB disk usage: {db_disk_usage_gb_used} GB / {db_disk_usage_gb_total} GB  -  {db_disk_usage_pct}% <span style="color: #990000; background-color: #222222;">{db_disk_warning}</span></li>
 </list>
 <p>The next update will be sent on {next_update}.<p>
 <p>- PSCS</p>
