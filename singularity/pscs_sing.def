@@ -6,6 +6,7 @@ pscs_api-latest-py3-none-any.whl /pscs_api-latest-py3-none-any.whl
 pscs_scanpy-latest-py3-none-any.whl /pscs_scanpy-latest-py3-none-any.whl
 pscs_milopy-latest-py3-none-any.whl /pscs_milopy-latest-py3-none-any.whl
 milopy-latest-py3-none-any.whl /milopy-latest-py3-none-any.whl
+pscs_ops-latest-py3-none-any.whl /pscs_ops-latest-py3-none-any.whl
 
 run_pscs_pipeline.py /run_pscs_pipeline.py
 
@@ -48,6 +49,7 @@ python3.11 -m pip install /pscs_api-latest-py3-none-any.whl
 python3.11 -m pip install /pscs_scanpy-latest-py3-none-any.whl
 python3.11 -m pip install /milopy-latest-py3-none-any.whl
 python3.11 -m pip install /pscs_milopy-latest-py3-none-any.whl
+python3.11 -m pip install /pscs_ops-latest-py3-none-any.whl
 R -e 'install.packages("BiocManager")'
 R -e 'BiocManager::install("edgeR")'
 R -e 'install.packages("statmod")'

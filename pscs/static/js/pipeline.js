@@ -350,7 +350,9 @@ function createPscsNode(idNum, img, nodeData){
         if (pageEl.params.length === 0){
             return;
         }
+        lastSelectedElement.coMove = lastSelectedElement.coMove.filter(el => el.id !== "selectionMarker");
         lastSelectedElement = null;  // prevent character deletion from user hitting 'delete'
+        delMarker();
         const panel = document.createElement("div");
         panel.class = PARAMPANEL;
         panel.id = formatId(PARAMPANEL, extractIdNums(pageEl.id)[0]);
@@ -1772,4 +1774,11 @@ function alignElementCenterToOther(el0, el1){
     const [containerX, containerY] = getContainerOffset();
     el0.style.left = (targetCenterX - srcRec.width/2-containerX) + "px";
     el0.style.top = (targetCenterY - srcRec.height/2-containerY) + "px";
+}
+
+function delMarker(){
+    let delMarker = document.getElementById("selectionMarker");
+    if(delMarker !== null){
+        delMarker.remove();
+    }
 }
