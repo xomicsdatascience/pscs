@@ -28,6 +28,7 @@ const NODE_HEIGHT = 60;  // height of image representing a node
 const XPUT_WIDTH = 20;  // size of input/output connections
 const IAREA_MARGIN = 10;  // number of pixels between adjacent input/outputs
 const DELKEY = 46;
+const MACDELKEY=8;
 
 const VERTICAL_POSITION_INITIAL = 200;  // initial vert position for new nodes (px)
 const HORIZONTAL_POSITION_INITIAL = 200;  // initial horizontal position for new nodes (px)
@@ -50,12 +51,16 @@ getNodeInfo();
 // document listeners
 document.addEventListener("keydown", kbshortcut);
 function kbshortcut(event){
-    if(event.keyCode === DELKEY) {
+    if(event.keyCode === DELKEY || event.keyCode === MACDELKEY) {
         // in case user is deleting something in a textbox:
         if(!(document.activeElement instanceof HTMLInputElement)) {
             if (lastSelectedElement != null) {
                 lastSelectedElement.del();
                 lastSelectedElement = null;
+            }
+            if (lastOpenPanel !== null){
+                lastOpenPanel.remove();
+                lastOpenPanel = null;
             }
         }
     }
