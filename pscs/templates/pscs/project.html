@@ -12,7 +12,7 @@
     let buttonRun = document.getElementById(buttonRunId);
     buttonRun.disabled = false;
     let analysis_nodes = {{analysis_nodes | tojson}}
-    createTable({{files | tojson}}, analysis_nodes[sel.value], buttonRunId='buttonRunId');
+    createTable({{files | tojson}}, analysis_nodes[sel.value], buttonRunId=buttonRunId);
   }
 </script>
 
