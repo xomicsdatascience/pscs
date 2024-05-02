@@ -4,7 +4,8 @@ from flask import (
 from markdown import markdown
 from werkzeug.utils import secure_filename
 from pscs.auth import login_required, is_logged_in
-from pscs.db import get_db, get_unique_value_for_field, check_user_permission
+from pscs.db import (get_db, get_unique_value_for_field, check_user_permission, check_analysis_published,
+                     check_data_published)
 from pscs.metadata.metadata import get_metadata
 import os
 from pscs.transfers.dispatching import dispatch, can_user_submit
@@ -266,9 +267,12 @@ def run_analysis():
             return_url = url_for('projects.project', id_project=session['CURRENT_PROJECT'])
             return jsonify({"url": return_url, "submit_status": reason, "submit_success": 0})
 
-        # TODO: need to confirm that current user can access this analysis
-        pipeline_json = db.execute('SELECT node_file FROM analysis WHERE id_analysis = ?',
-                                   (pipeline_specs['id_analysis'],)).fetchall()[0]['node_file']
+        if check_analysis_published(id_analysis) or check_user_permission("analysis_execute", 1, id_project):
+            pipeline_json = db.execute('SELECT node_file FROM analysis WHERE id_analysis = ?',
+                                       (pipeline_specs['id_analysis'],)).fetchall()[0]['node_file']
+        else:
+            flash("You do not have permission to run the requested analysis.")
+            return redirect(url_for("projects.project", id_project=id_project))
 
         # This next section gets the relevant paths for input and output.
         # Instead, it should create the output paths (as needed), gather the input files, and trigger for them to be
@@ -277,10 +281,14 @@ def run_analysis():
         file_ids = pipeline_specs['file_paths']
         file_info = dict()
         for node_id, file_id in file_ids.items():
-            buf = db.execute('SELECT file_path FROM data WHERE id_data = ?', (file_id,)).fetchall()[0]
-            file_info[node_id] = dict()
-            file_info[node_id]["file_path"] = buf["file_path"]
-            file_info[node_id]["id"] = file_id
+            if check_data_published(file_id) or check_user_permission("data_read", 1, id_project):
+                buf = db.execute('SELECT file_path FROM data WHERE id_data = ?', (file_id,)).fetchall()[0]
+                file_info[node_id] = dict()
+                file_info[node_id]["file_path"] = buf["file_path"]
+                file_info[node_id]["id"] = file_id
+            else:
+                flash("You do not have permission to use the some of the specified data.")
+                return redirect(url_for("projects.project", id_project=id_project))
 
         # Dispatch to OSP
         pscs_job_id = dispatch(pipeline_json=pipeline_json,

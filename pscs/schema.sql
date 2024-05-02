@@ -1,33 +1,3 @@
-DROP TABLE IF EXISTS results;
-
-DROP TABLE IF EXISTS analysis_author;
-DROP TABLE IF EXISTS analysis_inputs;
-DROP TABLE IF EXISTS analysis;
-
-DROP TABLE IF EXISTS projects_roles;
-DROP TABLE IF EXISTS projects;
-
-DROP TABLE IF EXISTS universities;
-DROP TABLE IF EXISTS university_domains;
-
-DROP TABLE IF EXISTS data_deletion;
-DROP TABLE IF EXISTS projects_deletion;
-DROP TABLE IF EXISTS projects_roles_deletion;
-DROP TABLE IF EXISTS results_deletion;
-DROP TABLE IF EXISTS analysis_deletion;
-DROP TABLE IF EXISTS analysis_author_deletion;
-DROP TABLE IF EXISTS analysis_inputs_deletion;
-DROP TABLE IF EXISTS posts;
-DROP TABLE IF EXISTS admin_user;
-DROP TABLE IF EXISTS submitted_jobs;
-DROP TABLE IF EXISTS submitted_jobs_deletion;
-DROP TABLE IF EXISTS submitted_data;
-DROP TABLE IF EXISTS submitted_data_deletion;
-
-DROP TABLE IF EXISTS data;
-DROP TABLE IF EXISTS users_affiliation;
-DROP TABLE IF EXISTS users_auth;
-
 PRAGMA foreign_keys = ON;
 
 CREATE TABLE users_auth (
@@ -514,3 +484,8 @@ CREATE TABLE publications_peer_review(
     peer_password TEXT NOT NULL,  -- password supplied to journal/reviewers
     FOREIGN KEY (id_publication) REFERENCES publications(id_publication) ON DELETE CASCADE
 );
+
+CREATE TABLE default_analysis(
+    id_analysis VARCHAR(36) PRIMARY KEY NOT NULL,
+    FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis)
+)

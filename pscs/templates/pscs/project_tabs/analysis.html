@@ -28,11 +28,21 @@
 </div>
 
 <h5>Run Analysis</h5>
-<select name="analysis" id="analysis" autocomplete="off" onchange="parseAndCreateTable(this);">
+<p>Project Analyses</p>
+<select name="analysis" id="analysis" autocomplete="off" onchange="parseAndCreateTable(this, buttonRunId='buttonRun');">
     <option value="default" selected disabled>Select analysis pipeline...</option>
     <!--    Go through each available analysis -->
     {% for a in analysis %}
         <option value="{{a['id_analysis']}}">{{a["analysis_name"]}}</option>
     {% endfor %}
 </select>
-<button onclick="executePipeline();" id="buttonRun" disabled="disabled">Run</button>
+<button onclick="executePipeline('analysis');" id="buttonRun" disabled="disabled">Run</button>
+
+<p title="These are analyses that have been implemented to work with most data.">Default Analyses</p>
+<select name="default_analysis" id="default_analysis" autocomplete="off" onchange="parseAndCreateTable(this, buttonRunId='buttonRunDefault');">
+    <option value="default" selected disabled>Select default analysis pipeline...</option>
+    {%  for a in default_analysis %}
+        <option value="{{ a['id_analysis']}}">{{ a["analysis_name"]}}</option>
+    {% endfor %}
+</select>
+<button onclick="executePipeline('default_analysis');" id="buttonRunDefault" disabled="disabled">Run</button>

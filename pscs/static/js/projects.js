@@ -9,7 +9,7 @@ const IDSEP = '-'
 
 
 lastTable = null;
-function createTable(projectFiles, analysisInputs){
+function createTable(projectFiles, analysisInputs, buttonRunId='buttonRun'){
   // Create dropdown for project files
   drop = createDataDropdown(projectFiles);
   if(lastTable != null){
@@ -32,7 +32,7 @@ function createTable(projectFiles, analysisInputs){
     dropClone.id = INPUTDROPDOWNPREFIX + IDSEP + inp.toString();
     td.appendChild(dropClone);
   }
-  buttonRun = document.getElementById('buttonRun');
+  buttonRun = document.getElementById(buttonRunId);
   buttonRun.parentNode.insertBefore(tbl, buttonRun.nextSibling);
 }
 
@@ -53,8 +53,8 @@ function createDataDropdown(files){
   return drop;
 }
 
-async function executePipeline(){
-  let selectAnalysis = document.getElementById('analysis');
+async function executePipeline(elId){
+  let selectAnalysis = document.getElementById(elId);
   let idAnalysis = selectAnalysis.value;
   if(idAnalysis === "default"){
     return

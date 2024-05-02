@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename, escape
 import email_validator
 from email_validator import EmailNotValidError
 from pscs.auth import login_required, is_logged_in
-from pscs.db import get_db, check_user_permission, check_analysis_published
+from pscs.db import get_db, check_user_permission, check_analysis_published, get_default_analysis
 from pscs.pscs import delete_data, get_unique_value_for_field, add_user_to_project
 from pscs.transfers.fetching import read_logs
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -1694,7 +1694,8 @@ def get_tab_info(id_project, tab):
                                    completed_jobs=jobs["completed_jobs"])
         elif tab == "analysis":
             analysis = _get_project_analysis_info(db, id_project)
-            return render_template("pscs/project_tabs/analysis.html", analysis=analysis)
+            default_analysis = get_default_analysis()
+            return render_template("pscs/project_tabs/analysis.html", analysis=analysis, default_analysis=default_analysis)
         elif tab == "results":
             results_info = _get_project_results_info(db, id_project)
             for r in results_info:

@@ -146,9 +146,28 @@ def check_user_permission(permission_name: str,
 def check_analysis_published(id_analysis: str) -> bool:
     """Checks whether the analysis has been made publicly available."""
     db = get_db()
+    # Check if default
+    if len(db.execute("SELECT id_analysis FROM default_analysis WHERE id_analysis = ?", (id_analysis,)).fetchall()) > 0:
+        return True
     analysis_info = db.execute("SELECT status FROM publications AS P "
                                "INNER JOIN publications_analysis AS PA on P.id_publication = A.id_publication "
                                "WHERE PA.id_analysis = ?", (id_analysis,)).fetchall()
     if analysis_info is None:
         return False
     return any([a["status"] == "public" for a in analysis_info])
+
+
+def check_data_published(id_data: str) -> bool:
+    """Checks whether the data has been made publicly available."""
+    db = get_db()
+    data_info = db.execute("SELECT status FROM publications AS P "
+                           "INNER JOIN publications_data AS PD on P.id_publication = PD.id_publication "
+                           "WHERE PD.id_data = ?", (id_data,)).fetchall()
+    if data_info is None:
+        return False
+    return any([d["status"] == "public" for d in data_info])
+
+def get_default_analysis() -> list:
+    db = get_db()
+    return db.execute("SELECT DA.id_analysis, A.analysis_name " 
+                      "FROM default_analysis as DA INNER JOIN analysis AS A ON DA.id_analysis = A.id_analysis").fetchall()

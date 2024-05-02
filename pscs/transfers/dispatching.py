@@ -15,7 +15,7 @@ def dispatch(pipeline_json: str,
              file_info: dict,
              id_project: str,
              id_analysis: str,
-             resource: str = 'osp'):
+             resource: str = 'osp') -> str:
     """
     Collects the relevant files and sends them to the relevant computational resource.
     Parameters
@@ -35,7 +35,8 @@ def dispatch(pipeline_json: str,
         Name of the resource that should be used.
     Returns
     -------
-    None
+    str
+        PSCS job ID.
     """
     file_ids = dict()
     file_paths = dict()

@@ -8,11 +8,11 @@
 
 <script src="/static/js/projects.js"></script>
 <script>
-  function parseAndCreateTable(sel){
-    let buttonRun = document.getElementById("buttonRun");
+  function parseAndCreateTable(sel, buttonRunId=null){
+    let buttonRun = document.getElementById(buttonRunId);
     buttonRun.disabled = false;
     let analysis_nodes = {{analysis_nodes | tojson}}
-    createTable({{files | tojson}}, analysis_nodes[sel.value]);
+    createTable({{files | tojson}}, analysis_nodes[sel.value], buttonRunId='buttonRunId');
   }
 </script>
 
