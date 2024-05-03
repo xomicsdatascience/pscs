@@ -497,6 +497,15 @@ def display_private_project(id_project):
             for inp in project_inputs_db:
                 project_inps[inp['node_id']] = inp['node_name']
             analysis_nodes[an['id_analysis']] = project_inps
+        default_analyses = get_default_analysis()
+        for an in default_analyses:
+            analyses[an["id_analysis"]] = an["analysis_name"]
+            input_nodes = db.execute("SELECT node_id, node_name FROM analysis_inputs WHERE id_analysis = ?", (an["id_analysis"],)).fetchall()
+            project_inps = {}
+            for inp in input_nodes:
+                project_inps[inp["node_id"]] = inp["node_name"]
+            analysis_nodes[an["id_analysis"]] = project_inps
+
         # Get files associated with project
         project_data = db.execute('SELECT id_data, file_name FROM data WHERE id_project = ?',
                                   (id_project,)).fetchall()
