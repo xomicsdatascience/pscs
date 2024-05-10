@@ -44,7 +44,11 @@ let PADDING_LEVEL = 10;  // sidebar padding
 let START_FONTSIZE = 20;  // sidebar fontsize for top-level module
 let DECREASE_STEP_FONTSIZE = 4;  // decrease fontsize by this amount for every nested module
 let MIN_FONTSIZE = 12;  // minimum font size for nested module
-
+// const ISTR = 'param[thing]';
+const PARAM_KEYWORD = 'param';
+const PARAM_REGEX = new RegExp(`${PARAM_KEYWORD}\\[([^\\]]+)\\]`);
+const PARAM_LISTSTRINGS = ["Collection", "Sequence", "list"];
+// const result = ISTR.match(regex);
 
 let nodeInfo = null;
 getNodeInfo();
@@ -189,6 +193,12 @@ function createPscsNode(idNum, img, nodeData){
     pageEl.procName = processName;
     pageEl.module = module;
 
+    pageEl._requirements = structuredClone(nodeData["requirements"]);
+    pageEl._effects = structuredClone(nodeData["effects"]);
+
+    pageEl.requirements = structuredClone(pageEl._requirements);
+    pageEl.effects = structuredClone(pageEl._effects);
+
     nodeIds.push(pageEl.id);  // add id to the list -- should probably remove this and use querySelectorAll instead
     pageEl.params = [];
     pageEl.important_parameters = [];
@@ -241,6 +251,7 @@ function createPscsNode(idNum, img, nodeData){
     pageEl.del = del;
     pageEl.ondblclick = openPanel;
     pageEl.setInvalid = setInvalid;
+    pageEl.resolveInteractions = resolveInteractions;
 
     // define methods
     let startX = 0;
@@ -251,11 +262,11 @@ function createPscsNode(idNum, img, nodeData){
       event.target.style.cursor = "grabbing";
       if(lastSelectedElement !== null) {
           lastSelectedElement.coMove = lastSelectedElement.coMove.filter(el => el.id !== "selectionMarker");
-          document.getElementById("selectionMarker").remove();
+          delMarker();
       }
       lastSelectedElement = pageEl;  // for deletion
         let selectionMarker = makeSelectionMarker();
-        alignElementCenterToOther(selectionMarker, pageEl);
+        alignElementCenterToOther(selectionMarker, pageEl, [-15,0]);
         lastSelectedElement.coMove.push(selectionMarker);
 
       startX = event.clientX;  // where mouse started
@@ -427,7 +438,6 @@ function createPscsNode(idNum, img, nodeData){
         tr = tbl.insertRow();
         td = tr.insertCell();
         let btn = document.createElement("button");
-        // btn.onclick = closePanel;
         btn.onclick = function(){closePanel(btn.panelId)};
         btn.panelId = panel.id;
         btn.innerHTML = "&times; Cancel"
@@ -447,9 +457,6 @@ function createPscsNode(idNum, img, nodeData){
             btn.innerHTML = "Shrink";
         }
         td.appendChild(btn);
-
-
-
         td = tr.insertCell();
         btn = document.createElement("button");
         btn.onclick = saveParams;
@@ -457,8 +464,6 @@ function createPscsNode(idNum, img, nodeData){
         btn.panelId = panel.id;
         btn.innerHTML = "&#10003; Save"
         td.appendChild(btn);
-
-
         panel.appendChild(tbl);
     }
 
@@ -528,7 +533,162 @@ function createPscsNode(idNum, img, nodeData){
         dot.style.transitionProperty = "opacity";
         dot.style.opacity = "100%";
     }
+
+    function resolveInteractions(){
+        // Resolves the parameterized interaction strings into strings with the node's values.
+        this.requirements = structuredClone(this._requirements);
+        this.effects = structuredClone(this._effects);
+        for(let metaInteraction of [this.requirements, this.effects]) {
+            for (let interaction of metaInteraction) {
+                for (let key in interaction) {
+                    if (interaction[key].length > 0) {
+                        // let req_replace = req[key];
+                        let interactionReplace = [];
+                        let resolvedString = [];
+                        for (let interactionValue of interaction[key]) {
+                            resolvedString = resolveString(interactionValue, this.paramsValues, this.paramsTypes);
+                            interactionReplace = interactionReplace.concat(resolvedString);
+                        }
+                        interaction[key] = interactionReplace;
+                    }
+                }
+            }
+        }
+        let reqRemove = [];
+        if(this.requirements.length > 1) {
+            for (let idx0 in this.requirements) {
+                let req0 = this.requirements[idx0];
+                for (let req1 of this.requirements.slice(idx0+1)) {
+                    let count0 = getInteractionCount(req0);
+                    let count1 = getInteractionCount(req1);
+                    let overlap = getInteractionOverlapCount(req0, req1);
+                    if(count0 === count1 && count0 === overlap){
+                        reqRemove.push(idx0);
+                    }
+                }
+            }
+        }
+        for(let idx of reqRemove.reverse()){
+            this.requirements.splice(idx, 1);
+        }
+    }
+
+    function resolveString(s, paramsValue, paramsTypes){
+        // Check for matching param string
+        let formattedStringArray = formatInteractionString(s, paramsValue, paramsTypes);
+        formattedStringArray = formattedStringArray.filter(el=>el!==null);
+        return formattedStringArray
+    }
+
+    pageEl.cumulativeEffect = cumulativeEffect;
+    function cumulativeEffect(firstCall=true){
+        // determine the effect up to this node
+        this.resolveInteractions();
+        let cumulEffect = [];
+        if(!firstCall){
+            cumulEffect = structuredClone(this.effects);
+        }
+        let toCombine = [];
+        for(let prev of getPrevNodes(this)){
+            toCombine = toCombine.concat(prev.cumulativeEffect(false));
+        }
+        let toReturn = [];
+        if(cumulEffect.length === 0){
+            toReturn = structuredClone(toCombine);
+        }
+        else if(toCombine.length === 0){
+            toReturn = structuredClone(cumulEffect);
+        }
+        else {
+            for (let cumul of cumulEffect) {
+                for (let comb of toCombine) {
+                    toReturn.push(combineInteraction(cumul, comb));
+                }
+            }
+        }
+        if(toReturn.length > 0) {
+            this.cumul = toReturn;
+        }
+        else{
+            this.cumul = [{"obs": [], "obsm": [], "obsp": [], "var": [], "varm": [], "var_names": [], "uns": [], "layers": []}]
+        }
+        return toReturn;
+    }
+    pageEl.evaluateReady = evaluateReady;
+    function evaluateReady(){
+        let unmetRequirements = [];
+        // Evaluates whether this node's requirements have been met by previous nodes.
+        for(let requirementSet of this.requirements){  // check each set in requirements
+            // Check whether all contents of this requirement is in one of the cumulative effects
+            let unmetReqSet = {};
+            let numUnmet = 0;
+            for(let key in requirementSet){
+                unmetReqSet[key] = [];
+                for(let req of requirementSet[key]){
+                    let isMet = false;
+                    for(let eff of this.cumul){
+                        if(eff[key].includes(req)){
+                            isMet = true;
+                            break
+                        }
+                    }
+                    if(!isMet){
+                        unmetReqSet[key].push(req);
+                        numUnmet += 1;
+                    }
+                }
+            }
+            if(numUnmet > 0) {
+                unmetRequirements.push(unmetReqSet);
+            }
+        }
+        this.unmetRequirements = unmetRequirements;
+        return this.unmetRequirements.length <= 0;
+    }
+
+    function combineInteraction(inter0, inter1){
+        let newInter = {};
+        for(let key in inter0){
+            newInter[key] = inter0[key].concat(inter1[key]);
+        }
+        return newInter;
+    }
+
     return pageEl;
+}
+
+function formatInteractionString(string, replacements, replacementTypes) {
+    // Takes a string that contains keyed values determined by PARAM_REGEX
+    let replacementArray = [];
+    //go through keys that are in the string
+    let parKey = string.match(PARAM_REGEX);
+    while (parKey !== null) {
+        let val = replacements[parKey[1]];
+        if (val === null || val.length === 0) {
+            return [null]
+        }
+        if(couldBeList(replacementTypes[parKey[1]])){
+            // split values into list
+            val = String(val).split(",").map(el=>el.trim());
+            for(let v of val){
+                let s = string.replace(parKey[0], v);
+                replacementArray = replacementArray.concat(formatInteractionString(s, replacements, replacementTypes));
+            }
+            return replacementArray;
+        }
+        string = string.replace(parKey[0], val)
+        parKey = string.match(PARAM_REGEX);
+    }
+    return [string];
+}
+
+function couldBeList(interactionString){
+        for(let p of PARAM_LISTSTRINGS){
+            if(interactionString.includes(p)){
+                return true;
+            }
+        }
+        return false;
 }
 
 function selectPackage(packageName, packageList){
@@ -851,7 +1011,7 @@ function createConnector(srcAreaId){
         document.getElementById("selectionMarker").remove();
       }
       lastSelectedElement = connector;
-    let selectionMarker = makeSelectionMarker(20,20);
+    let selectionMarker = makeSelectionMarker(10,10);
     alignElementCenterToOther(selectionMarker, connector);
       connector.coMove.push(selectionMarker);
   };
@@ -1472,12 +1632,13 @@ function makeSidebarNode(parentDiv, nodeInfo, depth){
     p.appendChild(img);
     parentDiv.appendChild(p);
 }
-
+let unwrappedNodes = [];
 function makeNestedSidebarModule(parentDiv, moduleInfo, depth){
     // adds the module to the sidebar; if the module has modules, adds those, too
     let top_div = addCollapsibleSection(parentDiv, moduleInfo["name"], depth);
     for(let n of moduleInfo["nodes"]){
         makeSidebarNode(top_div, n, depth+1);
+        unwrappedNodes.push(n);
     }
     for(let m of moduleInfo["modules"]) {
         makeNestedSidebarModule(top_div, m, depth+1);
@@ -1572,6 +1733,10 @@ function validatePipeline(labelId){
     }
     let allNodes = document.getElementsByClassName(NODE);
     let pipelineValid = true;
+    // Resolve parameters for all nodes.
+    for(let node of allNodes){node.resolveInteractions()}
+    for(let node of allNodes){node.cumulativeEffect()}
+
     for(let i=0; i<allNodes.length; i++){
         let [nodeIsValid, invalidReasons] = validateNode(allNodes[i]);
         if(!nodeIsValid){
@@ -1594,7 +1759,8 @@ function validateNode(nodeEl){
     let inputsConnected = areInputsConnected(nodeEl);
     let outputsConnected = areOutputsConnected(nodeEl);
     let uniquePortConnections = doPortsHaveOneConnection(nodeEl);
-    let isValid = (undefinedParams.length === 0) && inputsConnected && outputsConnected && uniquePortConnections;
+    let requirementsMet = nodeEl.evaluateReady();
+    let isValid = (undefinedParams.length === 0) && inputsConnected && outputsConnected && uniquePortConnections && requirementsMet;
     let invalidReasons = [];
     if(!isValid) {
         if (undefinedParams.length !== 0) {
@@ -1609,9 +1775,84 @@ function validateNode(nodeEl){
         if (!uniquePortConnections) {
             invalidReasons.push("Input ports have multiple connections.");
         }
+        if (!requirementsMet) {
+            invalidReasons.push(prepareMissingReqMessage(nodeEl.unmetRequirements[0]));
+        }
     }
     return [isValid, invalidReasons]
 }
+
+function prepareMissingReqMessage(missingReqs){
+    let msg = "The following fields are required by the node but are not produced by the pipeline. Either nodes " +
+        "are missing before this one or the fields must be present in the input data.\n"
+    for(let key in missingReqs){
+        if(missingReqs[key].length > 0){
+            msg += `${key}: ${missingReqs[key]}\n`
+        }
+    }
+    let recNodes = getNRecommendedEffectNodes(missingReqs, 3);
+    if(recNodes.length > 0) {
+        msg += "The following nodes might be helpful:\n"
+        for (let rn of recNodes) {
+            msg += `Under ${rn["module"]}: ${rn["name"]}\n`
+        }
+    }
+    return msg;
+}
+
+function getNRecommendedEffectNodes(reqs, n=3){
+    let effNodes = findEffectNode(reqs);
+    let recNodes = [];
+    let count = 0;
+    let idx = 0;
+    let exnodes = effNodes[idx];
+    while(count < n && idx < effNodes.length){
+        recNodes = recNodes.concat(exnodes.slice(0, n-count));
+        count = recNodes.length;
+        idx += 1;
+        exnodes = effNodes[idx];
+    }
+    return recNodes;
+}
+
+
+function findEffectNode(reqs){
+    let numMissingEffects = getInteractionCount(reqs);
+    let recommendedNodes = [];
+    for(let i=0; i<numMissingEffects; i++){recommendedNodes.push([]);}
+    for(let node of unwrappedNodes){
+        if(node.effects === undefined || node.effects === null || node.effects.length === 0){
+            continue
+        }
+        let overlap = getInteractionOverlapCount(reqs, node.effects[0]);
+        if(overlap === 0){
+            continue
+        }
+        recommendedNodes[numMissingEffects-overlap].push(node);
+    }
+    return recommendedNodes;
+}
+
+function getInteractionCount(interactions){
+    let count = 0;
+    for(let k in interactions){
+        count += interactions[k].length;
+    }
+    return count;
+}
+
+function getInteractionOverlapCount(inter0, inter1){
+    let overlapCounter = 0;
+    for(let k in inter0){
+        for(let val0 of inter0[k]) {
+            if (inter1[k].includes(val0)) {
+                overlapCounter += 1;
+            }
+        }
+    }
+    return overlapCounter;
+}
+
 
 function getUndefinedRequiredParameters(nodeEl){
     let undefinedParams = [];
@@ -1762,18 +2003,20 @@ function makeSelectionMarker(height=null, width=null){
     marker.id = "selectionMarker";
     marker.move = moveElement;
     marker.moveTo = moveElementToPos
+    marker.ondblclick = lastSelectedElement.ondblclick;
     addElementToContainer(marker);
     return marker
 }
 
-function alignElementCenterToOther(el0, el1){
+function alignElementCenterToOther(el0, el1, offset=null){
     let srcRec = el0.getBoundingClientRect();
     let targetRec = el1.getBoundingClientRect();
     let targetCenterX = targetRec.left + targetRec.width/2;
     let targetCenterY = targetRec.top + targetRec.height/2;
     const [containerX, containerY] = getContainerOffset();
-    el0.style.left = (targetCenterX - srcRec.width/2-containerX) + "px";
-    el0.style.top = (targetCenterY - srcRec.height/2-containerY) + "px";
+    if(offset === null){offset = [0,0]}
+    el0.style.left = (targetCenterX - srcRec.width/2-containerX+offset[0]) + "px";
+    el0.style.top = (targetCenterY - srcRec.height/2-containerY+offset[1]) + "px";
 }
 
 function delMarker(){
