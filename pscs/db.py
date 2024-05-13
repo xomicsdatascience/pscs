@@ -150,7 +150,7 @@ def check_analysis_published(id_analysis: str) -> bool:
     if len(db.execute("SELECT id_analysis FROM default_analysis WHERE id_analysis = ?", (id_analysis,)).fetchall()) > 0:
         return True
     analysis_info = db.execute("SELECT status FROM publications AS P "
-                               "INNER JOIN publications_analysis AS PA on P.id_publication = A.id_publication "
+                               "INNER JOIN publications_analysis AS PA on P.id_publication = PA.id_publication "
                                "WHERE PA.id_analysis = ?", (id_analysis,)).fetchall()
     if analysis_info is None:
         return False

@@ -250,7 +250,13 @@ def _get_publication_results(db, id_publication) -> list[dict]:
                         "WHERE PR.id_publication = ?", (id_publication,)).fetchall()
     if result is None:
         return []
-    return [dict(r) for r in result]
+    dresult = [dict(r) for r in result]
+    for d in dresult:
+        if d["file_path"].startswith(current_app.config["INSTANCE_PATH"]):
+            d["file_path"] = d["file_path"][len(current_app.config["INSTANCE_PATH"]):]
+        if not d["file_path"].startswith(os.sep):
+            d["file_path"] = os.sep + d["file_path"]
+    return dresult
 
 def set_session_key(session_key: str,
                     value):

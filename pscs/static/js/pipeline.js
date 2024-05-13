@@ -1269,9 +1269,11 @@ if (cls.length !== 0) {
 // Find the matching rule
 for (const sheet of document.styleSheets) {
     for (const r of sheet.cssRules){
-        let splitText = r.selectorText.replace(" ","").split(",");
-        if (splitText.includes("." + class_to_check)){
-            element.style = r.style.cssText;
+        if(r.selectorText !== undefined) {
+            let splitText = r.selectorText.replace(" ", "").split(",");
+            if (splitText.includes("." + class_to_check)) {
+                element.style = r.style.cssText;
+            }
         }
     }
   }

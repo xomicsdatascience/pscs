@@ -398,14 +398,14 @@ def results(filename, id_project, id_job, id_analysis):
     if is_logged_in() and check_user_permission("data_read", 1, id_project):
         return private_results(filename, id_project, id_analysis)
     db = get_db()
-    public_status = db.execute("SELECT is_published, is_peer_review "
-                               "FROM projects "
-                               "WHERE id_project = ?", (id_project,)).fetchone()
+    id_result = filename.split(os.path.extsep)[0]
+    public_status = db.execute("SELECT P.status FROM publications AS P INNER JOIN publications_results AS PR ON "
+                               "P.id_publication = PR.id_publication WHERE PR.id_result = ?", (id_result,)).fetchone()
     if public_status is None:
         return  # Problem
-    if public_status["is_published"]:
+    if public_status["status"] == "public":
         return public_results(filename, id_project, id_analysis)
-    elif public_status["is_peer_review"]:
+    elif public_status["status"] == "peer review":
         return review_results(filename, id_project, id_analysis)
 
 
