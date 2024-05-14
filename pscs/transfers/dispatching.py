@@ -393,11 +393,11 @@ def can_user_submit(id_user: str,
         return False
 
     # Has an identical job already been run?
-    previously_submitted = check_identical_submitted(id_project, id_analysis, file_info, db)
-    if previously_submitted:
-        if return_reason:
-            return False, "Identical job has already been submitted."
-        return False
+    # previously_submitted = check_identical_submitted(id_project, id_analysis, file_info, db)
+    # if previously_submitted:
+    #     if return_reason:
+    #         return False, "Identical job has already been submitted."
+    #     return False
     if return_reason:
         return True, ""
     else:
