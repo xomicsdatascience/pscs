@@ -1,4 +1,4 @@
-__version__ = "0.9.2"
+__version__ = "0.9.3"
 
 from flask import Flask
 import os
@@ -8,6 +8,10 @@ import shutil
 import click
 import sqlite3
 from pscs.extensions.limiter import limiter
+
+from werkzeug.wrappers import Response
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from werkzeug.serving import run_simple
 
 
 def create_app(test_config=None) -> Flask:
@@ -74,7 +78,6 @@ def create_app(test_config=None) -> Flask:
 
     app.add_url_rule('/upload/<name>', endpoint='pscs.download_file', build_only=True)
 
-    app.cli.add_command(update_flask_files)
     from . import db
     db.init_app(app)
 
@@ -115,14 +118,9 @@ def create_app(test_config=None) -> Flask:
 
     # Add IP-specific rate limiter
     limiter.init_app(app)
+    app = DispatcherMiddleware(app, {"/app": app})
+    run_simple("localhost", 5001, app)
     return app
-
-
-@click.command('update-flask')
-def update_flask_files():
-    # Placeholder. The static files are updated when the app is called from the command line. If you want to set up
-    # those files separately, move the relevant code here.
-    return
 
 
 def parse_env(env_file: str = '.env') -> dict:

@@ -1856,6 +1856,7 @@ def copy_pipeline(id_analysis, id_project_destination):
     db = get_db()
     pipeline = dict(db.execute("SELECT analysis_name, node_file, analysis_hash, is_validated, initial_pscs_version "
                                "FROM analysis WHERE id_analysis = ?", (id_analysis,)).fetchone())
+    pipeline_inputs = db.execute("SELECT node_id, node_name FROM analysis_inputs WHERE id_analysis = ?", (id_analysis,)).fetchall()
     # Get new id for analysis
     new_id = get_unique_value_for_field(db, "id_analysis", "analysis")
     node_file = pipeline["node_file"]
@@ -1869,6 +1870,10 @@ def copy_pipeline(id_analysis, id_project_destination):
                        "analysis_hash, is_validated, initial_pscs_version) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
                        (new_id, id_project_destination, pipeline["analysis_name"], new_node_file, new_node_file,
                         pipeline["analysis_hash"], pipeline["is_validated"], pipeline["initial_pscs_version"]))
+            for p_input in pipeline_inputs:
+                # Get new IDs, insert into analysis_inputs
+                id_input = get_unique_value_for_field(db, "id_input", "analysis_inputs")
+                db.execute("INSERT INTO analysis_inputs (id_input, id_analysis, node_id, node_name) VALUES (?,?,?,?)", (id_input, new_id, p_input["node_id"], p_input["node_name"]))
             db.commit()
         except Exception as e:
             # Clean up file if something went wrong.
