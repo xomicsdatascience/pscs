@@ -379,7 +379,6 @@ def main(db, env, debug=False):
     print_debug("checking resources", debug)
     for res in resource_set:
         print_debug(f"polling {res}", debug)
-        # job_dict = poll_resource(res, env["REMOTE_COMPUTING"][res])
         job_dict = poll_resource(res, env)
         print_debug(job_dict, debug)
         for job_id, job_status in job_dict.items():
@@ -420,7 +419,8 @@ def main(db, env, debug=False):
 def register_results(db: sqlite3.Connection,
                      id_project: str,
                      id_analysis: str,
-                     results_directory: Union[Path, str]):
+                     results_directory: Union[Path, str],
+                     interactive_tag = None):
     """Register the files in the results directory into the database."""
     if isinstance(results_directory, str):
         results_directory = Path(results_directory)
@@ -428,7 +428,13 @@ def register_results(db: sqlite3.Connection,
         # Get data to register file
         file_path = Path(os.path.join(results_directory, result))
         if not file_path.is_file():
-            continue
+            # Could be interactive result; check against valid tags
+            matching_tag = db.execute("SELECT interactive_tag FROM analysis_interactive_tags WHERE interactive_tag = ?", (result,)).fetchall()
+            if len(matching_tag) == 0:
+                continue
+            else:
+                # Register files in this directory
+                register_results(db, id_project, id_analysis, results_directory/result, interactive_tag=result)
         id_result = get_unique_value_for_field(db, field="id_result", table="results")
         file_name = file_path.name
         _, ext = os.path.splitext(file_path)
@@ -438,10 +444,16 @@ def register_results(db: sqlite3.Connection,
         result_type = get_file_type(result)
 
         # Insert into DB
-        db.execute("INSERT INTO results "
-                   "(id_result, id_project, id_analysis, file_path, file_name, result_type) "
-                   "VALUES (?,?,?,?,?,?) ",
-                   (id_result, id_project, id_analysis, str(new_path), file_name, result_type))
+        if interactive_tag is None:
+            db.execute("INSERT INTO results "
+                       "(id_result, id_project, id_analysis, file_path, file_name, result_type) "
+                       "VALUES (?,?,?,?,?,?) ",
+                       (id_result, id_project, id_analysis, str(new_path), file_name, result_type))
+        else:
+            db.execute("INSERT INTO results "
+                       "(id_result, id_project, id_analysis, file_path, file_name, result_type, is_interactive, interactive_tag) "
+                       "VALUES (?,?,?,?,?,?,?,?) ",
+                       (id_result, id_project, id_analysis, str(new_path), file_name, result_type, 1, interactive_tag))
     db.commit()
     return
 

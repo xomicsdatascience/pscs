@@ -156,10 +156,12 @@ CREATE TABLE results(
     description TEXT,  -- description of result
     title TEXT,
     is_interactive BIT NOT NULL DEFAULT 0,
+    interactive_tag VARCHAR(3),
     is_published BIT DEFAULT 0,
     is_peer_review BIT DEFAULT 0,
     FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE,
-    FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE
+    FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE,
+    FOREIGN KEY (interactive_tag) REFERENCES analysis_interactive_tags(interactive_tag)
 );
 
 CREATE TABLE results_deletion(
@@ -249,6 +251,10 @@ CREATE TABLE analysis_inputs(  -- specifies and describes which nodes of an anal
     node_id TEXT NOT NULL,  -- id of the node within the pipeline, not within DB
     node_name TEXT NOT NULL,  -- displayed name of the node
     FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE
+);
+
+CREATE TABLE analysis_interactive_tags(
+    interactive_tag VARCHAR(3) NOT NULL
 );
 
 CREATE TABLE analysis_inputs_deletion(  -- specifies and describes which nodes of an analysis are input

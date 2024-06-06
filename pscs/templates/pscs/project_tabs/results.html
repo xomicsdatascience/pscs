@@ -1,5 +1,26 @@
-<h4>Results</h4>
+
 <div>
+    {% if interactive_results | length > 0 %}
+        <h4>Interactive Results</h4>
+            {% for tag, results_list in interactive_results.items() %}
+                <b>Tag: {{ tag }}</b>
+                <table>
+                    <tr>
+                        <th>Result filename</th>
+                        <th>Analysis</th>
+                        <th>Publication Status</th>
+                    </tr>
+                {% for r in results_list %}
+                    <td>{{r["file_path"] | basename}}</td>
+                    <td>{{r["analysis_name"]}}</td>
+                    <td>{{r["publication_status"]}}</td>
+                    <td><button class="visualizer" onclick="startCXG('{{ r['id_result']}}', this)">Visualize</button></td>
+                {% endfor %}
+                </table>
+                <br>
+            {% endfor %}
+    {% endif %}
+<h4>Results</h4>
     <table>
         <tr>
             <th>Result filename</th>
@@ -11,7 +32,9 @@
                 <td>{{r["file_path"] | basename}}</td>
                 <td>{{r["analysis_name"]}}</td>
                 <td>{{r["publication_status"]}}</td>
-                <td><button onclick="displayResult('{{r["file_path"]}}')">Display</button></td>
+                {% if r["result_type"] == "image" %}
+                    <td><button onclick="displayResult('{{r["file_path"]}}')">Display</button></td>
+                {% endif %}
             </tr>
         {% endfor %}
     </table>

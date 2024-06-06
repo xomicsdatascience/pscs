@@ -1,6 +1,11 @@
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, url_for, session, current_app, jsonify
 )
+import flask
+from werkzeug.wrappers import Response
+from werkzeug.middleware.dispatcher import DispatcherMiddleware
+from werkzeug.serving import run_simple
+
 from markdown import markdown
 from werkzeug.utils import secure_filename
 from pscs.auth import login_required, is_logged_in
@@ -16,6 +21,10 @@ import hashlib
 import pathlib
 import sqlite3
 from warnings import warn
+import requests
+import time
+from flask_socketio import SocketIO
+from pscs import socketio
 
 bp = Blueprint("pscs", __name__)
 ALLOWED_EXTENSIONS = {'csv', 'tsv'}
@@ -36,6 +45,96 @@ def index():
         post["body"] = markdown(p["body"])
         posts_markdown.append(post)
     return render_template("pscs/index.html", posts=posts_markdown)
+
+
+@bp.route("/cellxgene/<id_result>")
+@login_required
+def visualize(id_result):
+    if "cxg" in session:
+        session["cxg"]["id_result"] = id_result
+    else:
+        session["cxg"] = {"id_result": id_result}
+    session.modified = True
+    start_cxg(id_result)
+    return render_template("pscs/cxg.html", id_result=id_result)
+
+
+@socketio.on("connect")
+def on_connect():
+    session["cxg"]["sid"] = request.sid
+    return
+
+
+@socketio.on("disconnect")
+def on_disconnect():
+    r = requests.post(current_app.config["CXG_URL"] + "/cxg/release_port", json={"id_user": session["id_user"]})
+    return
+
+
+def start_cxg(id_result):
+    db = get_db()
+    id_project = get_project_from_result(db, id_result)
+    if not check_user_permission("data_read", 1, id_project):
+        flash("You are not authorized to view that page.")
+        return redirect("/")
+    result_path = get_result_path_from_id(db, id_result)
+    resp = requests.post(current_app.config["CXG_URL"] + "/cxg/request_cxg_port", json={"id_user": session["id_user"]},
+                         headers={"Content-Type": "application/json"})
+    if not resp.json()["success"]:
+        flash(resp.json()["message"])
+        return redirect("/")
+    port = resp.json()["port"]
+    # Start CXG container:
+    _ = requests.post(current_app.config["CXG_URL"] + "/cxg/cellxgene",
+                      json={"id_user": session["id_user"], "filepath": result_path},
+                      headers={"Content-Type": "application/json"})
+    session["cxg"] = {"port": str(port), "start_time": time.time()}
+    session.modified = True
+    return
+
+@bp.route("/static/assets/<path:path>", methods=["GET"])
+def redirect_static(path):
+    print("Redirecting!")
+    return proxy(path="static/assets/" + path)
+
+@bp.route('/cxg/', defaults={'path': ''}, methods=["GET", "POST"])
+@bp.route('/cxg/<path:path>', methods=["GET", "POST"])
+@login_required
+def proxy(path):
+    print(f"path: {path}")
+    if "cxg" not in session:
+        flash("Result not correctly identified; please contact PSCS team to report the issue.")
+        return redirect("/")
+    if "port" not in session["cxg"].keys() or session["cxg"]["port"] is None:
+        r = requests.post(current_app["CXG_URL"] + "/cxg/get_cxg_port", json={"id_user": session["id_user"]})
+        port = r.json()["port"]
+        session["cxg"]["port"] = port
+        if port is None:
+            flash("Unable to start CellXGene instance.")
+            return redirect("/")
+    port = session["cxg"]["port"]
+    # if request.url == "/cxg/static/"
+    url_query = "?".join([path, request.query_string.decode()])
+    if url_query == "?":
+        url_query = ""
+    response = requests.get(f'http://localhost:{port}/{url_query}')
+    excluded_headers = ['content-encoding', 'content-length', 'transfer-encoding', 'connection']
+    headers = [(name, value) for (name, value) in
+               response.raw.headers.items() if name.lower() not in excluded_headers]
+    response = Response(response.content, response.status_code, headers)
+    return response
+
+
+def get_project_from_result(db, id_result):
+    print(f"id_result: {id_result}")
+    project = db.execute("SELECT id_project FROM results WHERE id_result = ?", (id_result,)).fetchone()
+    print(dict(project))
+    return project["id_project"]
+
+
+def get_result_path_from_id(db, id_result):
+    result = db.execute('SELECT file_path FROM results WHERE id_result = ?', (id_result,)).fetchone()
+    return result["file_path"]
 
 
 def allowed_file(filename):
@@ -396,9 +495,12 @@ def pipeline_designer():
 
         # Identify input nodes
         input_nodes = {}
-        for n in pipeline_summary['nodes']:
+        output_nodes = []
+        for n in pipeline_summary["nodes"]:
             if n["pscsType"] == "input":
-                input_nodes[n['nodeId']] = n['labelText']  # labelText is what is displayed to the user
+                input_nodes[n["nodeId"]] = n["labelText"]  # labelText is what is displayed to the user
+            elif n["pscsType"] == "output":
+                output_nodes.append({"id": n["nodeId"], "label": n["labelText"], "tag": n["interactive_tag"]})
 
         # Create new pipeline ID
         db = get_db()

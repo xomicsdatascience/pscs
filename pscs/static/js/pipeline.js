@@ -1474,8 +1474,14 @@ async function loadAnalysisFromId(id_analysis){
     }
     // Below this is aesthetics.
     // determine depth of each node
-    determineDepths();
+    // determineDepths();
     let nodeList = document.querySelectorAll("[id^=" + NODE + "]");
+    let inputNodes = []
+    nodeList.forEach(node => {
+        if(node.pscsType === "input"){inputNodes.push(node)};
+    })
+    determineDownstreamDepths(inputNodes);
+
     let maxDepth = 0;
     nodeList.forEach(el => {if(el.depth > maxDepth){maxDepth=el.depth}});
     // determine x position of each
@@ -1486,19 +1492,104 @@ async function loadAnalysisFromId(id_analysis){
     let node;
     for(let n in nodeObject){
         node = nodeObject[n];
+        if(node.depth === -1){continue}
         node.xpos = xposByDepth[node.depth];
         xposByDepth[node.depth]+=1;
     }
-
+    xposByDepth["-1"] = 0;
     // move nodes to position
     let xpos, ypos;
     for(let idx in nodeObject){
         node = nodeObject[idx];
+        if(node.depth === -1){continue}
         ypos = node.xpos * HORIZONTAL_SPACING + Math.random() * HORIZONTAL_JIGGLE;
         xpos = node.depth * VERTICAL_SPACING + Math.random() * VERTICAL_JIGGLE;
         node.moveAll(xpos, ypos);
     }
+    // last check; in case of disconnected sections
+    let disconnectedNodes = [];
+    for(node of nodeList){
+        if(node.depth === -1 && node.dstConnectors.length === 0){
+            disconnectedNodes.push(node);
+            break;
+        }
+    }
+    do {
+        determineDownstreamDepths(disconnectedNodes);
+        let branchNodes = disconnectedNodes.concat(getDownstreamNodes(disconnectedNodes));
+        let maxXpos = 0;
+        for(let idx in xposByDepth){
+            maxXpos = Math.max(maxXpos, xposByDepth[idx]);
+        }
+        branchNodes.forEach(el => {if(el.depth > maxDepth){maxDepth=el.depth}});
+        for(let idx = 0; idx<maxDepth; idx+=1){
+            xposByDepth[idx] = maxXpos;
+        }
+        for(let node of branchNodes) {
+            node.xpos = xposByDepth[node.depth];
+            xposByDepth[node.depth] += 1;
+            ypos = node.xpos * HORIZONTAL_SPACING + Math.random() * HORIZONTAL_JIGGLE;
+            xpos = node.depth * VERTICAL_SPACING + Math.random() * VERTICAL_JIGGLE;
+            node.moveAll(xpos, ypos);
+        }
+        disconnectedNodes = [];
+        for(node of nodeList){
+            if(node.depth === -1 && node.dstConnectors.length === 0){
+                disconnectedNodes.push(node);
+                break;
+            }
+        }
+    } while(disconnectedNodes.length !== 0);
+}
 
+function determineDownstreamDepths(inputNodeList){
+    // Given a list of nodes, determines the depths of nodes that are downstream from them.
+    // If any nodes are input nodes, set their depth to 0.
+    let nodesToCheck = [];
+    inputNodeList.forEach(pnode => {
+        if(pnode.pscsType === "input" || pnode.dstConnectors.length === 0){
+            pnode.depth = 0;
+            nodesToCheck = getNextNodes(pnode).concat(nodesToCheck);
+        }
+    })
+    let nodeCheck;
+    while(nodeCheck = nodesToCheck.pop()){
+        let prevDepth = maxDepthOfPrevNodes(nodeCheck);
+        if(prevDepth === -1){
+            // previous node is not correctly set
+            let prevNodes = getPrevNodes(nodeCheck);
+            nodesToCheck = nodesToCheck.concat(getDepthless(prevNodes));
+        }
+        else{
+            nodeCheck.depth = prevDepth + 1;
+            nodesToCheck = getNextNodes(nodeCheck).concat(nodesToCheck);
+        }
+    }
+}
+
+function getDownstreamNodes(nodeList){
+    let downstreamNodes = [];
+    let nodesToCheck = [...nodeList];
+    let checkNode;
+    while(checkNode = nodesToCheck.pop()){
+        let nextNodes = getNextNodes(checkNode);
+        // check to make sure nodes aren't already there
+        for(let nnode of nextNodes){
+            let skip = false;
+            for(let dnode of downstreamNodes){
+                if(nnode.id === dnode.id){
+                    skip = true;
+                    break;
+                }
+            }
+            if(skip){
+                continue;
+            }
+            downstreamNodes = downstreamNodes.concat([nnode]);
+            nodesToCheck = nodesToCheck.concat([nnode])
+        }
+    }
+    return downstreamNodes;
 }
 
 function determineDepths(){

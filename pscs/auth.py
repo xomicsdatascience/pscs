@@ -213,6 +213,8 @@ def user_login(username: str,
             session["is_admin"] = True
         else:
             session["is_admin"] = False
+        session.modified = True
+        session.permanent = True
     return error
 
 

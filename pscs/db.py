@@ -48,7 +48,9 @@ def init_db():
                    (id_univ, univ['name'], univ['alpha_two_code'], univ['state-province'], univ['country'], univ['web_pages'][0]))
         for dom in univ['domains']:
             db.execute('INSERT INTO university_domains VALUES (?,?)', (id_univ, dom))
-        db.commit()
+    for tag in current_app.config['INTERACTIVE_TAGS']:
+        db.execute('INSERT INTO analysis_interactive_tags (interactive_tag) VALUES (?)', (tag,))
+    db.commit()
     f.close()
     return
 

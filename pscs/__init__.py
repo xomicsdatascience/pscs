@@ -1,17 +1,14 @@
-__version__ = "0.9.3"
-
+__version__ = "0.10.0"
 from flask import Flask
 import os
 from os.path import join, dirname
 import json
 import shutil
-import click
 import sqlite3
 from pscs.extensions.limiter import limiter
-
-from werkzeug.wrappers import Response
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
-from werkzeug.serving import run_simple
+from flask_socketio import SocketIO
+socketio = SocketIO()
 
 
 def create_app(test_config=None) -> Flask:
@@ -118,8 +115,8 @@ def create_app(test_config=None) -> Flask:
 
     # Add IP-specific rate limiter
     limiter.init_app(app)
-    app = DispatcherMiddleware(app, {"/app": app})
-    run_simple("localhost", 5001, app)
+    app.wsgi_app = DispatcherMiddleware(app.wsgi_app, {})
+    socketio.init_app(app)
     return app
 
 

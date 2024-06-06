@@ -1636,7 +1636,7 @@ def _get_project_jobs_info(db, id_project: str) -> (dict, dict):
 
 def _get_project_results_info(db, id_project: str) -> list:
     """Returns details about results associated with the project"""
-    results = db.execute("SELECT R.file_path, A.analysis_name, R.is_published, R.is_peer_review "
+    results = db.execute("SELECT R.file_path, A.analysis_name, R.is_published, R.is_peer_review, R.result_type, R.is_interactive, R.interactive_tag, R.id_result "
                          "FROM results AS R INNER JOIN analysis AS A ON R.id_analysis = A.id_analysis "
                          "WHERE R.id_project = ?", (id_project,)).fetchall()
     info = [dict(r) for r in results]
@@ -1707,10 +1707,13 @@ def get_tab_info(id_project, tab):
             return render_template("pscs/project_tabs/analysis.html", analysis=analysis, default_analysis=default_analysis)
         elif tab == "results":
             results_info = _get_project_results_info(db, id_project)
+            interactive_results_info = dd(list)
             for r in results_info:
                 r["file_path"] = r["file_path"][len(current_app.config["INSTANCE_PATH"]):]
+                if r["is_interactive"]:
+                    interactive_results_info[r["interactive_tag"]].append(r)
             analysis = _get_project_analysis_info(db, id_project)
-            return render_template("pscs/project_tabs/results.html", results=results_info, analysis=analysis)
+            return render_template("pscs/project_tabs/results.html", results=results_info, analysis=analysis, interactive_results=interactive_results_info)
         elif tab == "project_management":
             project_info = _get_project_management_info(db, id_project)
             publication_info = _get_publication_info(db, id_project)
