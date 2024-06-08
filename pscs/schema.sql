@@ -161,7 +161,6 @@ CREATE TABLE results(
     is_peer_review BIT DEFAULT 0,
     FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE,
     FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE,
-    FOREIGN KEY (interactive_tag) REFERENCES analysis_interactive_tags(interactive_tag)
 );
 
 CREATE TABLE results_deletion(
