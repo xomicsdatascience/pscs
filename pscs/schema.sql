@@ -156,11 +156,11 @@ CREATE TABLE results(
     description TEXT,  -- description of result
     title TEXT,
     is_interactive BIT NOT NULL DEFAULT 0,
-    interactive_tag VARCHAR(3),
+    interactive_tag VARCHAR(3) DEFAULT NULL,
     is_published BIT DEFAULT 0,
     is_peer_review BIT DEFAULT 0,
     FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE,
-    FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE,
+    FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE
 );
 
 CREATE TABLE results_deletion(

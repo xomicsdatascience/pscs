@@ -408,11 +408,11 @@ def main(db, env, debug=False):
         fetch_logs(env["REMOTE_COMPUTING"][c_job[0]], id_job=job_info["id_job"], ssh_keypath=env["CRON_KEY"],
                    local_results_dir=str(logs_directory))
         # register completion
-        update_db_job_complete(db, c_job[0], job_info["id_job"], logs_directory)
         register_results(db,
                          id_project=job_info["id_project"],
                          id_analysis=job_info["id_analysis"],
                          results_directory=results_directory)
+        update_db_job_complete(db, c_job[0], job_info["id_job"], logs_directory)
     return
 
 
@@ -435,6 +435,7 @@ def register_results(db: sqlite3.Connection,
             else:
                 # Register files in this directory
                 register_results(db, id_project, id_analysis, results_directory/result, interactive_tag=result)
+                continue
         id_result = get_unique_value_for_field(db, field="id_result", table="results")
         file_name = file_path.name
         _, ext = os.path.splitext(file_path)

@@ -6,9 +6,15 @@
 <script type="text/javascript" charset="utf-8">
     let socket = io();
 </script>
-    <script>
+<script>
     document.body.style.cursor = "default";
+</script>
+    <script>
+        window.addEventListener("beforeunload", function(){
+            socket.close();
+        });
     </script>
+
 {% endblock %}
 
 {% block content %}

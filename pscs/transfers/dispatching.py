@@ -53,6 +53,12 @@ def dispatch(pipeline_json: str,
     remote_results = join(remote_proj_dir, 'results', pscs_job_id)
     remote_mkdir(remote_dir=remote_results, resource=resource)
 
+    tags = db.execute("SELECT interactive_tag FROM analysis_interactive_tags").fetchall()
+    tags = [tag["interactive_tag"] for tag in tags]
+    for tag in tags:
+        remote_tag_dir = join(remote_results, tag)
+        remote_mkdir(remote_dir=remote_tag_dir, resource=resource)
+
     # Transfer files
     transfer_file(pipeline_json, remote_dir=remote_proj_dir, resource=resource)
     transfer_files(local_files=list(file_paths.values()), remote_dir=remote_proj_dir, resource=resource)

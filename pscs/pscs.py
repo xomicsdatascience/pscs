@@ -122,6 +122,7 @@ def proxy(path):
     headers = [(name, value) for (name, value) in
                response.raw.headers.items() if name.lower() not in excluded_headers]
     response = Response(response.content, response.status_code, headers)
+    response.headers.add("Access-Control-Allow-Origin", "*")
     return response
 
 
@@ -499,8 +500,6 @@ def pipeline_designer():
         for n in pipeline_summary["nodes"]:
             if n["pscsType"] == "input":
                 input_nodes[n["nodeId"]] = n["labelText"]  # labelText is what is displayed to the user
-            elif n["pscsType"] == "output":
-                output_nodes.append({"id": n["nodeId"], "label": n["labelText"], "tag": n["interactive_tag"]})
 
         # Create new pipeline ID
         db = get_db()
