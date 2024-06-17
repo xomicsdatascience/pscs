@@ -1,4 +1,4 @@
-__version__ = "0.10.2"
+__version__ = "0.11.1"
 from flask import Flask
 import os
 from os.path import join, dirname
@@ -8,7 +8,7 @@ import sqlite3
 from pscs.extensions.limiter import limiter
 from werkzeug.middleware.dispatcher import DispatcherMiddleware
 from flask_socketio import SocketIO
-socketio = SocketIO()
+socketio = SocketIO(cors_allowed_origins="*")
 
 
 def create_app(test_config=None) -> Flask:

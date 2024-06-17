@@ -101,7 +101,6 @@ def redirect_static(path):
 @bp.route('/cxg/<path:path>', methods=["GET", "POST"])
 @login_required
 def proxy(path):
-    print(f"path: {path}")
     if "cxg" not in session:
         flash("Result not correctly identified; please contact PSCS team to report the issue.")
         return redirect("/")
@@ -123,13 +122,12 @@ def proxy(path):
                response.raw.headers.items() if name.lower() not in excluded_headers]
     response = Response(response.content, response.status_code, headers)
     response.headers.add("Access-Control-Allow-Origin", "*")
+    response.headers.add("Access-Control-Allow-Credentials", "true")
     return response
 
 
 def get_project_from_result(db, id_result):
-    print(f"id_result: {id_result}")
     project = db.execute("SELECT id_project FROM results WHERE id_result = ?", (id_result,)).fetchone()
-    print(dict(project))
     return project["id_project"]
 
 
