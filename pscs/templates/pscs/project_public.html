@@ -33,7 +33,9 @@
 {% for an in project_summary["analysis"] %}
   <h5>Results for Analysis: {{an["analysis_name"]}}</h5>
     {% for r in project_summary["results"][an["id_analysis"]] %}
-      <img src="{{ r['file_path'] }}">
+        {% if r["result_type"] == "image" %}
+            <img src="{{ r['file_path'] }}">
+        {% endif %}
     {% endfor %}
 {% endfor %}
 

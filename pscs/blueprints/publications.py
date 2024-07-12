@@ -247,7 +247,7 @@ def _get_publication_analysis(db, id_publication) -> list[dict]:
 def _get_publication_results(db, id_publication) -> list[dict]:
     """Gets the id, analysis, result type, title, description, and interactivity of results associated with
     the publication."""
-    result = db.execute("SELECT R.id_result, R.id_analysis, R.description, R.title, R.is_interactive, R.file_path FROM "
+    result = db.execute("SELECT R.id_result, R.id_analysis, R.description, R.title, R.is_interactive, R.file_path, R.file_name, R.result_type FROM "
                         "publications_results AS PR INNER JOIN results AS R ON R.id_result = PR.id_result "
                         "WHERE PR.id_publication = ?", (id_publication,)).fetchall()
     if result is None:

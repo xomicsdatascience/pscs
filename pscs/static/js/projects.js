@@ -454,28 +454,6 @@ async function startCXG(id_result, el) {
     document.body.style.cursor = "progress";
     document.documentElement.style.cursor = "progress"
     el.style.cursor = "progress";
-    console.log(id_result);
     window.location.href = "/cellxgene/" + id_result;
     return
-    let result_info = {"id_result": id_result};
-    let response = await fetch("/cxg/", {
-        method: "POST",
-        headers: {
-            "Accept": "application/json",
-            "Content-Type": "application/json"
-        },
-        body: JSON.stringify(result_info)
-    })
-        .then(response => {
-            document.body.style.cursor = "default";
-            el.style.cursor = "default";
-            window.location.href = "/cxg/"
-        })
-        .catch(error =>{
-            console.error(error);
-            document.body.style.cursor = "default";
-            el.style.cursor = "default";
-        })
-
-
 }
