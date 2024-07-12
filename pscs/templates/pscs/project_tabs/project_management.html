@@ -43,4 +43,19 @@
 <div>
     <input type="text" id="inputRename" placeholder="New project name" style="display: inline-block"><button onclick="renameProject();">Rename project</button>
 </div>
-Delete project: <button onclick="deleteProject('{{project_name}}');" style="color: rgb(150, 20, 20);">Delete project</button>
+<div>
+    <h5>Associated Publications:</h5>
+    <p>Link the publication with this project using its DOI:</p>
+    <input type="text" id="doi_link" placeholder="DOI for paper: 10.x.x.x/123"><button onclick="linkPapers();" id="btn_link_paper">Link paper</button><br>
+    <label for="doi_link" id="doi_warning" hidden>Invalid link format.</label>
+
+    <p>Currently-associated papers:</p>
+
+    {% for paper in project_info["papers"] %}
+        <a title="Remove paper" onclick="removePaper('{{ paper['doi'] }}')" style="cursor: pointer">&times</a> <a href="{{ paper["url"] }}"><b>{{ paper["title"] }}</b>.</a> {{ paper["year"] }}. {{ paper["author_str"] }}<br>
+    {% endfor %}
+</div>
+<div>
+    <h5>Project deletion</h5>
+    Delete project: <button onclick="deleteProject('{{project_name}}');" style="color: rgb(150, 20, 20);">Delete project</button>
+</div>

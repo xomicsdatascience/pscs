@@ -29,6 +29,9 @@ from typing import Collection, Optional
 import zipfile
 import tempfile
 from pscs.extensions.limiter import limiter
+import requests
+import time
+from pybtex.database.input import bibtex
 
 
 bp = Blueprint("projects", __name__, url_prefix="/project")
@@ -1488,7 +1491,7 @@ def proceed_if_possible(id_project: str):
     if "peer review" in pub_type:
         project_peer_review(id_project)
     elif "public" in pub_type:
-        project_public(id_project)
+        project_publish(db, id_project)
     return True
 
 
@@ -1655,8 +1658,10 @@ def _get_project_management_info(db, id_project: str) -> dict:
     users = db.execute("SELECT PR.role, U.name_user "
                        "FROM projects_roles AS PR INNER JOIN users_auth as U ON PR.id_user = U.id_user "
                        "WHERE PR.id_project = ?", (id_project,)).fetchall()
+    papers = db.execute("SELECT doi, url, title, year, author_str FROM project_papers WHERE id_project = ?", (id_project,)).fetchall()
     project_info = {"users": users}
     project_info["publication_status"] = _get_project_publication_status(db, id_project)
+    project_info["papers"] = papers
     return project_info
 
 
@@ -1920,3 +1925,89 @@ def make_shortid(db: sqlite3.Connection,
             db.commit()
             return short_id
     raise IOError(f"Unable to create short ID for publication {id_publication}")
+
+@bp.route("/<id_project>/link_papers", methods=["POST"])
+def link_papers(id_project):
+    """Processes a request to link papers to a project. Papers should be identified by their DOI. An http GET request
+    is used to retrieve relevant info."""
+    if request.method == "POST":
+        # check permission
+        if not check_user_permission("project_management", 1, id_project):
+            return jsonify({"status": "error", "msg": "You do not have permission to link papers."}), 403
+        doi_list = request.json["doi"]
+        if len(doi_list) > 10:
+            # Too many
+            return jsonify({"status": "error", "msg": "Too many DOI values."}), 422
+        # validate doi in doi_list
+        for doi in doi_list:
+            # Validate; if all are valid, then ping doi.org
+            if not validate_doi(doi):
+                return jsonify({"status": "error", "msg": "Invalid DOI.", "doi": doi}), 422
+        # Ping DOI
+        url_list = ["https://doi.org/" + doi for doi in doi_list]
+        db = get_db()
+        for url, doi in zip(url_list, doi_list):
+            req = requests.post(url, headers={"Accept": "application/x-bibtex"})
+            if req.status_code != 200:
+                return jsonify({"status": "error", "msg": "Unable to get DOI: " + doi})
+            req_content = req.content.decode("utf-8")
+            bibtex_parser = bibtex.Parser()
+            data = bibtex_parser.parse_string(req_content)
+            for id_bib in data.entries:
+                fields = data.entries[id_bib].fields
+                persons = data.entries[id_bib].persons["author"]
+                num_authors = len(persons)
+                author_list = []
+                for author in persons[:3]:
+                    firsts = "".join([f[0].upper() + ". " for f in author.first_names])
+                    middles = "".join([m[0].upper() + ". " for m in author.middle_names])
+                    lasts = " ".join(author.last_names)
+                    name_str = " ".join([firsts, middles, lasts]) if len(middles) > 0 else " ".join([firsts, lasts])
+                    author_list.append(name_str)
+                author_str = ", ".join(author_list)
+                # there should be only one entry; ignore if there are multiple
+                break
+            try:
+                db.execute("INSERT INTO project_papers (id_project, doi, url, title, year, author_str, num_authors) VALUES (?,?,?,?,?,?,?)",
+                           (id_project, escape(doi), url, escape(fields["title"]), escape(fields["year"]), escape(author_str), num_authors))
+            except sqlite3.IntegrityError:
+                pass
+            if len(url_list) > 1:
+                time.sleep(0.05)  # avoid spamming the server
+        db.commit()
+        return jsonify({"status": "success", "msg": ""}), 200
+
+
+def validate_doi(doi: str):
+    """Checks whether the input string is a valid DOI."""
+    # Format should be 123123/XYZ456; 10.XXX/12213 is valid, and alphabetical chars can appear in the second part
+    if "/" not in doi:
+        return False
+    if doi.startswith("http"):
+        return False
+    doi_split = doi.split("/")
+    if len(doi_split) != 2:
+        return False
+    if not doi_split[0].replace(".", "").isnumeric():
+        return False
+
+    if "." in doi:
+        f = open(join(current_app.config["STATIC_DIRECTORY"], "tlds.txt"), "r")
+        tlds = f.read().splitlines()
+        for tld in tlds:
+            if tld in doi:
+                return False
+    return True
+
+
+@bp.route("/<id_project>/remove_paper", methods=["POST"])
+def remove_paper(id_project):
+    if request.method == "POST":
+        if not check_user_permission("project_management", 1, id_project):
+            return jsonify({"status": "error", "msg": "You do not have permission to modify this project"}), 403
+        print(request.json)
+        doi = request.json["doi"]
+        db = get_db()
+        db.execute("DELETE FROM project_papers WHERE id_project = ? AND doi = ?", (id_project, doi))
+        db.commit()
+        return jsonify({"status": "success", "msg": ""}), 200

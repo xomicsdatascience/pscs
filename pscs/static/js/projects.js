@@ -181,6 +181,71 @@ function renameProject() {
     }
 }
 
+async function linkPapers(){
+    // Hide warning
+    document.getElementById("doi_warning").hidden = true;
+    // Get list of DOI, separate by comma
+    let doiList = document.getElementById("doi_link").value.replace("/\s/g", "").split(",");
+
+    let tldList = [".com", ".net", ".org", ".gov"];
+    for (let idx=0; idx<doiList.length; idx++){
+        let doi = doiList[idx];
+        // Remove leading https://X.doi.org, if present
+        let doiIdx = doi.indexOf("doi.org/");
+        if(doiIdx !== -1){
+            doiList[idx] = doi.slice(doiIdx + "doi.org/".length, doi.length)
+            doi = doiList[idx];
+        }
+        if (doi.indexOf("/") === -1){
+            doiLinkWarning(doi);
+            return
+        }
+        for(let tld of tldList){
+            if(doi.indexOf(tld) !== -1){
+                // bad link; don't proceed
+                doiLinkWarning(doi);
+                return
+            }
+        }
+    }
+    // send info for linking
+    document.body.style.cursor = "progress";
+    document.getElementById("btn_link_paper").style.cursor = "progress";
+    await fetch(window.location.href + "/link_papers", {
+        method: "POST",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify({"doi": doiList})
+    })
+        .then(resp => getTabInfo("project_management"))
+        .finally(resp => {
+            document.body.style.cursor = "default";
+            document.getElementById("btn_link_paper").style.cursor = "default";})
+}
+
+async function removePaper(doi){
+    document.body.style.cursor = "progress";
+    await fetch(window.location.href + "/remove_paper", {
+            method: "POST",
+            headers: {
+                "Accept": "application/json",
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify({"doi": doi})
+        })
+            .then(resp => getTabInfo("project_management"))
+            .finally(resp => {
+                document.body.style.cursor = "default";})
+    }
+function doiLinkWarning(doi){
+    let doiEl = document.getElementById("doi_warning");
+    doiEl.value = "Invalid DOI format: " + doi;
+    doiEl.hidden = false;
+    return
+}
+
 function deleteProject(projectName) {
     confirmationText = "Delete project " + projectName + "?"
     if (confirm(confirmationText)) {

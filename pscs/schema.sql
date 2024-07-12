@@ -420,6 +420,18 @@ CREATE TABLE publications(
     hold BOOLEAN DEFAULT FALSE,
     FOREIGN KEY (id_project) REFERENCES projects(id_project));
 
+CREATE TABLE project_papers(
+    id_project VARCHAR(36) NOT NULL,
+    doi VARCHAR(100) NOT NULL,
+    url VARCHAR(200),
+    title VARCHAR(200),
+    year VARCHAR(5),
+    author_str VARCHAR(200),
+    num_authors INTEGER DEFAULT 0,
+    FOREIGN KEY (id_project) REFERENCES projects(id_project),
+    CONSTRAINT project_key PRIMARY KEY(id_project, doi)
+);
+
 CREATE TABLE publications_shortid(
     id_publication VARCHAR(36) UNIQUE NOT NULL,
     id_publication_short VARCHAR(5) UNIQUE NOT NULL,

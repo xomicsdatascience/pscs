@@ -21,6 +21,12 @@
 {% for a in project_summary["authors"][1:] %}
   , {{a["name"]}}<sup title="{{project_summary['affiliations'][loop.index0+1]}}">{{loop.index0+2}}</sup>
 {% endfor %}
+    {% if project_summary["papers"] | length > 0%}
+<h5>Related papers</h5>
+        {% for paper in project_summary["papers"] %}
+            <a href="{{ paper["url"] }}"><b>{{ paper["title"] }}</b>.</a> {{ paper["year"] }}. {{ paper["author_str"] }}<br>
+        {% endfor %}
+    {% endif %}
 
 <div id="results">
 <h3>Results</h3>
