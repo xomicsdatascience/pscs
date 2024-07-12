@@ -1935,7 +1935,7 @@ def link_papers(id_project):
         if not check_user_permission("project_management", 1, id_project):
             return jsonify({"status": "error", "msg": "You do not have permission to link papers."}), 403
         doi_list = request.json["doi"]
-        if len(doi_list) > 10:
+        if len(doi_list) > current_app.config["MAX_PAPERS"]:
             # Too many
             return jsonify({"status": "error", "msg": "Too many DOI values."}), 422
         # validate doi in doi_list
@@ -1946,6 +1946,10 @@ def link_papers(id_project):
         # Ping DOI
         url_list = ["https://doi.org/" + doi for doi in doi_list]
         db = get_db()
+        # Check how many are currently linked
+        num_papers = db.execute("SELECT COUNT(ALL) FROM project_papers WHERE id_project = ?", (id_project,)).fetchone()[0]
+        if num_papers + len(doi_list) > current_app.config["MAX_PAPERS"]:
+            return jsonify({"status": "error", "msg": "Projects can only have " + current_app.config["MAX_PAPERS"] + " linked papers."}), 422
         for url, doi in zip(url_list, doi_list):
             req = requests.post(url, headers={"Accept": "application/x-bibtex"})
             if req.status_code != 200:
@@ -2005,7 +2009,6 @@ def remove_paper(id_project):
     if request.method == "POST":
         if not check_user_permission("project_management", 1, id_project):
             return jsonify({"status": "error", "msg": "You do not have permission to modify this project"}), 403
-        print(request.json)
         doi = request.json["doi"]
         db = get_db()
         db.execute("DELETE FROM project_papers WHERE id_project = ? AND doi = ?", (id_project, doi))

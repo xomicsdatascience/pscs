@@ -185,7 +185,7 @@ async function linkPapers(){
     // Hide warning
     document.getElementById("doi_warning").hidden = true;
     // Get list of DOI, separate by comma
-    let doiList = document.getElementById("doi_link").value.replace("/\s/g", "").split(",");
+    let doiList = document.getElementById("doi_link").value.replace(/\s+/g, "").split(",");
 
     let tldList = [".com", ".net", ".org", ".gov"];
     for (let idx=0; idx<doiList.length; idx++){
