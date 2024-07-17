@@ -694,16 +694,16 @@ def calc_hash_of_file(file: str) -> str:
 def results(filename, id_project, id_job, id_analysis):
     # If logged in and has permission, don't need to check public
     if is_logged_in() and check_user_permission("data_read", 1, id_project):
-        return private_results(secure_filename(filename), secure_filename(id_project), secure_filename(id_analysis),secure_filename(id_job))
+        return private_results(filename, id_project, id_analysis)
     db = get_db()
-    public_status = db.execute("SELECT is_published, is_peer_review "
-                               "FROM projects "
-                               "WHERE id_project = ?", (id_project,)).fetchone()
+    id_result = filename.split(os.path.extsep)[0]
+    public_status = db.execute("SELECT P.status FROM publications AS P INNER JOIN publications_results AS PR ON "
+                               "P.id_publication = PR.id_publication WHERE PR.id_result = ?", (id_result,)).fetchone()
     if public_status is None:
         return  # Problem
-    if public_status["is_published"]:
-        return public_results(filename, id_project, id_analysis)
-    elif public_status["is_peer_review"]:
+    if public_status["status"] == "public":
+        return public_results(filename, id_project, id_analysis, id_job=id_job)
+    elif public_status["status"] == "peer review":
         return review_results(filename, id_project, id_analysis)
 
 
@@ -728,8 +728,8 @@ def review_results(filename, id_project, id_analysis):
     return
 
 
-def public_results(filename, id_project, id_analysis):
-    res_dir = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=id_analysis)
+def public_results(filename, id_project, id_analysis, id_job):
+    res_dir = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=id_analysis, id_job=id_job)
     return send_from_directory(res_dir, secure_filename(filename))
 
 
