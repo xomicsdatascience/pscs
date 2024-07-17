@@ -1808,6 +1808,7 @@ function getNodeType(pscsNode){
 
 function setTextContent(elementID, text){
     document.getElementById(elementID).textContent = text;
+    document.getElementById(elementID).innerText = text;
 }
 
 function startImport(projectListID, importButtonID){

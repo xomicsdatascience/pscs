@@ -158,8 +158,17 @@ def display_publication(id_publication):
     publication_summary["papers"] = db.execute("SELECT doi, url, title, year, author_str FROM project_papers WHERE id_project = ?",
                         (id_project,)).fetchall()
 
+    # Get user projects for imports
+    user_projects = None
+    if "id_user" in session and session["id_user"] is not None:
+        user_projects = db.execute("SELECT P.id_project, P.name_project "
+                                   "FROM projects AS P INNER JOIN "
+                                   "projects_roles AS PR ON P.id_project = PR.id_project WHERE "
+                                   "PR.id_user = ? AND PR.analysis_write = 1", (session["id_user"],)).fetchall()
+
     return render_template("pscs/project_public.html",
-                           project_summary=publication_summary)
+                           project_summary=publication_summary,
+                           user_projects=user_projects)
 
 
 @bp.route('/<id_publication>/load_analysis', methods=["POST"])
@@ -213,7 +222,7 @@ def _get_publication_author_info(db, id_publication) -> list[dict]:
     # First get users
     authors = db.execute("SELECT USER.id_user, USER.name_user, USER.name, AU.author_position "
                          "FROM users_auth AS USER INNER JOIN publications_authors AS AU "
-                         "ON USER.id_user = AU.id_user WHERE AU.id_publication = ? ", (id_publication,)).fetchall()
+                         "ON USER.id_user = AU.id_user WHERE AU.id_publication = ? ORDER BY AU.author_position ASC", (id_publication,)).fetchall()
     if authors is None:
         return []
     authors = [dict(a) for a in authors]

@@ -31,13 +31,37 @@
 <div id="results">
 <h3>Results</h3>
 {% for an in project_summary["analysis"] %}
-  <h5>Results for Analysis: {{an["analysis_name"]}}</h5>
+    {% if project_summary["results"][an["id_analysis"]] | length > 0 %}
+        <h5>Results for Analysis: {{an["analysis_name"]}}</h5>
+    {% endif %}
     {% for r in project_summary["results"][an["id_analysis"]] %}
         {% if r["result_type"] == "image" %}
             <img src="{{ r['file_path'] }}">
         {% endif %}
     {% endfor %}
 {% endfor %}
+
+<h3>Interactive Results</h3>
+{% for an in project_summary["analysis"] %}
+  <h5>Results for Analysis: {{an["analysis_name"]}}</h5>
+    <table>
+        <tr>
+            <th>File Name</th>
+        </tr>
+
+    {% for r in project_summary["results"][an["id_analysis"]] %}
+        {% if r["is_interactive"] %}
+            <tr>
+                <td>{{ r["file_name"] }}</td>
+                <td><button class="visualizer" onclick="startCXG('{{ r['id_result']}}', this)">Visualize</button></td>
+            </tr>
+        {% endif %}
+    {% endfor %}
+    </table>
+{% endfor %}
+
+
+
 
 <h4>Download results</h4>
     <select id="resultDownload">
@@ -70,10 +94,10 @@
 
 <br>
 <h3>Analysis Inspector</h3>
-<select id="analyses">
+<select id="analyses" onclick="setTextContent('id_analysis', this.value)">
   <option selected disabled>Select analysis...</option>
 {% for an in project_summary["analysis"] %}
-  <option value={{an["id_analysis"]}} onclick="setTextContent('id_analysis', '{{an["id_analysis"]}}')">{{an["analysis_name"]}}</option>
+  <option value={{an["id_analysis"]}}>{{an["analysis_name"]}}</option>
 {% endfor %}
 </select>
 
