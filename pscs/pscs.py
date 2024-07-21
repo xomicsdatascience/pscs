@@ -698,7 +698,7 @@ def calc_hash_of_file(file: str) -> str:
 def results(filename, id_project, id_job, id_analysis):
     # If logged in and has permission, don't need to check public
     if is_logged_in() and check_user_permission("data_read", 1, id_project):
-        return private_results(filename, id_project, id_analysis)
+        return private_results(filename, id_project, id_analysis, id_job)
     db = get_db()
     id_result = filename.split(os.path.extsep)[0]
     public_status = db.execute("SELECT P.status FROM publications AS P INNER JOIN publications_results AS PR ON "

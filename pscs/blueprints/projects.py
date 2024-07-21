@@ -121,7 +121,7 @@ def project(id_project):
             db = get_db()
             db.execute("UPDATE projects SET description = ? WHERE id_project = ?", (new_description, id_project))
             db.commit()
-            return
+            return url_for("projects.project", id_project=id_project)
 
     return redirect(url_for('pscs.index'))
 
