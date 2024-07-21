@@ -223,9 +223,13 @@ def profile():
         # Get basic user info
         id_user = g.user["id_user"]
         db = get_db()
-        user_info = db.execute("SELECT name_user, email, creation_time_user, confirmed "
+        user_info = db.execute("SELECT name_user, email, creation_time_user, confirmed, name "
                                "FROM users_auth "
                                "WHERE id_user = ?", (id_user,)).fetchone()
+        user_info = dict(user_info)
+        affiliations_list = db.execute("SELECT affiliation, affiliation_order FROM users_affiliation WHERE id_user = ?", (g.user["id_user"],)).fetchall()
+        affiliations_list.sort(key=lambda x: x["affiliation_order"])
+        user_info["affiliations"] = [aff["affiliation"] for aff in affiliations_list]
         return render_template("pscs/profile.html", user_info=user_info)
     return render_template(url_for("pscs.index"))
 

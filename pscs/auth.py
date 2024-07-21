@@ -12,6 +12,7 @@ from pscs.authtools.validation.registration import validate_username, validate_p
 from pscs.authtools.validation.password_reset import send_reset_email
 import math
 import datetime
+from werkzeug.utils import escape
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
@@ -339,3 +340,42 @@ def reset_password_email():
         else:
             flash("There was a problem retrieving the user email. Please contact PSCS admin.")
             return redirect(url_for("pscs.index"))
+
+
+@bp.route("/updateName", methods=["POST"])
+def update_name():
+    """Updates the user's name"""
+    if request.method == "POST":
+        new_name = request.json["newName"]
+        new_name = escape(new_name)
+        if len(new_name) > current_app.config["MAX_NAME_LENGTH"] or len(new_name) < 2:
+            flash("Name is too long; please contact PSCS admin.")
+            return {"url": url_for("pscs.profile")}, 422
+        else:
+            db = get_db()
+            db.execute("UPDATE users_auth SET name = ? WHERE id_user = ?", (new_name, g.user["id_user"]))
+            db.commit()
+            return {"url": url_for("pscs.profile")}, 200
+    return {"url": url_for("pscs.profile")}, 405
+
+
+@bp.route("/saveAffiliations", methods=["POST"])
+def save_affiliations():
+    """Updates the user's affiliations."""
+    if request.method == "POST":
+        affiliations = request.json["affiliations"]
+        if len(affiliations) > current_app.config["MAX_AFFILIATIONS"]:
+            flash("Too many affiliations; please reduce the number of affiliations and submit again.")
+            return {"url": url_for("pscs.profile")}, 422
+        if any([len(aff) > current_app.config["MAX_AFFILIATION_LENGTH"] for aff in affiliations]):
+            flash("Affiliation names are too long; shorten")
+            return {"url": url_for("pscs.profile")}, 422
+        affiliations = [escape(aff) for aff in affiliations]
+        # Remove previous affiliations; add new ones
+        db = get_db()
+        db.execute("DELETE FROM users_affiliation WHERE id_user = ?", (g.user["id_user"],))
+        for idx_order, aff in enumerate(affiliations):
+            db.execute("INSERT INTO users_affiliation (id_user, affiliation, affiliation_order) VALUES (?, ?, ?)",
+                       (g.user["id_user"], aff, idx_order))
+        db.commit()
+        return {"url": url_for("pscs.profile")}, 200

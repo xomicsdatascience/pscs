@@ -229,7 +229,7 @@ def _get_publication_author_info(db, id_publication) -> list[dict]:
     for a in authors:
         # Get affiliations and make string presentable
         aff_list = db.execute("SELECT AFF.affiliation FROM publications_authors_affiliation as AFF "
-                                       "WHERE id_user = ? AND id_publication = ?", (a["id_user"], id_publication)).fetchall()
+                                       "WHERE id_user = ? AND id_publication = ? ORDER BY AFF.affiliation_order ASC", (a["id_user"], id_publication)).fetchall()
         a["affiliations"] = ", ".join([aff["affiliation"] for aff in aff_list])
     # Repeat for external authors
     external_authors = db.execute("SELECT email, name, author_position FROM publications_external_authors_info AS EXT "

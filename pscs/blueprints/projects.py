@@ -106,6 +106,23 @@ def project(id_project):
             else:
                 flash("You do not have permission to delete data from the project.")
             return url_for("projects.project", id_project=id_project)
+        elif "description" in request.json:
+            has_perm = check_user_permission(permission_name="project_management",
+                                             permission_value=1,
+                                             id_project=id_project)
+            if not has_perm:
+                flash("You do not have permission to change the project description.")
+                return url_for("projects.project", id_project=id_project)
+            # First escape description
+            new_description = escape(request.json["description"])
+            if len(new_description) > current_app.config["MAX_DESCRIPTION_LENGTH"]:
+                    new_description = new_description[:current_app.config["MAX_DESCRIPTION_LENGTH"]] + " [...]"
+                    flash(f"The project description exceeds the maximum length ({current_app.config['MAX_DESCRIPTION_LENGTH']}). It has been shortened.")
+            db = get_db()
+            db.execute("UPDATE projects SET description = ? WHERE id_project = ?", (new_description, id_project))
+            db.commit()
+            return
+
     return redirect(url_for('pscs.index'))
 
 
@@ -1038,9 +1055,17 @@ def prepare_publication(id_project: str,
     for author in pscs_authors:
         db.execute("INSERT INTO publications_authors (id_publication, id_user, author_position, confirmed) VALUES (?,?,?,?)",
                    (id_publication, author["id"], author["position"], 1))
+        # For each author, get affiliation
+        author_affiliation = db.execute("SELECT affiliation, affiliation_order FROM users_affiliation WHERE id_user = ?", (author["id"],)).fetchall()
+        for aff in author_affiliation:
+            db.execute("INSERT INTO publications_authors_affiliation (id_publication, id_user, affiliation, affiliation_order) VALUES(?,?,?,?)",
+                       (id_publication, author["id"], aff["affiliation"], aff["affiliation_order"]))
+
     for author in external_authors:
         db.execute("INSERT INTO publications_external_authors_info (id_publication, email, author_position) VALUES (?,?,?)",
                    (id_publication, author["email"], author["position"]))
+
+
     # Make shortid
     _ = make_shortid(db, id_publication)
     if commit:
@@ -1667,7 +1692,8 @@ def _get_project_management_info(db, id_project: str) -> dict:
                        "FROM projects_roles AS PR INNER JOIN users_auth as U ON PR.id_user = U.id_user "
                        "WHERE PR.id_project = ?", (id_project,)).fetchall()
     papers = db.execute("SELECT doi, url, title, year, author_str FROM project_papers WHERE id_project = ?", (id_project,)).fetchall()
-    project_info = {"users": users}
+    description = db.execute("SELECT description FROM projects WHERE id_project = ?", (id_project,)).fetchone()["description"]
+    project_info = {"users": users, "description": description}
     project_info["publication_status"] = _get_project_publication_status(db, id_project)
     project_info["papers"] = papers
     return project_info

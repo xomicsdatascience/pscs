@@ -181,6 +181,23 @@ function renameProject() {
     }
 }
 
+function setNewDescription(elId){
+    let newDescription = document.getElementById(elId).value;
+    // send new description to server
+    let descriptionSpec = {"description": newDescription};
+    fetch(window.location.href, {
+        method: "POST",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(descriptionSpec)
+    })
+        .then(response => {
+            getTabInfo("project_management");
+        })
+}
+
 async function linkPapers(){
     // Hide warning
     document.getElementById("doi_warning").hidden = true;

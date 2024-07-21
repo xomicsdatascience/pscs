@@ -26,6 +26,27 @@
         {% endif %}
     </tr>
 </table>
+<br>
+<input id="updateNameText" type="text" placeholder="{{ user_info['name'] }}" maxlength="200"><button onclick="updateName('updateNameText');">Update Name</button>
+<div>
+    <h5>Your affiliations will be displayed in the following order:</h5>
+    <select id="affiliations" size="5" style="display: inline-block; min-width: 50px;">
+        {% for aff in user_info["affiliations"] %}
+            <option>{{ aff }}</option>
+        {% endfor %}
+    </select>
+    <table style="display: inline-block">
+    <tr><td><button onclick="moveUp('affiliations')" style="display: inline-block">&uarr;</button></td></tr>
+    <tr><td><button onclick="moveDown('affiliations')" style="display: inline-block">&darr;</button></td></tr>
+    </table>
+    <button id="removeAuthor" onclick="removeAuthor('affiliation');">Remove selected affiliation</button>
+
+    <br>
+<input type="text" id="addAffiliation" maxlength="300"><button onclick="addAffiliation('addAffiliation', 'affiliations');">Add affiliation</button><br>
+<button id="saveAffiliation" onclick="saveAffiliations('affiliations');">Save affiliations</button>
+
+</div>
+
 
 <h3>Password update</h3>
 Send yourself a password-reset email: <input type="button" value="Reset password" onclick="resetPassword('{{user_info["name_user"] }}')">

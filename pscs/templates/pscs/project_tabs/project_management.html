@@ -44,6 +44,11 @@
     <input type="text" id="inputRename" placeholder="New project name" style="display: inline-block"><button onclick="renameProject();">Rename project</button>
 </div>
 <div>
+    <textarea id="originalDescription" disabled>{{ project_info["description"] }}</textarea>
+    <textarea id="newDescription" placeholder="Enter new description here." maxlength="2000"></textarea>
+    <button onclick="setNewDescription('newDescription');">Set new description</button>
+</div>
+<div>
     <h5>Associated Publications:</h5>
     <p>Link the publication with this project using its DOI:</p>
     <input type="text" id="doi_link" placeholder="DOI for paper: 10.x.x.x/123"><button onclick="linkPapers();" id="btn_link_paper">Link paper</button><br>
