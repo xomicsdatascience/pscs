@@ -43,7 +43,7 @@ function getAuthorInfo(authorSelectId="authorlist"){
             authobj.push({"id": au.id});
         }
         else{
-            authobj.push({"email": au.email});
+            authobj.push({"id": au.id, "email": au.email});
         }
     }
     return authobj
@@ -59,6 +59,7 @@ function addExternalAuthor(){
     }
     newOpt.id = emailEl.value;
     newOpt.innerText = emailEl.value;
+    newOpt.email = emailEl.value;
     authorSel.options.add(newOpt);
     emailEl.value = "";
     return;

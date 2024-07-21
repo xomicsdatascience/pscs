@@ -644,11 +644,11 @@ def project_publish(id_project):
                                  "WHERE id_analysis = ? AND id_project = ?", (an_id, id_project)).fetchall()
                 publication_info["results"][an_id] = [b["id_result"] for b in buf]
             db = get_db()
-            id_publication = prepare_publication(id_project=id_project, publication_info=publication_info)
             has_external_authors = _contains_external_authors(publication_info["authorlist"])
             # Three possibilities: public, peer review, update
             if not has_external_authors:
-                db.commit()
+                publication_info["hold"] = False
+                id_publication = prepare_publication(id_project=id_project, publication_info=publication_info, contact_user=g.user['id_user'], commit=True)
                 return_url = url_for("publications.request_publication", id_publication=id_publication)
                 response_json = {"url": return_url, "publish_success": 1, "success_message": ""}
                 if publication_info["publication_type"] == "public":
@@ -667,8 +667,18 @@ def project_publish(id_project):
                     flash(f"The project has been set to \"{publication_info['publication_type']}\"")
                     return jsonify(response_json)
                 elif publication_info["publication_type"] == "update":
-
                     return jsonify(response_json)
+            else:
+                # Project has external authors; must be placed on hold until they confirm
+                publication_info["hold"] = True
+                id_publication = prepare_publication(id_project=id_project, publication_info=publication_info, contact_user=g.user["id_user"], commit=False)
+                return_url = url_for("pscs.index")
+                response_json = {"url": return_url, "publish_success": 1, "success_message": "External authors must approve their association before proceeding."}
+                notify_external_authors(id_publication=id_publication)
+                flash(f"External authors have been notified; they will need to complete the information request before proceeding.")
+                db.commit()
+                return jsonify(response_json)
+
         else:
             # These only happen if the project changes while the user is trying to publish it, or sneaky user.
             flash_msg = []
@@ -976,6 +986,7 @@ def _get_analyses(id_project):
 
 def prepare_publication(id_project: str,
                         publication_info: dict,
+                        contact_user: str,
                         commit: bool = False) -> str:
     """
     Sets a project to peer review or public. Selected data, analyses, and results are placed behind a password prompt that does
@@ -1009,8 +1020,8 @@ def prepare_publication(id_project: str,
         return current_publication[-1]["id_publication"]
     # Generate publication ID
     id_publication = get_unique_value_for_field(db, "id_publication", "publications")
-    db.execute("INSERT INTO publications (id_publication, id_project, title, description, status) "
-               "VALUES (?,?,?,?,?)", (id_publication, id_project, project_info["name_project"], project_info["description"], status))
+    db.execute("INSERT INTO publications (id_publication, id_project, title, description, status, hold, id_user_contact) "
+               "VALUES (?,?,?,?,?,?,?)", (id_publication, id_project, project_info["name_project"], project_info["description"], status, publication_info["hold"], contact_user))
 
     # Move data into publication
     for id_data in publication_info["data"]:
@@ -1028,7 +1039,7 @@ def prepare_publication(id_project: str,
         db.execute("INSERT INTO publications_authors (id_publication, id_user, author_position, confirmed) VALUES (?,?,?,?)",
                    (id_publication, author["id"], author["position"], 1))
     for author in external_authors:
-        db.execute("INSERT INTO publications_external_authors (id_publication, email, author_position) VALUES (?,?,?)",
+        db.execute("INSERT INTO publications_external_authors_info (id_publication, email, author_position) VALUES (?,?,?)",
                    (id_publication, author["email"], author["position"]))
     # Make shortid
     _ = make_shortid(db, id_publication)
@@ -1374,18 +1385,18 @@ def get_publication_author_emails(id_publication: str) -> list:
     return [au["email"] for au in pscs_authors + external_authors]
 
 
-def notify_external_authors(id_project: str):
+def notify_external_authors(id_publication: str):
     """Notifies external authors that they should input their information."""
     db = get_db()
     external_authors = db.execute("SELECT email "
-                                  "FROM publication_external_authors "
-                                  "WHERE id_project = ?", (id_project,)).fetchall()
+                                  "FROM publications_external_authors_info "
+                                  "WHERE id_publication = ?", (id_publication,)).fetchall()
     addresses = [au["email"] for au in external_authors]
     from pscs.templates.misc import external_author_info_request
     for addr in addresses:
         url_signer = URLSafeTimedSerializer(secret_key=current_app.config["SECRET_KEY"], salt="external_author")
         token = url_signer.dumps(addr)
-        author_url = url_for("projects.external_author_info", id_project=id_project, token=token)
+        author_url = url_for("projects.external_authors_info", id_publication=id_publication, token=token)
         external_author_url = build_full_url(author_url)
         notif_email = external_author_info_request.format(pscs_url=current_app.config["CURRENT_URL"],
                                                           author_info_url=external_author_url)
@@ -1405,13 +1416,13 @@ def build_full_url(local_url: str) -> str:
     return protocol + current_app.config["CURRENT_URL"] + local_url
 
 
-@bp.route("<id_project>/external_author/<token>", methods=["GET", "POST"])
-def external_author_info(id_project, token):
+@bp.route("<id_publication>/external_author/<token>", methods=["GET", "POST"])
+def external_authors_info(id_publication, token):
     """
     Page for requesting an external author's information for publishing a project.
     Parameters
     ----------
-    id_project : str
+    id_publication : str
         ID of the project being published.
     token : str
         Signed token containing the external author's email.
@@ -1425,12 +1436,13 @@ def external_author_info(id_project, token):
     external_author_email = url_signer.loads(token, max_age=current_app.config["EXTERNAL_AUTHOR_TIMEOUT_SECONDS"])
     # See if info matches pending project
     db = get_db()
-    proj = db.execute("SELECT id_project "
-                      "FROM publication_external_authors "
-                      "WHERE id_project = ? AND email = ?", (id_project, external_author_email)).fetchone()
+    proj = db.execute("SELECT id_publication "
+                      "FROM publications_external_authors_info "
+                      "WHERE id_publication = ? AND email = ?", (id_publication, external_author_email)).fetchone()
     if proj is None:  # id_project & email don't match user
         flash("The URL is invalid.")
         return redirect(url_for("pscs.index"))
+    id_project = db.execute("SELECT id_project FROM publications WHERE id_publication = ?", (id_publication,)).fetchone()["id_project"]
     if request.method == "GET":
         # Get project info to display to user
         project_summary = get_project_summary(db, id_project)
@@ -1444,16 +1456,16 @@ def external_author_info(id_project, token):
         affiliations = [escape(aff) for aff in affiliations]
         noPHI = request.form["noPHI"] == "on"
         dataUse = request.form["dataUse"] == "on"
-        flash_msg = ""
+        flash_msg = []
         # Form validation
         if not noPHI or not dataUse:
-            flash_msg = "You must confirm that you have read, understood, and agreed to the PHI conditions and Data Use Agreement."
+            flash_msg.append("You must confirm that you have read, understood, and agreed to the PHI conditions and Data Use Agreement.")
         if len(author_name) == 0:
-            flash_msg = ' - '.join([flash_msg, "You must supply your name."])
+            flash_msg.append("You must supply your name.")
         if len(affiliations) == 0:
-            flash_msg = ' - '.join([flash_msg, "You must supply an affiliation. If unaffiliated, enter ""Unaffilliated."""])
+            flash_msg.append("You must supply an affiliation. If unaffiliated, enter ""Unaffiliated.""")
         if len(flash_msg) != 0:
-            flash(flash_msg)
+            flash(" - ".join(flash_msg))
             return redirect(url_for("projects.external_author_info", id_project=id_project, token=token))
 
         # Collect external author info
@@ -1463,11 +1475,19 @@ def external_author_info(id_project, token):
                        "noPHI": noPHI,
                        "dataUse": dataUse,
                        "ip": escape(request.remote_addr)}
-        store_external_author_info(id_project, author_information=author_info)
+        store_external_author_info(id_publication=id_publication, author_information=author_info)
         done = proceed_if_possible(id_project)
         if done:
             flash("Project is now ready.")
-            return redirect(url_for("projects.public_project", id_project=id_project))
+            contact_user = db.execute("SELECT id_user_contact FROM publications WHERE id_publication = ?", (id_publication,)).fetchone()["id_user_contact"]
+            current_info = _get_publication_info(db, id_project=id_project)[-1]  # only get latest
+            peer_review_password = generate_peer_review_password(id_publication=id_publication)
+            notify_user_peer_review_password(id_user=contact_user,
+                                             publication_info=current_info,
+                                             peer_review_password=peer_review_password)
+            notify_authors_peer_review(publication_info=current_info,
+                                       publishing_id_user=contact_user)
+            return redirect(url_for("publications.request_publication", id_publication=id_publication))
         else:
             flash("Project is now waiting for other external authors. An email notification will be sent when the "
                   "project is ready.")
@@ -1475,55 +1495,43 @@ def external_author_info(id_project, token):
     return
 
 
-def proceed_if_possible(id_project: str):
+def proceed_if_possible(id_publication: str):
     """Proceeds with publication stage if all external authors have approved."""
     # Check if all external authors have approved
     db = get_db()
-    confirmed = db.execute("SELECT confirmed "
-                           "FROM publication_external_authors "
-                           "WHERE id_project = ?", (id_project,)).fetchall()
+    confirmed = db.execute("SELECT confirmed_association "
+                           "FROM publications_external_authors_info "
+                           "WHERE id_publication = ?", (id_publication,)).fetchall()
     # Checks if any of the authors have not confirmed.
-    missing_confirmation = False in list(map(lambda x: x["confirmed"], confirmed))
+    missing_confirmation = False in list(map(lambda x: x["confirmed_association"], confirmed))
     if missing_confirmation:
         return False  # not everyone has confirmed; exit
-    # Move forward!
-    pub_type = _get_project_publication_status(db, id_project)
-    if "peer review" in pub_type:
-        project_peer_review(id_project)
-    elif "public" in pub_type:
-        project_publish(db, id_project)
+    db.execute("UPDATE publications SET hold = FALSE WHERE id_publication = ?", (id_publication,))
+    db.commit()
     return True
 
 
-def store_external_author_info(id_project: str,
+def store_external_author_info(id_publication: str,
                                author_information: dict):
     """
     Stores the external author information into the DB.
     Parameters
     ----------
-    id_project : str
-        ID of the project for the author.
+    id_publication : str
+        ID of the publication for the author.
     author_information : dict
-        Dict containing the following fields: email, name, affiliations, noPHI, dataUse, ip
+        Dict containing the following fields: email, name, affiliations, noPHI, dataUse
 
     Returns
     -------
     None
     """
     db = get_db()
-    db.execute("INSERT INTO external_author_info "
-               "(id_project, email, name, confirmed_datause, confirmed_phi, ip) "
-               "VALUES (?,?,?,?,?,?)", (id_project, author_information["email"],
-                                        author_information["name"], author_information["dataUse"],
-                                        author_information["noPHI"], author_information["ip"]))
-    for aff in author_information["affiliations"]:
-        db.execute("INSERT INTO external_author_affiliation "
-                   "(id_project, email, affiliation) "
-                   "VALUES (?,?,?)", (id_project, author_information["email"], aff))
-    # Mark as confirmed
-    db.execute("UPDATE publication_external_authors "
-               "SET confirmed = 1 "
-               "WHERE id_project = ? and email = ?", (id_project, author_information["email"]))
+    db.execute("UPDATE publications_external_authors_info SET name = ?, confirmed_datause = ?, confirmed_phi = ?, confirmed_association = 1 WHERE id_publication = ? AND email = ?",
+               (author_information["name"], author_information["dataUse"], author_information["noPHI"], id_publication, author_information["email"]))
+    for idx, aff in enumerate(author_information["affiliations"]):
+        db.execute("INSERT INTO publications_external_author_affiliation (id_publication, email, affiliation, affiliation_order) VALUES(?,?,?,?)",
+                   (id_publication, author_information["email"], aff, idx))
     db.commit()
     return
 

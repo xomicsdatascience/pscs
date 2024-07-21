@@ -227,10 +227,21 @@ def _get_publication_author_info(db, id_publication) -> list[dict]:
         return []
     authors = [dict(a) for a in authors]
     for a in authors:
+        # Get affiliations and make string presentable
         aff_list = db.execute("SELECT AFF.affiliation FROM publications_authors_affiliation as AFF "
                                        "WHERE id_user = ? AND id_publication = ?", (a["id_user"], id_publication)).fetchall()
-        a["affiliations"] = [dict(aff) for aff in aff_list]
-    return authors
+        a["affiliations"] = ", ".join([aff["affiliation"] for aff in aff_list])
+    # Repeat for external authors
+    external_authors = db.execute("SELECT email, name, author_position FROM publications_external_authors_info AS EXT "
+                                  "WHERE id_publication = ?", (id_publication,)).fetchall()
+    ext_authors = [dict(e) for e in external_authors]
+    for e in ext_authors:
+        aff_list = db.execute("SELECT affiliation FROM publications_external_author_affiliation WHERE id_publication = ? and email = ? ORDER BY affiliation_order ASC", (id_publication, e["email"])).fetchall()
+        e["affiliations"] = ", ".join([aff["affiliation"] for aff in aff_list])
+    all_authors = authors + ext_authors
+    # Reorder list for correct authorship position
+    all_authors.sort(key=lambda x: x["author_position"])
+    return all_authors
 
 
 def _get_publication_data(db, id_publication) -> list[dict]:
