@@ -140,6 +140,7 @@ def extract_csv_h5ad(req):
             var_data = var_data.T
         data.var = var_data
         del var_data  # clear memory asap
+    data.obs_names_make_unique()
     return data
 
 

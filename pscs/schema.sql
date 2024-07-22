@@ -25,6 +25,7 @@ CREATE TABLE users_confirmation (  -- for keeping track of confirmation emails t
 CREATE TABLE users_affiliation (
     id_user TEXT NOT NULL,
     affiliation TEXT NOT NULL,
+    affiliation_order INTEGER,
     CONSTRAINT affiliation_key PRIMARY KEY (id_user, affiliation),
     FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE
 );
@@ -418,7 +419,9 @@ CREATE TABLE publications(
     creation_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     status VARCHAR(50) DEFAULT 'private',  -- if not specified, keep private
     hold BOOLEAN DEFAULT FALSE,
-    FOREIGN KEY (id_project) REFERENCES projects(id_project));
+    id_user_contact VARCHAR(36),  -- id of the user to contact
+    FOREIGN KEY (id_project) REFERENCES projects(id_project),
+    FOREIGN KEY (id_user_contact) REFERENCES  users_auth(id_user));
 
 CREATE TABLE project_papers(
     id_project VARCHAR(36) NOT NULL,
@@ -468,7 +471,8 @@ CREATE TABLE publications_authors_affiliation (
     id_publication VARCHAR(36) NOT NULL,
     id_user TEXT NOT NULL,
     affiliation TEXT NOT NULL,
-    CONSTRAINT author_aff PRIMARY KEY (id_publication, id_user),
+    affiliation_order INTEGER DEFAULT 0,
+    CONSTRAINT author_aff PRIMARY KEY (id_publication, id_user, affiliation),
     FOREIGN KEY (id_publication) REFERENCES publications(id_publication),
     FOREIGN KEY (id_user) REFERENCES users_auth(id_user));
 
@@ -480,21 +484,23 @@ CREATE TABLE publications_external_authors(
 	FOREIGN KEY (id_publication) REFERENCES publications(id_publication),
 	CONSTRAINT author_key PRIMARY KEY(id_publication, email));
 
-CREATE TABLE publications_external_author_info(
+CREATE TABLE publications_external_authors_info(
 	id_publication VARCHAR(36) NOT NULL,
-	email TEXT NOT NULL,
-	name TEXT NOT NULL,
-	confirmed_datause BIT DEFAULT 0,
-	confirmed_phi BIT DEFAULT 0,
+	email TEXT,
+	name TEXT,
+    author_position INTEGER NOT NULL,
+    confirmed_association BOOLEAN DEFAULT FALSE,
+	confirmed_datause BOOLEAN DEFAULT FALSE,
+	confirmed_phi BOOLEAN DEFAULT FALSE,
 	creation_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-	ip TEXT NOT NULL,
 	FOREIGN KEY (id_publication) REFERENCES publications(id_publication),
 	CONSTRAINT author_key PRIMARY KEY(id_publication, email));
 
 CREATE TABLE publications_external_author_affiliation(
 	id_publication VARCHAR(36) NOT NULL,
 	email TEXT NOT NULL,
-	affiliation TEXT NOT NULL);
+	affiliation TEXT NOT NULL,
+    affiliation_order INTEGER DEFAULT 0);
 
 CREATE TABLE publications_peer_review(
     id_publication VARCHAR(36) NOT NULL,
