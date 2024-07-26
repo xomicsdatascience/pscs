@@ -1,4 +1,4 @@
-__version__ = "0.13.4"
+__version__ = "0.14.0"
 from flask import Flask
 import os
 from os.path import join, dirname
@@ -107,6 +107,9 @@ def create_app(test_config=None) -> Flask:
     from pscs.blueprints import publications
     app.register_blueprint(publications.bp)
     app.register_blueprint(publications.bp_short)
+
+    from pscs.blueprints import tutorial
+    app.register_blueprint(tutorial.bp)
 
     app.jinja_env.filters['basename'] = os.path.basename
     app.jinja_env.filters['dirname'] = os.path.dirname

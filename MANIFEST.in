@@ -6,6 +6,8 @@ include pscs/Data_Use_Agreement.txt
 include singularity/pscs_sing.def
 include singularity/run_pscs_pipeline.py
 include pscs/static/node_data/*
+include pscs/static/icons/*.png
+include pscs/static/tutorial/*
 
 global-include *.js
 global-include *.png
