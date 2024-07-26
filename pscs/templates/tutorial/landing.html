@@ -1,0 +1,106 @@
+{% extends 'base.html' %}
+
+{% block header %}
+{% endblock %}
+
+{% block content %}
+<div id="sidebar" class="sidebar-closed">
+</div>
+<div>
+<h3>PSCS Overview</h3>
+    <p>The Platform for Single-Cell Science (PSCS) is a tool for developing and distributing reproducible analytical
+        pipelines.<br><br></p>
+    Outline:<br>
+    <img src="/static/tutorial/pscs_workflow.png" style="border: 2px solid black">
+</div>
+
+    <div>
+        <h3>Projects</h3>
+    <p>Work on PSCS is contained as projects, which include data, analyses, and results. Once completed, projects can
+    be published to make their contents reusable.</p>
+        <div>
+            <h4>Data</h4>
+            <p>To operate on data, it must first be uploaded to the platform. When uploaded, data is kept private until
+            the project is published. The data uploader seamlessly converts data into a format that can be used by PSCS.</p>
+            <p>To upload data, go to your project, select the <b>Data</b> tab, and click <b>Upload data</b>. You can
+            select the uploader appropriate for your data.</p>
+
+            <h4>Analysis</h4>
+            <p>Analyses take uploaded data and execute the series of steps specified in their design. To analyze your data,
+                <a href="{{ url_for('pscs.create_project') }}">create a project</a>, then navigate to the <b>Analysis</b>
+                tab. Use the <a href="{{ url_for('pscs.pipeline_designer')  }}">pipeline designer</a> to create an analysis.
+                Once saved to your project, you can link data to your pipeline's inputs.</p>
+                <img src="/static/tutorial/pscs_analysis.png" style="border: 2px solid black;">
+                <p>When you submit an analysis for execution, it will be dispatched to the Open Science Grid and the results
+                    be returned once complete.</p>
+            <p>If another analysis has been published, you can import the analysis into project using the
+                <b>Import Pipeline</b> tool. You can obtain the analysis ID from its publication and selecting the
+            analysis of interest. After the analysis is imported, you will be able to run it as though it were your own.</p>
+            <p>For more information on the <b>Pipeline designer</b>, see the
+                <a href="{{ url_for('tutorial.pipeline_designer') }}">Pipeline designer tutorial.</a></p>
+
+            <h4>Job Monitoring</h4>
+            <p>Submitted analyses are tracked by the platform. When the pipeline finishes executing, the output and error
+                logs are viewable using the <b>View</b> button. </p>
+            <img src="/static/tutorial/pscs_jobs.png" style="border: 2px solid black;">
+            <p>Errors that are node-specific will point to the specific node
+            where the error occurred. These errors are often due to incorrectly-defined parameters, but are occasionally
+            caused by something in the underlying package. If you suspect that is the case or if you need help figuring out,
+                a pipeline, reach out to <a href="mailto:help@xods.org">PSCS Help</a> and we'll take a look.</p>
+
+            <h4>Results</h4>
+            <p>Results are registered into PSCS and summarized under the <b>Results</b> tab. Image results can be viewed
+            directly in the results tab using the <b>View</b> button to the right of the image.</p>
+            <img src="/static/tutorial/pscs_results_closed.png" style="border: 2px solid black;"><br>
+            <img src="/static/tutorial/pscs_results_open.png" style="border: 2px solid black;">
+            <p>Some nodes produce outputs that can be used to with interactive tools. These results are listed
+            separately under the associated interactive tool. In the figure below, some results are compatible with
+            the CellXGene interactive tool, and the <b>Visualize</b> button appears:</p>
+            <img src="/static/tutorial/pscs_results_interactive.png" style="border: 2px solid black;"><br>
+            <p>Using the button will start the tagged app (CellXGene in this example) with that dataset.</p>
+
+            <h4>Project Management</h4>
+            <p>Parts of the project that aren't directly associated with the data, analysis, or results can be
+            controlled in the <b>Project Management</b> tab. Here, you can invite collaborators to join the project,
+            see the roles of exisitng collaborators, publish the project (and see its publication status), change its
+            title and description, and link existing papers to your project (e.g., the paper you published using a
+            pipeline!).</p>
+            <img src="/static/tutorial/pscs_project_management.png" style="border: 2px solid black;"><br>
+            <h5>Linking Papers</h5>
+            <p>Connecting an existing publication to a PSCS project only requires the paper to have a DOI:</p>
+            <img src="/static/tutorial/pscs_project_paper_link.png" style="border: 2px solid black;"><br>
+            <p>And:</p>
+            <img src="/static/tutorial/pscs_project_paper_linkscanpy.png" style="border: 2px solid black;"><br>
+            <p>The link to the paper will be made available on the publication page when the project is published.</p>
+
+            <h5>Project Publication</h5>
+            <p>When your project is complete and your group is ready to move forward, you can grant access to others
+            in one of two ways: public or peer review. The only distinction between these options is how others access
+            the project. Whereas a public project is viewable by anyone with the link, projects that are under peer
+            review are password-protected. A password is provided to the project's authors and can be included with a
+            journal submission to allow for reviewers to anonymously examine the data, analysis, and results.</p>
+            <p>The publication page shows you a summary of the information that will be published, starting with the
+            abstract:</p>
+            <img src="/static/tutorial/pscs_project_publication_abstract.png" style="border: 2px solid black;"><br>
+
+            <p>You can also modify the author list:</p>
+            <img src="/static/tutorial/pscs_project_publication_author.png" style="border: 2px solid black;"><br>
+            <p>All users that were added to the project are automatically listed in the author list. You can modify
+            the order of the authors that will appear in the publication. Note that their names are pulled from their
+            profiles; if they have not set their names in their profiles, their username will not appear on the
+            publication.</p>
+            <p>People that should be included in the author list but that don't have an account on PSCS can still be
+            included using the <b>External authors</b> section. Once the project is ready to be published, an email will
+            be sent to the external users requesting that they enter their information (name, affiliations) to confirm
+            their association with the project.</p>
+            <p><b>Publication content:</b> The following sections allow you to select which parts of your project you
+            would like to publish. You can select the relevant analysis (and its results), and the specific dataset
+            that was used to produce the results. Analyses that have not been executed cannot be published; these are
+            listed below the successful ones.</p>
+            <img src="/static/tutorial/pscs_project_publication_content.png" style="border: 2px solid black;"><br>
+        </div>
+
+    </div>
+
+
+{% endblock %}

@@ -1,0 +1,54 @@
+{% extends 'base.html' %}
+
+{% block header %}
+{% endblock %}
+
+{% block content %}
+<div id="sidebar" class="sidebar-closed">
+</div>
+<div>
+<h3>Pipeline Designer</h3>
+    <p>The <b>Pipeline Designer</b> is used to create custom analysis pipelines from supported packages. It is designed
+    to require no coding knowledge and to produce pipelines whose parameters can be easily audited. It uses the PSCS API
+    between individual nodes to make different packages compatible.</p>
+    <img src="/static/tutorial/pscs_designer_overview.png" style="border: 2px solid black;"><br>
+    <p>The main point of interaction is the panel on the left, with a list of available packages listed in grey.
+    Clicking a package will reveal submodules and nodes that are available in that package. Clicking a node will add it
+    to the workspace and allow you to manipulate its parameters and connections:</p>
+    <img src="/static/tutorial/pscs_designer_addnode.png" style="border: 2px solid black;"><br>
+    <p>Note that are three major types of nodes:</p>
+    <table style="border: none;">
+        <tr style="border: none;">
+            <td style="border: none;"><img src="/static/nodes/input.png"><br>Input Node</td>
+            <td style="border: none;"><img src="/static/nodes/mimo.png"><br>Intermediate</td>
+            <td style="border: none;"><img src="/static/nodes/output.png"><br>Output Node</td>
+        </tr>
+    </table>
+    <p><b>Input nodes</b> are used to indicate to PSCS that data should be loaded and made available to the analysis. They
+    typically do not have parameters. Currently, the main input node is for <i>Annotated Data</i>, which is the format
+    used by Scanpy and is the default format for PSCS. <b>Intermediate nodes</b> are the bulk of a pipeline, taking
+    the result from the previous node, processing it, and making the outputs available to the following nodes. These
+    nodes should have their parameters examined and set correctly before running a pipeline. <b>Output nodes</b> take
+    their input and produce a file on disk. These might be plots, interactive data, or data files for offline
+    examination.</p>
+
+    <p>After adding a second node, you can connect the output port of one node to the input of another by clicking on
+        the output port (highlighted in purple) and dragging to the input port of a different node.<br></p>
+    <img src="/static/tutorial/pscs_designer_nodeconnections.png" style="border: 2px solid black;"><br>
+    <p>Double-clicking a node will open its parameter menu, where you can set values. Only the most-relevant parameters
+        are initially displayed. To see a full list of parameters, click the "Expand" button.</p>
+    <img src="/static/tutorial/pscs_designer_nodeparameters.png" style="border: 2px solid black;"><br>
+    <p>When your pipeline is ready, you can use the <b>Validate</b> button below the pipeline workspace to check whether
+    your pipeline needs to be corrected. If there are any problems, a red dot will appear over nodes that require
+    changes; hovering over it will give you more information:</p>
+    <img src="/static/tutorial/pscs_pipeline_validator0.png" style="border: 2px solid black;"><br>
+    <p>Some nodes require specific fields to be present in the data they process. These fields are typically produced
+    by another processing node. In such cases, the validator will flag the missing field and suggest nodes that could
+    address the problem. Alternatively, if the fields are present in your dataset of interest, the validator can be
+    ignored.</p>
+    <img src="/static/tutorial/pscs_pipeline_validator1.png", style="border: 2px solid black;"><br>
+    <p>As the last step, save your pipeline into your project and execute it from the <b>Analysis</b> tab.</p>
+</div>
+
+
+{% endblock %}
