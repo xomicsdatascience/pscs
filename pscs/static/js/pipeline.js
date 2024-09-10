@@ -217,7 +217,7 @@ function createPscsNode(idNum, img, nodeData){
         pageEl.num_inputs = nodeData["num_inputs"];
         pageEl.num_outputs = nodeData["num_outputs"];
     }
-    pageEl.title = pageEl.params.toString();
+    pageEl.title = nodeData["doc"];
     pageEl.pscsType = pscsType;
     if(!img.startsWith("/")){
         img = "/" + img;
