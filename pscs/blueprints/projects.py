@@ -1921,7 +1921,7 @@ def copy_pipeline(id_analysis, id_project_destination):
             # Clean up file if something went wrong.
             os.remove(new_node_file)
             raise e
-    return
+    return new_id
 
 
 def make_shortid(db: sqlite3.Connection,

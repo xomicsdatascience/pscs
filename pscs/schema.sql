@@ -12,6 +12,7 @@ CREATE TABLE users_auth (
     creation_time_user TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ip TEXT,
     confirmed BIT DEFAULT 0,  -- whether user has confirmed their email address
+    is_temp_user BIT DEFAULT 0,
     confirmed_datetime TIMESTAMP
 );
 
@@ -251,6 +252,15 @@ CREATE TABLE analysis_inputs(  -- specifies and describes which nodes of an anal
     node_id TEXT NOT NULL,  -- id of the node within the pipeline, not within DB
     node_name TEXT NOT NULL,  -- displayed name of the node
     FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE
+);
+CREATE TABLE analysis_interactive_outputs(
+    id_output VARCHAR(36) UNIQUE NOT NULL,
+    id_analysis VARCHAR(36) NOT NULL,
+    node_id TEXT NOT NULL,
+    node_name TEXT NOT NULL,
+    interactive_tag VARCHAR(3) NOT NULL,
+    FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE,
+    FOREIGN KEY (interactive_tag) REFERENCES analysis_interactive_tags(interactive_tag)
 );
 
 CREATE TABLE analysis_interactive_tags(

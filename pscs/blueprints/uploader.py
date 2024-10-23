@@ -73,7 +73,10 @@ def process_csv_h5ad(req, id_project: str):
     db = get_db()
     # Get info: id_data, id_user, id_project, file_path, data_type, file_hash
     id_user = session["id_user"]
-    file_name = secure_filename(req.files["quantities"].filename)
+    if req.form["file_name"] is None or len(req.form["file_name"]) == 0:
+        file_name = secure_filename(req.files["quantities"].filename)
+    else:
+        file_name = secure_filename(req.form["file_name"])
     # Remove file extension since it's been converted
     last_ext = file_name.rfind(os.extsep)
     file_name = file_name[:last_ext]
