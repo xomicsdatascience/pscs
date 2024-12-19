@@ -12,6 +12,9 @@
 <script src="/static/js/projects_summary.js"></script>
 {% if g.user %}
 <p style="text-align: center">Welcome, {{ g.user['name_user'] }}!</p>
+    {% if g.user["is_temp_user"] %}
+        <p style="text-align: center">Note that without a registered account, logging out or clearing your browser cookies will result in losing access to your projects. You will also be unable to make your projects public; other functionality is unrestricted.</p>
+    {% endif %}
 <a class="linkbutton" href="{{ url_for('pscs.create_project') }}">Create Project</a>
 <p></p>
 
