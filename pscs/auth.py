@@ -44,7 +44,7 @@ def register():
                 return render_template("auth/register.html")
         db = get_db()
         try:
-            return create_user(db, email, password, password_confirm, user_ip, username)
+            return create_user(db, username, email, password, password_confirm, user_ip, request.form)
         except db.IntegrityError:
             error = f"User {username} is already registered."
         flash(error)
