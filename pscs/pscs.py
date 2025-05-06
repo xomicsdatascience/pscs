@@ -778,11 +778,3 @@ def get_project_invitations_sent(id_user: str):
         invite.append(inv)
     return invite
 
-@bp.route("/cookies")
-def cookie():
-    return render_template("pscs/cookies.html")
-
-@bp.route("/cookie_consent", methods=["POST"])
-def cookie_consent():
-    session["cookie_consent"] = True
-    return jsonify({"success": True})
