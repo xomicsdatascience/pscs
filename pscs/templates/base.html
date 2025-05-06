@@ -50,9 +50,6 @@
         {% endif %}
     {% endfor %}
     <body>
-        {%  if not "cookie_consent" in session and not session["cookie_consent"] %}
-            <iframe src="/cookies" style="width: 90%; border: None;"></iframe><br>
-        {% endif %}
         <div class="flex-container" style="margin-right: 0;">
             <div class="main-content">
                 {% block content %}{% endblock %}
