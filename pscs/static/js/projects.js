@@ -307,11 +307,105 @@ function getTabInfo(tab) {
         .catch(error => console.error("Error: ", error))
 }
 
-function displayResult(file_path) {
+function displayResult(file_path, file_id) {
     const container = document.getElementById("container_results");
-    container.innerHTML = "<img src='/" + file_path + "'>";
+    // empty container
+    while (container.firstChild) {
+        container.removeChild(container.firstChild);
+    }
+    const img = document.createElement("img");
+    img.src = "/" + file_path;
+    img.id = file_id;
+    container.appendChild(img);
+    img.addEventListener("click", matplotlibMenu)
+    // container.innerHTML = "<img src='/" + file_path + "'>";
     return
 }
+
+async function matplotlibMenu(event) {
+    console.log("matplotlibMenu");
+    let menu = document.getElementById("matplotlib_menu");
+    if (menu) {return}  // no need to do anything
+    menu = document.createElement("div");
+    menu.classList.add("matplotlibMenu");
+    menu.id = "matplotlib_menu";
+    menu.innerHTML = "<p>movable menu content</p>";
+    document.body.appendChild(menu);
+
+    await fetch('/templates/matplotlib_menu')
+        .then(response => {
+          if (!response.ok) {
+            throw new Error('Network response was not ok');
+          }
+          return response.text();
+        })
+        .then(htmlContent => {
+          menu.innerHTML = htmlContent;
+        })
+        .catch(error => {
+          console.error('Error loading menu template:', error);
+          menu.innerHTML = '<p>Failed to load menu content.</p>';
+        });
+    const idResult = document.getElementById("id_result");
+    idResult.value = event.target.id;
+
+    const updateButton = document.getElementById("menu_update");
+    updateButton.addEventListener("click", updateFigure)
+
+    const rect = event.target.getBoundingClientRect();
+    menu.style.left = rect.right + window.scrollX + 10 + "px";
+    menu.style.top = rect.top + window.scrollY + "px";
+    let offsetX, offsetY;
+    function mouseDownHandler(e){
+        offsetX = e.clientX - menu.offsetLeft;
+        offsetY = e.clientY - menu.offsetTop;
+        document.addEventListener('mousemove', mouseMoveHandler);
+        document.addEventListener('mouseup', mouseUpHandler);
+    }
+
+    function mouseMoveHandler(e){
+        console.log("move");
+        menu.style.left = (e.clientX - offsetX) + "px";
+        menu.style.top = (e.clientY - offsetY) + "px";
+    }
+
+    function mouseUpHandler(e){
+        document.removeEventListener('mousemove', mouseMoveHandler);
+        document.removeEventListener('mouseup', mouseUpHandler);
+    }
+
+    menu.addEventListener('mousedown', mouseDownHandler);
+}
+
+async function updateFigure(){
+    // Updates the displayed figure
+    let formContent = getFormContent("matplotlib_form");
+    console.log("sending: ", formContent);
+    await fetch( window.location.href + "/update_figure", {
+        method: "POST",
+        headers: {
+            "Accept": "application/json",
+            "Content-Type": "application/json"
+        },
+        body: JSON.stringify(formContent)
+    })
+        .then(response => {
+            console.log(response.status);
+        })
+}
+
+function getFormContent(formId){
+    const form = document.getElementById(formId);
+    form.addEventListener('submit', function(e){event.preventDefault();});
+    const formData = new FormData(form);
+    const formContent = {};
+    for (const [key, value] of formData.entries()) {
+        if(value.length === 0) continue;  // ignore empty fields
+        formContent[key] = value;
+    }
+    return formContent;
+}
+
 
 function viewLog(id_job) {
     fetch(window.location.href + "/logs/" + id_job)

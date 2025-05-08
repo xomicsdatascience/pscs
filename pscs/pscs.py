@@ -778,3 +778,8 @@ def get_project_invitations_sent(id_user: str):
         invite.append(inv)
     return invite
 
+@bp.route("/templates/matplotlib_menu", methods=["GET"])
+def templates():
+    return render_template("pscs/menu-template.html")
+
+

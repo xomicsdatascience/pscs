@@ -165,6 +165,15 @@ CREATE TABLE results(
     FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE
 );
 
+CREATE TABLE results_figures(
+    id_result TEXT UNIQUE NOT NULL,
+    id_result_fig TEXT UNIQUE NOT NULL,
+    file_path_fig TEXT NOT NULL,
+    FOREIGN KEY (id_result) REFERENCES results(id_result),
+    FOREIGN KEY (id_result_fig) REFERENCES results(id_result),
+    FOREIGN KEY (file_path_fig) REFERENCES results(file_path)
+);
+
 CREATE TABLE results_deletion(
     id_result TEXT NOT NULL PRIMARY KEY,  -- unique ID for each file produced by analysis
     id_project TEXT NOT NULL,

@@ -32,6 +32,7 @@ from pscs.extensions.limiter import limiter
 import requests
 import time
 from pybtex.database.input import bibtex
+import pickle as pkl
 
 
 bp = Blueprint("projects", __name__, url_prefix="/project")
@@ -1762,6 +1763,12 @@ def get_tab_info(id_project, tab):
             return render_template("pscs/project_tabs/project_management.html",
                                    project_info=project_info,
                                    publication_info=publication_info)
+        elif tab == "developer":
+            f = open(current_app.config["SSH_PUBKEY"], "r")
+            pubkey = f.read()
+            f.close()
+            return render_template("pscs/project_tabs/developer.html",
+                                   ssh_pubkey=pubkey)
     return
 
 @bp.route("/<id_project>/pipeline_import", methods=["POST"])
@@ -2048,3 +2055,48 @@ def remove_paper(id_project):
         db.execute("DELETE FROM project_papers WHERE id_project = ? AND doi = ?", (id_project, doi))
         db.commit()
         return jsonify({"status": "success", "msg": ""}), 200
+
+
+@bp.route("/<id_project>/update_figure", methods=["POST"])
+def update_figure(id_project):
+    print("pinged")
+    if request.method == "POST":
+        if not check_user_permission("analysis_write", 1, id_project):
+            return jsonify({"status": "error", "msg": "You do not have permission to modify this project"}), 403
+        print("permission passed")
+        id_result = request.json["id_result"]
+
+        # check that there is an associated .fig
+        db = get_db()
+        file_path_fig = db.execute("SELECT file_path_fig FROM results_figures WHERE id_result = ?", (id_result,)).fetchone()
+        # Load & update figure with new parameters
+        f = open(file_path_fig["file_path_fig"], "rb")
+        fig = pkl.load(f)
+        f.close()
+        ax = fig.get_axes()[0]
+        for k, v in request.json.items():
+            if k == "id_result":
+                continue
+            else:
+                print(f"updating {k}")
+                update_property(ax, k, v)
+        img_path = db.execute("SELECT file_path FROM results WHERE id_result = ?", (id_result,)).fetchone()["file_path"]
+        print(f"saving to {img_path}")
+        fig.savefig(img_path)
+        # Update pkl file, too
+        f = open(file_path_fig["file_path_fig"], "wb")
+        pkl.dump(fig, f)
+        f.close()
+        print("SUCCESS")
+        return jsonify({"status": "success", "msg": ""}), 200
+
+def update_property(ax, prop, value):
+    if prop == "xlabel":
+        ax.set_xlabel(value)
+    elif prop == "ylabel":
+        ax.set_ylabel(value)
+    elif prop == "axhline":
+        ax.axhline(y=float(value), color="black")
+    elif prop == "axvline":
+        ax.axvline(x=float(value), color="black")
+    return

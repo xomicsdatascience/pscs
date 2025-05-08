@@ -7,6 +7,7 @@ image_exts = {"apng", "jpg", "jpeg", "png", "avif", "gif", "svg", "webp", "bmp",
 text_exts = {"txt", "doc", "docx"}
 table_exts = {"csv", "tsv"}
 data_exts = {"h5ad"}
+binary_exts = {"pkl"}
 
 ext_mapper = dd(lambda: "unknown")
 for ext in image_exts:
@@ -17,6 +18,8 @@ for ext in table_exts:
     ext_mapper[ext] = "table"
 for ext in data_exts:
     ext_mapper[ext] = "data"
+for ext in binary_exts:
+    ext_mapper[ext] = "binary"
 
 def get_file_type(filename: Union[Path, str]) -> str:
     """Examines the extension of the given filename and returns the type of file (e.g., "image", "table", etc.). If

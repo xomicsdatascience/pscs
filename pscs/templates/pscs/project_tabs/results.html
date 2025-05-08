@@ -36,7 +36,7 @@
                     <td>{{r["analysis_name"]}}</td>
                     <td>{{r["publication_status"]}}</td>
                     {% if r["result_type"] == "image" %}
-                        <td><button onclick="displayResult('{{r["file_path"]}}')">Display</button></td>
+                        <td><button onclick="displayResult('{{r["file_path"]}}', '{{ r["id_result"] }}')">Display</button></td>
                     {% endif %}
                 </tr>
             {% endif %}
