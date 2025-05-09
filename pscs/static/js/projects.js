@@ -308,14 +308,15 @@ function getTabInfo(tab) {
 }
 
 function displayResult(file_path, file_id) {
+    const img = document.createElement("img");
+    img.src = "/" + file_path + "?t=" + new Date().getTime();
+    img.id = file_id;
+
     const container = document.getElementById("container_results");
     // empty container
     while (container.firstChild) {
         container.removeChild(container.firstChild);
     }
-    const img = document.createElement("img");
-    img.src = "/" + file_path;
-    img.id = file_id;
     container.appendChild(img);
     img.addEventListener("click", matplotlibMenu)
     // container.innerHTML = "<img src='/" + file_path + "'>";
@@ -390,6 +391,11 @@ async function updateFigure(){
         body: JSON.stringify(formContent)
     })
         .then(response => {
+            let img = document.getElementById(formContent["id_result"]);
+            const baseUrl = img.src.split('?')[0];
+            // Append a unique query parameter using the current timestamp
+            img.src = `${baseUrl}?t=${new Date().getTime()}`;
+
             console.log(response.status);
         })
 }
