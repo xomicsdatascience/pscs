@@ -1,0 +1,30 @@
+<form id='matplotlib_form'>
+    <input type="hidden" id="id_result" name="id_result" value="">
+    <table>
+        <tr>
+            <th>Property</th>
+            <th>Value</th>
+        </tr>
+        <tr>
+            <td><label for="axhline">axhline</label></td>
+            <td><input type="text" id="axhline" name="axhline" placeholder=""></td>
+        </tr>
+        <tr>
+            <td><label for="axvline">axvline</label></td>
+            <td><input type="text" id="axvline" name="axvline"></td>
+        </tr>
+        <tr>
+            <td>xlabel</td>
+            <td><input type="text" id="xlabel" name="xlabel" placeholder="X-axis label"></td>
+        </tr>
+        <tr>
+            <td>ylabel</td>
+            <td><input type="text" id="ylabel" name="ylabel" placeholder="Y-axis label"></td>
+        </tr>
+
+        <tr>
+            <td><input type="submit" id="menu_update" value="Update"></td>
+            <td><input type="submit" value="Close" onclick="const el = document.getElementById('matplotlib_menu'); el.remove();"></td>
+        </tr>
+    </table>
+</form>
