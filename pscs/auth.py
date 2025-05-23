@@ -20,6 +20,7 @@ from werkzeug.utils import escape
 import os
 from os.path import join
 import random
+import pathlib
 
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
@@ -285,6 +286,13 @@ def create_default_project(db: sqlite3.Connection,
     sql_command = f"INSERT INTO projects_roles ({insert_cols}) VALUES({placeholders})"
     db.execute(sql_command, tuple(source_project_roles.values()))
 
+    proj_dir = pathlib.Path(current_app.config['PROJECTS_DIRECTORY'].format(id_project=id_project))
+    proj_dir.mkdir(exist_ok=True)
+    data_dir = pathlib.Path(current_app.config["DATA_DIRECTORY"].format(id_project=id_project))
+    data_dir.mkdir(exist_ok=True)
+    results_dir = pathlib.Path(
+        os.path.join(current_app.config['PROJECTS_DIRECTORY'], 'results').format(id_project=id_project))
+    results_dir.mkdir(exist_ok=True)
     # Entry for project created; now copy data
     data_info = db.execute("SELECT * FROM data WHERE id_project = ?", (source_id_project,)).fetchall()
     data_info = [dict(d) for d in data_info]
