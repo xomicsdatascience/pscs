@@ -94,7 +94,79 @@ def dispatch(pipeline_json: str,
     return pscs_job_id
 
 
-# 1 job(s) submitted to cluster 36045774
+def local_dispatch(pipeline_json: str,
+                   id_user: str,
+                   file_info: dict,
+                   id_project: str,
+                   id_analysis: str,
+                   resource: str = 'local'):
+    if resource != "local":
+        raise ValueError("local_dispatch can only be used with local resource")
+    file_ids = dict()
+    file_paths = dict()
+    for k, v in file_info.items():
+        file_ids[k] = file_info[k]["id"]
+        file_paths[k] = file_info[k]["file_path"]
+    db = get_db()
+    pscs_job_id = get_unique_value_for_field(db, "id_job", "submitted_jobs")
+
+    # Make local directories for files, results
+    dirs_to_make = []
+    proj_dir = current_app.config["PROJECTS_DIRECTORY"].format(id_project=id_project)
+    dirs_to_make.append(proj_dir)
+    results_dir = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=id_analysis, id_job=pscs_job_id)
+    dirs_to_make.append(results_dir)
+    tags = db.execute("SELECT interactive_tag FROM analysis_interactive_tags").fetchall()
+    tags = [tag["interactive_tag"] for tag in tags]
+    for tag in tags:
+        tag_dir = join(results_dir, tag)
+        dirs_to_make.append(tag_dir)
+
+    make_local_directories(dirs_to_make)
+    # file info
+    f = open(f"{results_dir}/pscs-filepaths-{pscs_job_id}.json", 'w')
+    json.dump(file_paths, f)
+    f.close()
+    print(f"\n\nFile info: {proj_dir}/pscs-filepaths-{pscs_job_id}.json\n\n")
+
+    db.execute("INSERT INTO submitted_jobs "
+               "(id_job, submitted_resource, resource_job_id, id_user, id_project, id_analysis, server_response, remote_results_directory) "
+               "VALUES (?,?,?,?,?,?,?,?)", (pscs_job_id, resource, pscs_job_id, id_user, id_project, id_analysis, "", results_dir))
+    db.execute("INSERT INTO local_jobs "
+               "(id_job) VALUES (?)", (pscs_job_id,))
+    db.commit()
+    command = ["python", "pscs/run_local_pipeline.py", current_app.config['DATABASE'], current_app.config["REMOTE_COMPUTING"][resource]["URL"]]
+    #TODO: have stdout/stderr redirect to a log file
+    outp = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    return pscs_job_id
+
+def make_local_directories(local_dirs: list):
+    if isinstance(local_dirs, str):
+        local_dirs = [local_dirs]
+    for local_dir in local_dirs:
+        os.makedirs(local_dir, exist_ok=True)
+    return
+
+
+def determine_resource():
+    # check local queue
+    if is_local_queue_too_long():
+        return "osp"
+    else:
+        return "local"
+
+
+def is_local_queue_too_long():
+    db = get_db()
+    # get local jobs that are not completed
+    jobs_longer_than_wait = db.execute("SELECT * "
+                                 "FROM submitted_jobs "
+                                 "WHERE (strftime('%s', 'now') - strftime('%s', date_submitted)) > ? "
+                                 "AND submitted_resource = 'local' AND is_complete = 0",
+                                 (current_app.config["LOCAL_MAX_WAIT_SECONDS"],)).fetchall()
+    return len(jobs_longer_than_wait) > 0
+
+
 def get_job_id(response: str,
                resource: str) -> str:
     """

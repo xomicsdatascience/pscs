@@ -10,6 +10,7 @@ pscs_ops-0.3.1-py3-none-any.whl /pscs_ops-0.3.1-py3-none-any.whl
 capital-1.1.6-py3-none-any.whl /capital-1.1.6-py3-none-any.whl
 pscs_capital-0.0.2-py3-none-any.whl /pscs_capital-0.0.2-py3-none-any.whl
 pscs_cxg-0.0.1-py3-none-any.whl /pscs_cxg-0.0.1-py3-none-any.whl
+scte-0.1.1-py3-none-any.whl /scte-0.1.1-py3-none-any.whl
 
 run_pscs_pipeline.py /run_pscs_pipeline.py
 
@@ -61,6 +62,7 @@ python3.11 -m pip install /pscs_cxg-0.0.1-py3-none-any.whl
 python3.11 -m pip install /pscs_capital-0.0.2-py3-none-any.whl
 python3.11 -m pip install pandas==2.2.2
 python3.11 -m pip install -U /capital-1.1.6-py3-none-any.whl
+python3.11 -m pip install /scte-0.1.1-py3-none-any.whl
 R -e 'install.packages("BiocManager")'
 R -e 'BiocManager::install("edgeR")'
 R -e 'install.packages("statmod")'

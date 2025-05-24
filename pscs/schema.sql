@@ -333,6 +333,13 @@ CREATE TABLE submitted_jobs(  -- logging submitted jobs
   date_completed TIMESTAMP
 );
 
+CREATE TABLE local_jobs(
+    id_job TEXT UNIQUE NOT NULL PRIMARY KEY,
+    is_running BIT DEFAULT 0,
+    start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completion_time TIMESTAMP DEFAULT NULL
+);
+
 CREATE TABLE submitted_jobs_deletion(  -- logging submitted jobs
    id_job TEXT NOT NULL PRIMARY KEY,  -- unique id for job
    submitted_resource TEXT NOT NULL,  -- computing resource to which the job was submitted

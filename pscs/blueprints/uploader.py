@@ -79,7 +79,8 @@ def process_csv_h5ad(req, id_project: str):
         file_name = secure_filename(req.form["file_name"])
     # Remove file extension since it's been converted
     last_ext = file_name.rfind(os.extsep)
-    file_name = file_name[:last_ext]
+    if last_ext != -1:
+        file_name = file_name[:last_ext]
     file_name = file_name[:current_app.config["MAX_FILENAME_CHARS"]]
     data_type = "h5ad"
     id_data = get_unique_value_for_field(db, "id_data", "data")
