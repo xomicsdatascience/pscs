@@ -2059,11 +2059,9 @@ def remove_paper(id_project):
 
 @bp.route("/<id_project>/update_figure", methods=["POST"])
 def update_figure(id_project):
-    print("pinged")
     if request.method == "POST":
         if not check_user_permission("analysis_write", 1, id_project):
             return jsonify({"status": "error", "msg": "You do not have permission to modify this project"}), 403
-        print("permission passed")
         id_result = request.json["id_result"]
 
         # check that there is an associated .fig
@@ -2091,12 +2089,28 @@ def update_figure(id_project):
         return jsonify({"status": "success", "msg": ""}), 200
 
 def update_property(ax, prop, value):
+    if value is None:
+        return
     if prop == "xlabel":
         ax.set_xlabel(value)
+    elif prop == "xlabel_fontsize":
+        ax.set_xlabel(ax.get_xlabel(), fontdict={"fontsize": value})
     elif prop == "ylabel":
         ax.set_ylabel(value)
+    elif prop == "ylabel_fontsize":
+        ax.set_ylabel(ax.get_ylabel(), fontdict={"fontsize": value})
     elif prop == "axhline":
         ax.axhline(y=float(value), color="black")
     elif prop == "axvline":
         ax.axvline(x=float(value), color="black")
+    elif prop == "figure_xsize":
+        fig = ax.get_figure()
+        fig.set_size_inches(float(value), fig.get_size_inches()[1])
+    elif prop == "figure_ysize":
+        fig = ax.get_figure()
+        fig.set_size_inches(fig.get_size_inches()[0], float(value))
+    elif prop == "title":
+        ax.set_title(value)
+    elif prop == "title_fontsize":
+        ax.set_title(ax.get_title(), fontdict={"fontsize": value})
     return

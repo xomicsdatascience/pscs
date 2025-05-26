@@ -488,6 +488,8 @@ document.addEventListener('click', function (e) {
         for (let t of tabs) {
             t.classList.remove("tab-selected");
         }
+        const el = document.getElementById('matplotlib_menu');
+        if (el) {el.remove();}
         target.classList.add("tab-selected");
     }
 }, false);

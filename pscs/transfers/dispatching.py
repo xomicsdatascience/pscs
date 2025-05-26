@@ -8,6 +8,7 @@ import json
 import tempfile
 import os
 import time
+import threading
 
 
 def dispatch(pipeline_json: str,
@@ -116,6 +117,9 @@ def local_dispatch(pipeline_json: str,
     dirs_to_make.append(proj_dir)
     results_dir = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=id_analysis, id_job=pscs_job_id)
     dirs_to_make.append(results_dir)
+    logs_dir = current_app.config["LOG_DIRECTORY"].format(id_project=id_project, id_analysis=id_analysis, id_job=pscs_job_id)
+    print(f"Logs dir: {logs_dir}")
+    dirs_to_make.append(logs_dir)
     tags = db.execute("SELECT interactive_tag FROM analysis_interactive_tags").fetchall()
     tags = [tag["interactive_tag"] for tag in tags]
     for tag in tags:
@@ -137,7 +141,19 @@ def local_dispatch(pipeline_json: str,
     db.commit()
     command = ["python", "pscs/run_local_pipeline.py", current_app.config['DATABASE'], current_app.config["REMOTE_COMPUTING"][resource]["URL"]]
     #TODO: have stdout/stderr redirect to a log file
-    outp = subprocess.Popen(command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    stdout_file = open(f"{logs_dir}/pscs-stdout-{pscs_job_id}.log", 'w')
+    stderr_file = open(f"{logs_dir}/pscs-stderr-{pscs_job_id}.log", 'w')
+    process = subprocess.Popen(command, stdout=stdout_file, stderr=stderr_file)
+
+    def cleanup():
+        process.wait()
+        stdout_file.close()
+        stderr_file.close()
+
+    # Start the cleanup in a background thread.
+    cleanup_thread = threading.Thread(target=cleanup)
+    cleanup_thread.start()
+
     return pscs_job_id
 
 def make_local_directories(local_dirs: list):

@@ -71,8 +71,11 @@ def register_result(db,
             if not binary_file_path.is_file():
                 binary_file_path = None
             else:
-                new_binary_path = new_path + ".pkl"
+                new_binary_path = str(new_path) + ".pkl"
                 binary_file_path.rename(new_binary_path)
+                db.execute("INSERT INTO results_figures "
+                           "(id_result, id_result_fig, file_path_fig) VALUES (?,'',?)",
+                           (id_result, new_binary_path))
         file_path.rename(new_path)
 
         # Insert into DB
@@ -130,7 +133,7 @@ if __name__ == "__main__":
         input_json = f"{proj_dir}/pscs-filepaths-{job_specs['id_job']}.json"
 
         # Run job
-        sing_command = f"singularity exec {parser.parse_args().instance_url} python3.11 /run_pscs_pipeline.py  {pipeline_json} {input_json} {proj_dir}"
+        sing_command = f"singularity exec --cleanenv --no-home {parser.parse_args().instance_url} python3.11 /run_pscs_pipeline.py  {pipeline_json} {input_json} {proj_dir}"
         print(f"Sing command: {sing_command}")
         # TODO: check that files are correctly output
 

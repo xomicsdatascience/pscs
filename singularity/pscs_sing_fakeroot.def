@@ -2,8 +2,8 @@ Bootstrap: docker
 From: ubuntu:22.04
 
 %files
-pscs_api-1.4.1-py3-none-any.whl /pscs_api-1.4.1-py3-none-any.whl
-pscs_scanpy-0.2.2-py3-none-any.whl /pscs_scanpy-0.2.2-py3-none-any.whl
+pscs_api-1.7.1-py3-none-any.whl /pscs_api-1.7.1-py3-none-any.whl
+pscs_scanpy-0.3.5-py3-none-any.whl /pscs_scanpy-0.3.5-py3-none-any.whl
 pscs_milopy-0.0.1-py3-none-any.whl /pscs_milopy-0.0.1-py3-none-any.whl
 milopy-0.0.0-py3-none-any.whl /milopy-0.0.0-py3-none-any.whl
 pscs_ops-0.3.1-py3-none-any.whl /pscs_ops-0.3.1-py3-none-any.whl
@@ -14,6 +14,8 @@ scte-0.1.1-py3-none-any.whl /scte-0.1.1-py3-none-any.whl
 
 run_pscs_pipeline.py /run_pscs_pipeline.py
 
+%environment
+	export NUMBA_CACHE_DIR=/tmp/
 %post
 su - root
 
@@ -53,8 +55,8 @@ apt install -y --no-install-recommends r-base
 python3.11 -m pip install rpy2==3.5.12
 python3.11 -m pip install /capital-1.1.6-py3-none-any.whl
 
-python3.11 -m pip install /pscs_api-1.4.1-py3-none-any.whl
-python3.11 -m pip install /pscs_scanpy-0.2.2-py3-none-any.whl
+python3.11 -m pip install /pscs_api-1.7.1-py3-none-any.whl
+python3.11 -m pip install /pscs_scanpy-0.3.5-py3-none-any.whl
 python3.11 -m pip install /milopy-0.0.0-py3-none-any.whl
 python3.11 -m pip install /pscs_milopy-0.0.1-py3-none-any.whl
 python3.11 -m pip install /pscs_ops-0.3.1-py3-none-any.whl
@@ -62,7 +64,9 @@ python3.11 -m pip install /pscs_cxg-0.0.1-py3-none-any.whl
 python3.11 -m pip install /pscs_capital-0.0.2-py3-none-any.whl
 python3.11 -m pip install pandas==2.2.2
 python3.11 -m pip install -U /capital-1.1.6-py3-none-any.whl
+python3.11 -m pip install /pscs_api-1.7.1-py3-none-any.whl
 python3.11 -m pip install /scte-0.1.1-py3-none-any.whl
+python3.11 -m pip install -U /pscs_api-1.7.1-py3-none-any.whl
 R -e 'install.packages("BiocManager")'
 R -e 'BiocManager::install("edgeR")'
 R -e 'install.packages("statmod")'

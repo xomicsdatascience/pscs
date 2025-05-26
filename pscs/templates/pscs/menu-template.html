@@ -6,22 +6,32 @@
             <th>Value</th>
         </tr>
         <tr>
-            <td><label for="axhline">axhline</label></td>
-            <td><input type="text" id="axhline" name="axhline" placeholder=""></td>
+            <td>Title</td>
+            <td><input type="text" id="title" name="title" placeholder="Title"> </td>
+            <td><input type="number" id="title_fontsize" name="title_fontsize" placeholder="fontsize"> </td>
         </tr>
-        <tr>
-            <td><label for="axvline">axvline</label></td>
-            <td><input type="text" id="axvline" name="axvline"></td>
+            <td>Figure</td>
+            <td><input type="number" id="figure_xsize" name="figure_xsize" placeholder="figure width"></td>
+            <td><input type="number" id="figure_ysize" name="figure_ysize" placeholder="figure height"></td>
         </tr>
         <tr>
             <td>xlabel</td>
             <td><input type="text" id="xlabel" name="xlabel" placeholder="X-axis label"></td>
+            <td><input type="number" id="xlabel_fontsize" name="xlabel_fontsize" placeholder="fontsize"> </td>
         </tr>
         <tr>
             <td>ylabel</td>
             <td><input type="text" id="ylabel" name="ylabel" placeholder="Y-axis label"></td>
+            <td><input type="number" id="ylabel_fontsize" name="ylabel_fontsize" placeholder="fontsize"> </td>
         </tr>
-
+        <tr>
+            <td><label for="axhline">axhline</label></td>
+            <td><input type="number" id="axhline" name="axhline" placeholder="y value"></td>
+        </tr>
+        <tr>
+            <td><label for="axvline">axvline</label></td>
+            <td><input type="number" id="axvline" name="axvline" placeholder="x value"></td>
+        </tr>
         <tr>
             <td><input type="submit" id="menu_update" value="Update"></td>
             <td><input type="submit" value="Close" onclick="const el = document.getElementById('matplotlib_menu'); el.remove();"></td>
