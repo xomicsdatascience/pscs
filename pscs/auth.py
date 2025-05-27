@@ -320,7 +320,8 @@ def create_default_project(db: sqlite3.Connection,
 
     # Copy results
     results_info = db.execute("SELECT * FROM results WHERE id_project = ?", (source_id_project,)).fetchall()
-    for r in results_info:
+    for rr in results_info:
+        r = dict(rr)
         previous_id = r["id_result"]
         r["id_result"] = get_unique_value_for_field(db, "id_result", "results")
         r["id_analysis"] = analysis_map[r["id_analysis"]]
