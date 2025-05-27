@@ -325,7 +325,8 @@ def create_default_project(db: sqlite3.Connection,
         previous_id = r["id_result"]
         r["id_result"] = get_unique_value_for_field(db, "id_result", "results")
         r["id_analysis"] = analysis_map[r["id_analysis"]]
-        new_path = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=r["id_analysis"], id_job=r["id_job"])
+        id_job = "id_job_sample"
+        new_path = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=r["id_analysis"], id_job=id_job)
         previous_path_exp = os.path.basename(r["file_path"]).split(previous_id)[-1]  # get basename, remove id, get ext
         new_path = new_path + previous_path_exp
         r["file_path"] = new_path

@@ -1,4 +1,4 @@
-__version__ = "0.15.5"
+__version__ = "0.15.6"
 from flask import Flask
 import os
 from os.path import join, dirname
