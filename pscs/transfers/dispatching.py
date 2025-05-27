@@ -140,9 +140,12 @@ def local_dispatch(pipeline_json: str,
                "(id_job) VALUES (?)", (pscs_job_id,))
     db.commit()
     command = ["python", "pscs/run_local_pipeline.py", current_app.config['DATABASE'], current_app.config["REMOTE_COMPUTING"][resource]["URL"]]
-    #TODO: have stdout/stderr redirect to a log file
-    stdout_file = open(f"{logs_dir}/pscs-stdout-{pscs_job_id}.log", 'w')
-    stderr_file = open(f"{logs_dir}/pscs-stderr-{pscs_job_id}.log", 'w')
+    stdout_path = f"{logs_dir}/pscs-stdout-{pscs_job_id}.log"
+    stderr_path = f"{logs_dir}/pscs-stderr-{pscs_job_id}.log"
+    stdout_file = open(stdout_path, 'w')
+    stderr_file = open(stderr_path, 'w')
+    command = ["python", "pscs/run_local_pipeline.py", current_app.config['DATABASE'],
+               current_app.config["REMOTE_COMPUTING"][resource]["URL"], stdout_path, stderr_path]
     process = subprocess.Popen(command, stdout=stdout_file, stderr=stderr_file)
 
     def cleanup():

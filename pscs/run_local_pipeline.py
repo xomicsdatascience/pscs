@@ -47,6 +47,8 @@ def register_result(db,
         results_directory = Path(results_directory)
     for result in os.listdir(results_directory):
         file_path = Path(os.path.join(results_directory, result))
+        if file_path.name.startswith("pscs-filepaths-"):
+            continue
         if not file_path.is_file():
             matching_tag = db.execute("SELECT interactive_tag FROM analysis_interactive_tags WHERE interactive_tag = ?",
                                       (result,)).fetchall()
@@ -105,8 +107,14 @@ if __name__ == "__main__":
                             description="Runs local PSCS pipelines")
     parser.add_argument("db_path", type=str, help="Path to the database file")
     parser.add_argument("instance_url", type=str, help="URL of the Singularity instance")
+    parser.add_argument("stdout_file", type=str, help="Path to the stdout file")
+    parser.add_argument("stderr_file", type=str, help="Path to the stderr file")
+    args = parser.parse_args()
+    db_path = args.db_path
+    stdout_file = args.stdout_file
+    stderr_file = args.stderr_file
 
-    db = sqlite3.connect(parser.parse_args().db_path)
+    db = sqlite3.connect(db_path)
     db.row_factory = sqlite3.Row
     # Check if there is a currently-running job
     is_currently_running = db.execute("SELECT * FROM local_jobs WHERE is_running = 1").fetchall()
@@ -133,7 +141,7 @@ if __name__ == "__main__":
         input_json = f"{proj_dir}/pscs-filepaths-{job_specs['id_job']}.json"
 
         # Run job
-        sing_command = f"singularity exec --cleanenv --no-home {parser.parse_args().instance_url} python3.11 /run_pscs_pipeline.py  {pipeline_json} {input_json} {proj_dir}"
+        sing_command = f"singularity exec --cleanenv --no-home {args.instance_url} python3.11 /run_pscs_pipeline.py  {pipeline_json} {input_json} {proj_dir}"
         print(f"Sing command: {sing_command}")
         # TODO: check that files are correctly output
 
@@ -151,7 +159,12 @@ if __name__ == "__main__":
         # Record results into DB
 
 
-        db.execute("UPDATE submitted_jobs SET is_complete = 1 WHERE id_job = ?", (job_specs["id_job"],))
+        db.execute("UPDATE submitted_jobs "
+                   "SET is_complete = 1, "
+                   "date_completed=DATETIME('now'), "
+                   "stdout_log=?,"
+                   "stderr_log=? "
+                   "WHERE id_job = ?", (stdout_file, stderr_file, job_specs["id_job"],))
         db.execute("UPDATE local_jobs SET is_running = 0 WHERE id_job = ?", (job_specs["id_job"],))
         db.commit()
         queued_local = db.execute("SELECT id_job, id_analysis, id_project, remote_results_directory "
