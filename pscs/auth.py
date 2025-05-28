@@ -320,8 +320,12 @@ def create_default_project(db: sqlite3.Connection,
 
     # Copy results
     results_info = db.execute("SELECT * FROM results WHERE id_project = ?", (source_id_project,)).fetchall()
+    amap_keys = list(analysis_map.keys())
     for rr in results_info:
         r = dict(rr)
+        if r["id_result"] not in amap_keys:
+            continue
+        r["id_project"] = id_project
         previous_id = r["id_result"]
         r["id_result"] = get_unique_value_for_field(db, "id_result", "results")
         r["id_analysis"] = analysis_map[r["id_analysis"]]
