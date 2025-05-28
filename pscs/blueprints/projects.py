@@ -165,7 +165,7 @@ def manage_invitation():
                                                  "analysis_execute": 1,
                                                  "project_management": 0})
                 rescind_invitation(data["id_invitation"])
-                return jsonify({"done": 1})
+                return jsonify({"done": 1, "url": url_for("pscs.projects_summary")})
         elif "reject" == data["action"]:
             invitation = get_invitation(data["id_invitation"])
             if invitation["id_invitee"] == session["id_user"]:
@@ -2067,6 +2067,8 @@ def update_figure(id_project):
         # check that there is an associated .fig
         db = get_db()
         file_path_fig = db.execute("SELECT file_path_fig FROM results_figures WHERE id_result = ?", (id_result,)).fetchone()
+        if file_path_fig is None:
+            return jsonify({"status": "error", "msg": "No associated binary file."}), 400
         # Load & update figure with new parameters
         f = open(file_path_fig["file_path_fig"], "rb")
         fig = pkl.load(f)
@@ -2076,16 +2078,13 @@ def update_figure(id_project):
             if k == "id_result":
                 continue
             else:
-                print(f"updating {k}")
                 update_property(ax, k, v)
         img_path = db.execute("SELECT file_path FROM results WHERE id_result = ?", (id_result,)).fetchone()["file_path"]
-        print(f"saving to {img_path}")
         fig.savefig(img_path)
         # Update pkl file, too
         f = open(file_path_fig["file_path_fig"], "wb")
         pkl.dump(fig, f)
         f.close()
-        print("SUCCESS")
         return jsonify({"status": "success", "msg": ""}), 200
 
 def update_property(ax, prop, value):
