@@ -411,7 +411,8 @@ def main(db, env, debug=False):
         register_results(db,
                          id_project=job_info["id_project"],
                          id_analysis=job_info["id_analysis"],
-                         results_directory=results_directory)
+                         results_directory=results_directory,
+                         id_job=job_info["id_job"])
         update_db_job_complete(db, c_job[0], job_info["id_job"], logs_directory)
     return
 
@@ -420,6 +421,7 @@ def register_results(db: sqlite3.Connection,
                      id_project: str,
                      id_analysis: str,
                      results_directory: Union[Path, str],
+                     id_job: str = None,
                      interactive_tag = None):
     """Register the files in the results directory into the database."""
     if isinstance(results_directory, str):
@@ -434,7 +436,7 @@ def register_results(db: sqlite3.Connection,
                 continue
             else:
                 # Register files in this directory
-                register_results(db, id_project, id_analysis, results_directory/result, interactive_tag=result)
+                register_results(db, id_project, id_analysis, results_directory/result, id_job, interactive_tag=result)
                 continue
         id_result = get_unique_value_for_field(db, field="id_result", table="results")
         file_name = file_path.name
@@ -458,14 +460,14 @@ def register_results(db: sqlite3.Connection,
         # Insert into DB
         if interactive_tag is None:
             db.execute("INSERT INTO results "
-                       "(id_result, id_project, id_analysis, file_path, file_name, result_type) "
-                       "VALUES (?,?,?,?,?,?) ",
-                       (id_result, id_project, id_analysis, str(new_path), file_name, result_type))
+                       "(id_result, id_project, id_analysis, file_path, file_name, result_type, id_job) "
+                       "VALUES (?,?,?,?,?,?,?) ",
+                       (id_result, id_project, id_analysis, str(new_path), file_name, result_type, id_job))
         else:
             db.execute("INSERT INTO results "
-                       "(id_result, id_project, id_analysis, file_path, file_name, result_type, is_interactive, interactive_tag) "
-                       "VALUES (?,?,?,?,?,?,?,?) ",
-                       (id_result, id_project, id_analysis, str(new_path), file_name, result_type, 1, interactive_tag))
+                       "(id_result, id_project, id_analysis, file_path, file_name, result_type, is_interactive, interactive_tag, id_job) "
+                       "VALUES (?,?,?,?,?,?,?,?,?) ",
+                       (id_result, id_project, id_analysis, str(new_path), file_name, result_type, 1, interactive_tag, id_job))
             if new_binary_path is not None:
                 db.execute("INSERT INTO results_figures "
                            "(id_result, id_result_fig, file_path_fig) "
