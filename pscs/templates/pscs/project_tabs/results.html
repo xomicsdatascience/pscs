@@ -29,13 +29,13 @@
             <th>Analysis</th>
             <th>Publication Status</th>
         </tr>
-        {% set initid = '0' %}
+        {% set initid = '000' %}
         {% for r in results %}
-            {% if initid != r["id_job"] and initid != '0' %}
-                {% set initid = r["id_job"] %}
-            {% elif initid != r["id_job"] %}
-                {% set initid = r["id_job"] %}
-                <tr></tr>
+            {% if initid != r["id_job"] and initid == '000' %}
+                {% set initid = r["id_job"]|string() %}
+            {% elif initid|string() != r["id_job"]|string() %}
+                {% set initid = r["id_job"]|string() %}
+                <tr class="spacer"><td class="spacer" colspan="3" style="padding-top: 5px;"></td></tr>
             {% endif %}
             {% if r["interactive_tag"] is none %}
                 <tr>

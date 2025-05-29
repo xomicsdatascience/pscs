@@ -42,7 +42,7 @@ input[type=submit] { align-self: start; min-width: 10em; }
 textarea{min-width:200px; width:20%;display:block}
 table, th, td {border: 1px solid; border-spacing: 1px;}
 td {padding: 5px;}
-tr:hover:not(:first-child,.post) {background-color: rgba(0,0,0, 0.2);}
+tr:hover:not(:first-child,.post,.spacer) {background-color: rgba(0,0,0, 0.2);}
 img {max-width:1600px;}
 
 .pscs {position:absolute; cursor: grab; z-index:2;}
