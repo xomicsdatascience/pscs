@@ -103,7 +103,7 @@
 
 <button id="loader" onclick="loadAnalysis()">Inspect analysis</button>
 {% if user_projects %}
-<button id="importer" onclick="startImport('projectList', 'buttonImport');">Import to project</button>
+<button id="importer" onclick="startImport('projectList', 'buttonImport'); document.getElementById('importer').style.display = 'none';">Import to project</button>
 <select id="projectList" style="display: none">
     {% for proj in user_projects %}
       <option value={{proj["id_project"]}}>{{proj["name_project"]}}</option>
