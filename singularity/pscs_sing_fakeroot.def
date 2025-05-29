@@ -1,0 +1,78 @@
+Bootstrap: docker
+From: ubuntu:22.04
+
+%files
+pscs_api-1.7.1-py3-none-any.whl /pscs_api-1.7.1-py3-none-any.whl
+pscs_scanpy-0.3.5-py3-none-any.whl /pscs_scanpy-0.3.5-py3-none-any.whl
+pscs_milopy-0.0.1-py3-none-any.whl /pscs_milopy-0.0.1-py3-none-any.whl
+milopy-0.0.0-py3-none-any.whl /milopy-0.0.0-py3-none-any.whl
+pscs_ops-0.3.1-py3-none-any.whl /pscs_ops-0.3.1-py3-none-any.whl
+capital-1.1.6-py3-none-any.whl /capital-1.1.6-py3-none-any.whl
+pscs_capital-0.0.2-py3-none-any.whl /pscs_capital-0.0.2-py3-none-any.whl
+pscs_cxg-0.0.1-py3-none-any.whl /pscs_cxg-0.0.1-py3-none-any.whl
+scte-0.1.1-py3-none-any.whl /scte-0.1.1-py3-none-any.whl
+
+run_pscs_pipeline.py /run_pscs_pipeline.py
+
+%environment
+	export NUMBA_CACHE_DIR=/tmp/
+%post
+su - root
+
+apt-get update -qq
+apt-get install -y -q --no-install-recommends \
+    apt-utils \
+    bzip2 \
+    ca-certificates \
+    curl \
+    locales \
+    unzip \
+    git
+
+apt-get install -y -q --no-install-recommends build-essential
+apt-get install -y -q --no-install-recommends python3-setuptools
+apt-get install -y python3.11 python3.11-dev python3-pip
+apt-get install -y -q --no-install-recommends sudo wget
+apt-get install -y graphviz
+
+# Install R
+apt-get install -y gfortran libblas-dev liblapack-dev libpcre2-dev libbz2-dev zlib1g-dev liblzma-dev libbz2-dev libicu-dev
+ 
+
+python3.11 -m pip install --upgrade pip
+
+DEBIAN_FRONTEND=noninteractive apt-get install -y tzdata
+dpkg-reconfigure --frontend noninteractive tzdata
+apt install -y --no-install-recommends software-properties-common dirmngr
+wget -qO- https://cloud.r-project.org/bin/linux/ubuntu/marutter_pubkey.asc | tee -a /etc/apt/trusted.gpg.d/cran_ubuntu_key.asc
+add-apt-repository "deb https://cloud.r-project.org/bin/linux/ubuntu $(lsb_release -cs)-cran40/"
+
+python3.11 -m pip install igraph pydot graphviz
+python3.11 -m pip install leidenalg
+python3.11 -m pip install numpy==1.26.4
+
+apt install -y --no-install-recommends r-base
+python3.11 -m pip install rpy2==3.5.12
+python3.11 -m pip install /capital-1.1.6-py3-none-any.whl
+
+python3.11 -m pip install /pscs_api-1.7.1-py3-none-any.whl
+python3.11 -m pip install /pscs_scanpy-0.3.5-py3-none-any.whl
+python3.11 -m pip install /milopy-0.0.0-py3-none-any.whl
+python3.11 -m pip install /pscs_milopy-0.0.1-py3-none-any.whl
+python3.11 -m pip install /pscs_ops-0.3.1-py3-none-any.whl
+python3.11 -m pip install /pscs_cxg-0.0.1-py3-none-any.whl
+python3.11 -m pip install /pscs_capital-0.0.2-py3-none-any.whl
+python3.11 -m pip install pandas==2.2.2
+python3.11 -m pip install -U /capital-1.1.6-py3-none-any.whl
+python3.11 -m pip install /pscs_api-1.7.1-py3-none-any.whl
+python3.11 -m pip install /scte-0.1.1-py3-none-any.whl
+python3.11 -m pip install -U /pscs_api-1.7.1-py3-none-any.whl
+R -e 'install.packages("BiocManager")'
+R -e 'BiocManager::install("edgeR")'
+R -e 'install.packages("statmod")'
+
+apt-get clean
+rm -rf /var/lib/apt/lists/*
+
+%runscript
+python3.11 /run_pscs_pipeline.py

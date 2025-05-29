@@ -12,6 +12,7 @@ CREATE TABLE users_auth (
     creation_time_user TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     ip TEXT,
     confirmed BIT DEFAULT 0,  -- whether user has confirmed their email address
+    is_temp_user BIT DEFAULT 0,
     confirmed_datetime TIMESTAMP
 );
 
@@ -164,6 +165,15 @@ CREATE TABLE results(
     FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE
 );
 
+CREATE TABLE results_figures(
+    id_result TEXT UNIQUE NOT NULL,
+    id_result_fig TEXT UNIQUE NOT NULL,
+    file_path_fig TEXT NOT NULL,
+    FOREIGN KEY (id_result) REFERENCES results(id_result),
+    FOREIGN KEY (id_result_fig) REFERENCES results(id_result),
+    FOREIGN KEY (file_path_fig) REFERENCES results(file_path)
+);
+
 CREATE TABLE results_deletion(
     id_result TEXT NOT NULL PRIMARY KEY,  -- unique ID for each file produced by analysis
     id_project TEXT NOT NULL,
@@ -252,6 +262,15 @@ CREATE TABLE analysis_inputs(  -- specifies and describes which nodes of an anal
     node_name TEXT NOT NULL,  -- displayed name of the node
     FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE
 );
+CREATE TABLE analysis_interactive_outputs(
+    id_output VARCHAR(36) UNIQUE NOT NULL,
+    id_analysis VARCHAR(36) NOT NULL,
+    node_id TEXT NOT NULL,
+    node_name TEXT NOT NULL,
+    interactive_tag VARCHAR(3) NOT NULL,
+    FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE,
+    FOREIGN KEY (interactive_tag) REFERENCES analysis_interactive_tags(interactive_tag)
+);
 
 CREATE TABLE analysis_interactive_tags(
     interactive_tag VARCHAR(3) NOT NULL
@@ -312,6 +331,13 @@ CREATE TABLE submitted_jobs(  -- logging submitted jobs
   stderr_log VARCHAR(1024) DEFAULT NULL, -- stderr log of the result
   is_complete BIT DEFAULT 0,
   date_completed TIMESTAMP
+);
+
+CREATE TABLE local_jobs(
+    id_job TEXT UNIQUE NOT NULL PRIMARY KEY,
+    is_running BIT DEFAULT 0,
+    start_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    completion_time TIMESTAMP DEFAULT NULL
 );
 
 CREATE TABLE submitted_jobs_deletion(  -- logging submitted jobs

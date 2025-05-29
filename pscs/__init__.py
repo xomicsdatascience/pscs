@@ -1,4 +1,4 @@
-__version__ = "0.14.1"
+__version__ = "0.15.9"
 from flask import Flask
 import os
 from os.path import join, dirname
@@ -130,12 +130,13 @@ def parse_env(env_file: str = '.env') -> dict:
     ----------
     env_file : str
         Path to the environment
-
     Returns
     -------
     dict
         Dictionary keyed with the environment variable name.
     """
+    # NOTE: we use this instead of a JSON because the secret key is used by a command line tool that looks for
+    # that structure. If you want to update this, you'll need to update that parsing first.
     f = open(env_file)
     env_dict = dict()
     line = f.readline()

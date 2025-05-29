@@ -8,6 +8,7 @@ include singularity/run_pscs_pipeline.py
 include pscs/static/node_data/*
 include pscs/static/icons/*.png
 include pscs/static/tutorial/*
+include pscs/static/wordlists/*
 
 global-include *.js
 global-include *.png

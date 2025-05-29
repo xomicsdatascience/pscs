@@ -440,9 +440,20 @@ def register_results(db: sqlite3.Connection,
         file_name = file_path.name
         _, ext = os.path.splitext(file_path)
         new_path = results_directory / (id_result + ext)
-        file_path.rename(new_path)
 
         result_type = get_file_type(result)
+        # Check if binary; if so, skip; if not, check if binary file exists
+        new_binary_path = None
+        if result_type == "binary":
+            continue
+        else:
+            binary_file_path = Path(file_path + ".pkl")
+            if not binary_file_path.is_file():
+                binary_file_path = None
+            else:
+                new_binary_path = new_path + ".pkl"
+                binary_file_path.rename(new_binary_path)
+        file_path.rename(new_path)
 
         # Insert into DB
         if interactive_tag is None:
@@ -455,6 +466,11 @@ def register_results(db: sqlite3.Connection,
                        "(id_result, id_project, id_analysis, file_path, file_name, result_type, is_interactive, interactive_tag) "
                        "VALUES (?,?,?,?,?,?,?,?) ",
                        (id_result, id_project, id_analysis, str(new_path), file_name, result_type, 1, interactive_tag))
+            if new_binary_path is not None:
+                db.execute("INSERT INTO results_figures "
+                           "(id_result, id_result_fig, file_path_fig) "
+                           "VALUES (?,?,?)",
+                           (id_result, id_result, str(new_binary_path)))
     db.commit()
     return
 

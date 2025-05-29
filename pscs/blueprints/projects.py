@@ -32,6 +32,7 @@ from pscs.extensions.limiter import limiter
 import requests
 import time
 from pybtex.database.input import bibtex
+import pickle as pkl
 
 
 bp = Blueprint("projects", __name__, url_prefix="/project")
@@ -164,7 +165,7 @@ def manage_invitation():
                                                  "analysis_execute": 1,
                                                  "project_management": 0})
                 rescind_invitation(data["id_invitation"])
-                return jsonify({"done": 1})
+                return jsonify({"done": 1, "url": url_for("pscs.projects_summary")})
         elif "reject" == data["action"]:
             invitation = get_invitation(data["id_invitation"])
             if invitation["id_invitee"] == session["id_user"]:
@@ -1762,6 +1763,12 @@ def get_tab_info(id_project, tab):
             return render_template("pscs/project_tabs/project_management.html",
                                    project_info=project_info,
                                    publication_info=publication_info)
+        elif tab == "developer":
+            f = open(current_app.config["SSH_PUBKEY"], "r")
+            pubkey = f.read()
+            f.close()
+            return render_template("pscs/project_tabs/developer.html",
+                                   ssh_pubkey=pubkey)
     return
 
 @bp.route("/<id_project>/pipeline_import", methods=["POST"])
@@ -1921,7 +1928,7 @@ def copy_pipeline(id_analysis, id_project_destination):
             # Clean up file if something went wrong.
             os.remove(new_node_file)
             raise e
-    return
+    return new_id
 
 
 def make_shortid(db: sqlite3.Connection,
@@ -2048,3 +2055,61 @@ def remove_paper(id_project):
         db.execute("DELETE FROM project_papers WHERE id_project = ? AND doi = ?", (id_project, doi))
         db.commit()
         return jsonify({"status": "success", "msg": ""}), 200
+
+
+@bp.route("/<id_project>/update_figure", methods=["POST"])
+def update_figure(id_project):
+    if request.method == "POST":
+        if not check_user_permission("analysis_write", 1, id_project):
+            return jsonify({"status": "error", "msg": "You do not have permission to modify this project"}), 403
+        id_result = request.json["id_result"]
+
+        # check that there is an associated .fig
+        db = get_db()
+        file_path_fig = db.execute("SELECT file_path_fig FROM results_figures WHERE id_result = ?", (id_result,)).fetchone()
+        if file_path_fig is None:
+            return jsonify({"status": "error", "msg": "No associated binary file."}), 400
+        # Load & update figure with new parameters
+        f = open(file_path_fig["file_path_fig"], "rb")
+        fig = pkl.load(f)
+        f.close()
+        ax = fig.get_axes()[0]
+        for k, v in request.json.items():
+            if k == "id_result":
+                continue
+            else:
+                update_property(ax, k, v)
+        img_path = db.execute("SELECT file_path FROM results WHERE id_result = ?", (id_result,)).fetchone()["file_path"]
+        fig.savefig(img_path)
+        # Update pkl file, too
+        f = open(file_path_fig["file_path_fig"], "wb")
+        pkl.dump(fig, f)
+        f.close()
+        return jsonify({"status": "success", "msg": ""}), 200
+
+def update_property(ax, prop, value):
+    if value is None:
+        return
+    if prop == "xlabel":
+        ax.set_xlabel(value)
+    elif prop == "xlabel_fontsize":
+        ax.set_xlabel(ax.get_xlabel(), fontdict={"fontsize": value})
+    elif prop == "ylabel":
+        ax.set_ylabel(value)
+    elif prop == "ylabel_fontsize":
+        ax.set_ylabel(ax.get_ylabel(), fontdict={"fontsize": value})
+    elif prop == "axhline":
+        ax.axhline(y=float(value), color="black")
+    elif prop == "axvline":
+        ax.axvline(x=float(value), color="black")
+    elif prop == "figure_xsize":
+        fig = ax.get_figure()
+        fig.set_size_inches(float(value), fig.get_size_inches()[1])
+    elif prop == "figure_ysize":
+        fig = ax.get_figure()
+        fig.set_size_inches(fig.get_size_inches()[0], float(value))
+    elif prop == "title":
+        ax.set_title(value)
+    elif prop == "title_fontsize":
+        ax.set_title(ax.get_title(), fontdict={"fontsize": value})
+    return

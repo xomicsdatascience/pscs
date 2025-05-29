@@ -1,4 +1,8 @@
 import functools
+import shutil
+import sqlite3
+import uuid
+
 from flask import (
     Blueprint, flash, g, redirect, render_template, request, session, url_for, current_app, jsonify
 )
@@ -13,70 +17,148 @@ from pscs.authtools.validation.password_reset import send_reset_email
 import math
 import datetime
 from werkzeug.utils import escape
+import os
+from os.path import join
+import random
+import pathlib
+
 bp = Blueprint('auth', __name__, url_prefix='/auth')
 
 
 @bp.route('/register', methods=('GET', 'POST'))
 def register():
+    """Create a new user."""
     if request.method == 'POST':
         username = request.form['username']
         password = request.form['password']
         password_confirm = request.form['passwordConfirm']
         email = request.form['email']
         user_ip = request.remote_addr
+
+        if current_app.config["RECAPTCHA_ENABLED"]:  # check that recaptcha is enabled
+            recaptcha = request.form['g-recaptcha-response']
+            recaptcha_valid, recaptcha_msg = validate_recaptcha(recaptcha, current_app.config['RECAPTCHA_SERVER'],user_ip)
+            # If recaptcha is not valid, stop bothering the server
+            if not recaptcha_valid:
+                _ = recaptcha_msg  # Error from recaptcha is relatively useless; just tell user that there was a problem
+                flash("Error with reCAPTCHA token.")
+                return render_template("auth/register.html")
         db = get_db()
         try:
-            # Generate uuid for user
-            id_user = get_unique_value_for_field(db, 'id_user', 'users_auth')
-
-            if current_app.config["RECAPTCHA_ENABLED"]:  # check that recaptcha is enabled
-                recaptcha = request.form['g-recaptcha-response']
-                recaptcha_valid, recaptcha_msg = validate_recaptcha(recaptcha, current_app.config['RECAPTCHA_SERVER'], user_ip)
-                # If recaptcha is not valid, stop bothering the server
-                if not recaptcha_valid:
-                    error = recaptcha_msg
-                    # Error from recaptcha is relatively useless; just tell user that there was a problem
-                    flash("Error with reCAPTCHA token.")
-                    return render_template("auth/register.html")
-
-            uname_valid, uname_msg = validate_username(username, db)
-            password_valid, password_msg = validate_password(password, password_confirm)
-            email_valid, email_msg = validate_email(email, db)
-            noPHI_valid, noPHI_msg = validate_PHI(request.form)
-            datause_valid, datause_msg = validate_datause(request.form)
-            error = ''
-            if not uname_valid:
-                error = uname_msg + "; "
-            if not password_valid:
-                error += password_msg + "; "
-            if not email_valid:
-                error += email_msg + "; "
-            if not noPHI_valid:
-                error += noPHI_msg + "; "
-            if not datause_valid:
-                error += datause_msg + "; "
-            if len(error) > 0:
-                error = error[:-2]
-                flash(error)
-                return render_template("auth/register.html")
-            else:
-                db.execute(
-                "INSERT INTO users_auth (id_user, name_user, password, email, ip, confirmed_phi, confirmed_datause) VALUES (?, ?, ?, ?, ?, ?, ?)",
-                    (id_user, username, generate_password_hash(password), email, user_ip, noPHI_valid, datause_valid))
-                db.commit()
-
-                # Send mail to user to verify.
-                if current_app.config["REGISTRATION_REQUIRES_CONFIRMATION"]:
-                    send_user_confirmation_email(id_user, email, username)
-                    flash(f"Email confirmation sent to {email}; please click the verification link.")
-                else:  # email confirmation disabled
-                    confirm_user(id_user)
-                user_login(username, password)
-                return redirect(url_for("pscs.index"))
+            return create_user(db, username, email, password, password_confirm, user_ip, request.form)
         except db.IntegrityError:
             error = f"User {username} is already registered."
         flash(error)
     return render_template("auth/register.html", recaptcha_enabled=current_app.config["RECAPTCHA_ENABLED"])
+
+
+def create_user(db: sqlite3.Connection,
+                username: str,
+                email: str,
+                password: str,
+                password_confirm: str,
+                user_ip: str,
+                request_form: dict = None,
+                is_temp_user: bool = False):
+    # Generate uuid for user
+    id_user = get_unique_value_for_field(db, 'id_user', 'users_auth')
+    if request_form is None:
+        if is_temp_user:
+            request_form = {"noPHI": "on", "dataUse": "on"}
+        else:
+            raise ValueError("request_form must be defined for non-temp users.")
+
+    is_registration_valid, err_msg = validate_registration(db, email, password, password_confirm, username, request_form, is_temp_user)
+    if not is_registration_valid:
+        flash(err_msg)
+        return render_template("auth/register.html")
+    else:
+        db.execute(
+            "INSERT INTO users_auth (id_user, name_user, password, email, ip, confirmed_phi, confirmed_datause, is_temp_user) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+            (id_user, username, generate_password_hash(password), email, user_ip, request_form["dataUse"] == "on", request_form["noPHI"] == "on", is_temp_user))
+        db.commit()
+
+        # Send mail to user to verify.
+        if current_app.config["REGISTRATION_REQUIRES_CONFIRMATION"] and not is_temp_user:
+            send_user_confirmation_email(id_user, email, username)
+            flash(f"Email confirmation sent to {email}; please click the verification link.")
+        else:  # email confirmation disabled
+            confirm_user(id_user)
+        user_login(username, password)
+        return redirect(url_for("pscs.index"))
+
+
+def create_temp_user(db: sqlite3.Connection,
+                     user_ip: str):
+    username = make_temp_username(db)
+    password = str(uuid.uuid4())
+    email = get_unique_value_for_field(db, "email", "users_auth")
+    _ = create_user(db, username = username, email = email, password = password, password_confirm=password, user_ip=user_ip, is_temp_user=True)
+    load_logged_in_user()
+    return
+
+
+def make_temp_username(db: sqlite3.Connection):
+    """Finds a unique username."""
+    f = current_app.open_resource("static/wordlists/adjectives.txt", "r")
+    adjectives = f.read().splitlines()
+    f.close()
+    f = current_app.open_resource("static/wordlists/nouns.txt", "r")
+    nouns = f.read().splitlines()
+    f.close()
+    name_is_valid = False
+    count = 0
+    username = ""
+    while not name_is_valid:
+        i = random.randint(0, len(adjectives) - 1)
+        j = random.randint(0, len(adjectives) - 1)
+        while j == i:
+            j = random.randint(0, len(adjectives) - 1)
+        k = random.randint(0, len(nouns) - 1)
+        adj1 = adjectives[i]
+        adj2 = adjectives[j]
+        noun = nouns[k]
+        username = "".join(w.title() for w in [adj1, adj2, noun])
+        name_is_valid, _ = validate_username(username, db)
+        count += 1
+        if count > 50:
+            raise ValueError("Unable to find a unique username.")
+    return username
+
+
+def validate_registration(db: sqlite3.Connection,
+                          email: str,
+                          password: str,
+                          password_confirm: str,
+                          username: str,
+                          request_form: dict,
+                          is_temp_user: bool = False):
+    """Checks whether the inputs are valid for the db; return True if valid, False if not. If not, also returns a
+    Flash message."""
+    uname_valid, uname_msg = validate_username(username, db)
+    password_valid, password_msg = validate_password(password, password_confirm)
+    email_valid, email_msg = validate_email(email, db)
+    if not is_temp_user:
+        noPHI_valid, noPHI_msg = validate_PHI(request_form)
+        datause_valid, datause_msg = validate_datause(request_form)
+    else:
+        noPHI_valid, datause_valid = True, True
+
+    error_msgs = []
+    if not uname_valid:
+        error_msgs.append(uname_msg)
+    if not password_valid and not is_temp_user:
+        error_msgs.append(password_msg)
+    if not email_valid and not is_temp_user:
+        error_msgs.append(email_msg)
+    if not noPHI_valid and not is_temp_user:
+        error_msgs.append(noPHI_msg)
+    if not datause_valid and not is_temp_user:
+        error_msgs.append(datause_msg)
+
+    if len(error_msgs) > 0:
+        return False, "; ".join(error_msgs)
+    return True, ""
 
 
 @bp.route('/confirmation/<token>', methods=["GET"])
@@ -159,8 +241,120 @@ def confirm_user(id_user):
                "SET confirmed = 1, confirmed_datetime = CURRENT_TIMESTAMP "
                "WHERE id_user = ?", (id_user,))
     session["confirmed"] = 1
+    create_default_project(db, id_user)
     db.commit()
     return
+
+
+def create_default_project(db: sqlite3.Connection,
+                           id_user: str,
+                           source_id_project: str = "bb35db7c-7f9b-40bd-a274-4f722a2b739d"):
+    """
+    Creates the default project for new users to see PSCS functionality.
+
+    Parameters
+    ----------
+    db : sqlite3.Connection
+        Connection to the DB.
+    id_user : str
+        ID of the user for which to create the project.
+    source_id_project : str, optional
+        ID of the project.
+
+    Returns
+    -------
+    None
+    """
+    # Copy project with id_project to new
+    source_project_info = dict(db.execute("SELECT * FROM projects WHERE id_project = ?", (source_id_project,)).fetchone())
+    source_project_info["id_user"] = id_user
+    id_project = get_unique_value_for_field(db, "id_project", "projects")
+    source_project_info["id_project"] = id_project
+
+    if not _validate_sql_for_table(db, "projects", source_project_info):
+        raise ValueError(f"Incorrect column name: {k} not valid.")
+    insert_cols = ", ".join(list(source_project_info.keys()))
+    placeholders = ", ".join(["?"] * len(source_project_info))
+    sql_command = f"INSERT INTO projects ({insert_cols}) VALUES({placeholders})"
+    db.execute(sql_command, tuple(source_project_info.values()))
+
+    source_project_roles = dict(db.execute("SELECT * FROM projects_roles WHERE id_project = ?", (source_id_project,)).fetchone())
+    source_project_roles["id_project"] = id_project
+    source_project_roles["id_user"] = id_user
+    insert_cols = ", ".join(list(source_project_roles.keys()))
+    placeholders = ", ".join(["?"] * len(source_project_roles))
+    sql_command = f"INSERT INTO projects_roles ({insert_cols}) VALUES({placeholders})"
+    db.execute(sql_command, tuple(source_project_roles.values()))
+
+    proj_dir = pathlib.Path(current_app.config['PROJECTS_DIRECTORY'].format(id_project=id_project))
+    proj_dir.mkdir(exist_ok=True)
+    data_dir = pathlib.Path(current_app.config["DATA_DIRECTORY"].format(id_project=id_project))
+    data_dir.mkdir(exist_ok=True)
+    results_dir = pathlib.Path(
+        os.path.join(current_app.config['PROJECTS_DIRECTORY'], 'results').format(id_project=id_project))
+    results_dir.mkdir(exist_ok=True)
+    # Entry for project created; now copy data
+    data_info = db.execute("SELECT * FROM data WHERE id_project = ?", (source_id_project,)).fetchall()
+    data_info = [dict(d) for d in data_info]
+    for d in data_info:
+        d["id_data"] = get_unique_value_for_field(db, "id_data", "data")
+        d["id_project"] = id_project
+        new_path = join(current_app.config["DATA_DIRECTORY"].format(id_project=id_project), d["id_data"] + ".h5ad")
+        shutil.copy(d["file_path"], new_path)
+        d["file_path"] = new_path
+
+        insert_cols = ", ".join(list(d.keys()))
+        placeholders = ", ".join(["?"] * len(d))
+        if not _validate_sql_for_table(db, "data", d):
+            raise ValueError("Invalid data entry while creating default project.")
+        sql_command = f"INSERT INTO data ({insert_cols}) VALUES({placeholders})"
+        db.execute(sql_command, tuple(d.values()))
+
+    # Copy analysis; import here to avoid circular imports
+    from pscs.blueprints.projects import copy_pipeline
+    analysis_info = db.execute("SELECT id_analysis FROM analysis WHERE id_project = ?", (source_id_project,)).fetchall()
+    analysis_map = {}  # for results later
+    for a in analysis_info:
+        new_id = copy_pipeline(a["id_analysis"], id_project)
+        analysis_map[a["id_analysis"]] = new_id
+
+    # Copy results
+    results_info = db.execute("SELECT * FROM results WHERE id_project = ?", (source_id_project,)).fetchall()
+    amap_keys = list(analysis_map.keys())
+    for rr in results_info:
+        r = dict(rr)
+        if r["id_result"] not in amap_keys:
+            continue
+        r["id_project"] = id_project
+        previous_id = r["id_result"]
+        r["id_result"] = get_unique_value_for_field(db, "id_result", "results")
+        r["id_analysis"] = analysis_map[r["id_analysis"]]
+        id_job = "id_job_sample"
+        new_path = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=r["id_analysis"], id_job=id_job)
+        previous_path_exp = os.path.basename(r["file_path"]).split(previous_id)[-1]  # get basename, remove id, get ext
+        new_path = new_path + previous_path_exp
+        r["file_path"] = new_path
+        insert_cols = ", ".join(list(r.keys()))
+        placeholders = ", ".join(["?"] * len(r))
+        if not _validate_sql_for_table(db, "results", r):
+            raise ValueError("Invalid result entry while creating default project.")
+        sql_command = f"INSERT INTO results ({insert_cols}) VALUES({placeholders})"
+        db.execute(sql_command, tuple(r.values()))
+
+    db.commit()
+    return
+
+
+def _validate_sql_for_table(db: sqlite3.Connection,
+                            table_name: str,
+                            dict_to_validate: dict):
+    """Checks whether the columns in `dict_to_validate` are in fact in the relevant table."""
+    table_col_info = db.execute(f"PRAGMA table_info('{table_name}')").fetchall()
+    col_names = set([c["name"] for c in table_col_info])
+    for k in dict_to_validate.keys():
+        if k not in col_names:
+            return False
+    return True
 
 
 @bp.route('login', methods=('GET', 'POST'))
@@ -196,7 +390,7 @@ def user_login(username: str,
     db = get_db()
     error = None
     user = db.execute(
-        'SELECT id_user, name_user, password, confirmed FROM users_auth WHERE name_user = ?', (username,)
+        'SELECT id_user, name_user, password, confirmed, is_temp_user FROM users_auth WHERE name_user = ?', (username,)
     ).fetchone()
 
     if user is None:
@@ -205,7 +399,19 @@ def user_login(username: str,
         error = "Incorrect password."
 
     if error is None:
+        # Deal with temporary user access
+        tmp_user_id = None
+        if "tmp_user_id" in session.keys():
+            tmp_user_id = session["tmp_user_id"]
+
         session.clear()
+
+        # Track temp ID for later integration into a real account
+        if tmp_user_id is not None:
+            session["tmp_user_id"] = tmp_user_id
+        if user["is_temp_user"]:
+            session["tmp_user_id"] = user["id_user"]
+
         session['id_user'] = user['id_user']
         session["confirmed"] = user["confirmed"]
         # check if user is admin
@@ -236,14 +442,28 @@ def load_logged_in_user():
         g.user = None
     else:
         g.user = get_db().execute(
-            "SELECT id_user, name_user FROM users_auth WHERE id_user = ?", (user_id,)
+            "SELECT id_user, name_user, is_temp_user FROM users_auth WHERE id_user = ?", (user_id,)
         ).fetchone()
 
 
 @bp.route('/logout')
 def logout():
+    if g.user["is_temp_user"]:
+        delete_temp_user(session["id_user"])
     session.clear()
     return redirect(url_for('index'))
+
+
+def delete_temp_user(id_user):
+    """Deletes a user flagged as temporary."""
+    db = get_db()
+    # Go specifically delete data
+    data = db.execute("SELECT file_path FROM data WHERE id_user = ?", (id_user,)).fetchall()
+    for d in data:
+        os.remove(d["file_path"])
+    db.execute("DELETE FROM users_auth WHERE id_user = ? AND is_temp_user = 1", (id_user,))
+    db.commit()
+    return
 
 
 def login_required(view):

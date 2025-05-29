@@ -8,12 +8,12 @@ from werkzeug.serving import run_simple
 
 from markdown import markdown
 from werkzeug.utils import secure_filename
-from pscs.auth import login_required, is_logged_in
+from pscs.auth import login_required, is_logged_in, create_temp_user
 from pscs.db import (get_db, get_unique_value_for_field, check_user_permission, check_analysis_published,
                      check_data_published)
 from pscs.metadata.metadata import get_metadata
 import os
-from pscs.transfers.dispatching import dispatch, can_user_submit
+from pscs.transfers.dispatching import dispatch, can_user_submit, determine_resource, local_dispatch
 from pscs.utils.pipeline.validation import validate_pipeline
 from flask import send_from_directory
 import json
@@ -94,7 +94,6 @@ def start_cxg(id_result):
 
 @bp.route("/static/assets/<path:path>", methods=["GET"])
 def redirect_static(path):
-    print("Redirecting!")
     return proxy(path="static/assets/" + path)
 
 @bp.route('/cxg/', defaults={'path': ''}, methods=["GET", "POST"])
@@ -199,9 +198,12 @@ def upload():
 
 
 @bp.route('/projects_summary', methods=['GET'])
-@login_required
+# @login_required
 def projects_summary():
     db = get_db()
+    if g.user is None:
+        # Create temporary user
+        create_temp_user(db, request.remote_addr)
     if g.user is not None:
         # Get project meta data to list for user
         user_projects = db.execute("SELECT projects.name_project, projects.description, projects.num_files, "
@@ -214,6 +216,7 @@ def projects_summary():
         return render_template('pscs/projects_summary.html', projects=user_projects,
                                invitations_sent=invitations_sent,
                                invitations_received=invitations_received)
+
 
 
 @bp.route('/profile', methods=['GET'])
@@ -293,6 +296,8 @@ def below_project_limits(db, id_user: str) -> bool:
                                    "FROM projects "
                                    "WHERE id_user = ?", (id_user,)).fetchall())
     below_count = project_count < current_app.config["PRIVATE_PROJECT_COUNT_LIMIT"]
+    if g.user["is_temp_user"]:
+        below_count = project_count < 2  # Default + new
     return below_count
 
 
@@ -393,12 +398,21 @@ def run_analysis():
                 return redirect(url_for("projects.project", id_project=id_project))
 
         # Dispatch to OSP
-        pscs_job_id = dispatch(pipeline_json=pipeline_json,
-                               id_user=g.user['id_user'],
-                               file_info=file_info,
-                               id_project=id_project,
-                               id_analysis=id_analysis,
-                               resource='osp')
+        resource = determine_resource()
+        if resource != "local":
+            pscs_job_id = dispatch(pipeline_json=pipeline_json,
+                                   id_user=g.user['id_user'],
+                                   file_info=file_info,
+                                   id_project=id_project,
+                                   id_analysis=id_analysis,
+                                   resource=resource)
+        elif resource == "local":
+            pscs_job_id = local_dispatch(pipeline_json=pipeline_json,
+                                         id_user=g.user['id_user'],
+                                         file_info=file_info,
+                                         id_project=id_project,
+                                         id_analysis=id_analysis,
+                                         resource=resource)
         output_dir = current_app.config['RESULTS_DIRECTORY'].format(id_project=session['CURRENT_PROJECT'],
                                                                     id_analysis=pipeline_specs['id_analysis'],
                                                                     id_job=pscs_job_id)
@@ -772,4 +786,9 @@ def get_project_invitations_sent(id_user: str):
         inv["name_project"] = proj_name
         invite.append(inv)
     return invite
+
+@bp.route("/templates/matplotlib_menu", methods=["GET"])
+def templates():
+    return render_template("pscs/menu-template.html")
+
 

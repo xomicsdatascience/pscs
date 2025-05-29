@@ -25,12 +25,15 @@
     {% if recaptcha_enabled %}
     <div class="g-recaptcha" data-sitekey="6Lc9-DskAAAAAH5yHqx0Ar2W8_VwPgwuGWQGWr4w"></div>
     {% endif %}
+
+
     <label for="noPHI" style="font-weight: normal">I agree that any data sent to PSCS has had <a href="https://www.dhcs.ca.gov/dataandstats/data/Pages/ListofHIPAAIdentifiers.aspx">Personal Health Information</a> removed and that I will report any datasets I find that contain any.
-    <input type="checkbox" id="noPHI" name="noPHI" style="float: left;">
+        <input type="checkbox" id="noPHI" name="noPHI" style="float: left;">
     </label>
 
+
     <label for="dataUse" style="font-weight: normal">I have read and agree to the terms as outlined in the <a href="/static/Data_Use_Agreement.txt">Data Use Agreement</a>.
-    <input type="checkbox" id="dataUse" name="dataUse">
+        <input type="checkbox" id="dataUse" name="dataUse" style="float: left;">
     </label>
     <input type="submit" value="Register">
 </form>

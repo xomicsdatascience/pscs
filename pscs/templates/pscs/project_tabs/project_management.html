@@ -1,4 +1,10 @@
 <h4>Project Management</h4>
+
+{% if g.user["is_temp_user"] %}
+    <p>Temporary users cannot add others to a project, nor can their projects be published. Create an account and import
+    the project in order to enable that functionality.</p>
+{% endif %}
+{% if not g.user["is_temp_user"] %}
 <h5>Invite Collaborators</h5>
 <input type="text" id="inviteUser" placeholder="Username or email" style="display: inline;"><button onclick="inviteUser();">Invite user</button>
 
@@ -60,6 +66,8 @@
         <a title="Remove paper" onclick="removePaper('{{ paper['doi'] }}')" style="cursor: pointer">&times</a> <a href="{{ paper["url"] }}"><b>{{ paper["title"] }}</b>.</a> {{ paper["year"] }}. {{ paper["author_str"] }}<br>
     {% endfor %}
 </div>
+
+{% endif %}
 <div>
     <h5>Project deletion</h5>
     Delete project: <button onclick="deleteProject('{{project_name}}');" style="color: rgb(150, 20, 20);">Delete project</button>

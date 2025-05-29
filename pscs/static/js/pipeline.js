@@ -217,7 +217,7 @@ function createPscsNode(idNum, img, nodeData){
         pageEl.num_inputs = nodeData["num_inputs"];
         pageEl.num_outputs = nodeData["num_outputs"];
     }
-    pageEl.title = pageEl.params.toString();
+    pageEl.title = nodeData["doc"];
     pageEl.pscsType = pscsType;
     if(!img.startsWith("/")){
         img = "/" + img;
@@ -227,6 +227,8 @@ function createPscsNode(idNum, img, nodeData){
     pageEl.srcConnectors = [];
     pageEl.dstConnectors = [];
     pageEl.coMove = [];  // list of things to move at the same time
+    pageEl.doc = nodeData["doc"];
+    pageEl.doc_url = nodeData["doc_url"];
 
     // Create label
     pageEl.labelText = pageEl.procName;  // user can set label name, but not procName
@@ -369,7 +371,7 @@ function createPscsNode(idNum, img, nodeData){
         panel.id = formatId(PARAMPANEL, extractIdNums(pageEl.id)[0]);
         panel.nodeId = pageEl.id;
         panel.describedNode = pageEl;
-        applyClassCSS(panel);
+        applyClassCSS(panel);  // should instead add to classList
         // Create table for user input
         let tbl = document.createElement('table');
         tbl.classList.add("pscsParamTable");
@@ -411,11 +413,40 @@ function createPscsNode(idNum, img, nodeData){
         const currentTable = panel.querySelector("table");
         if (currentTable !== null) {
             currentTable.remove();
-        }
+        }        //panel.appendChild(tbl);
         const tbl = document.createElement("table");
         tbl.classList.add("pscsParamTable");
         let tr, td;
         let parVal, parType;
+
+        // first add url to documentation
+
+        const pageEl = panel.describedNode;
+        let doc_url = pageEl.doc_url;
+        let doc = pageEl.doc;
+        if (doc !== null || doc_url !== null){
+            tr = tbl.insertRow();
+        }
+        if (doc !== null){
+            td = tr.insertCell();
+            let doc_panel = document.createElement("a");
+            doc_panel.classList.add("linkbutton");
+            doc_panel.textContent = "Documentation Quickview";
+            doc_panel.onclick = function(){openMovablePanel(doc, pageEl.labelText)};
+            td.appendChild(doc_panel);
+        }
+        if (doc_url !== null) {
+            td = tr.insertCell();
+            // <a class="linkbutton" href="{{ url_for('pscs.pipeline_designer') }}">Create Analysis</a><br>
+            let doc_link = document.createElement("a");
+            doc_link.classList.add("linkbutton");
+            doc_link.href = doc_url;
+            doc_link.target = "_blank";
+            doc_link.textContent = "Source Documentation";
+            td.appendChild(doc_link);
+        }
+        // tr = tbl.insertRow();
+        // td = tr.insertCell();
         for (const parName in paramsValues){
             parVal = paramsValues[parName];
             parType = paramsTypes[parName];
@@ -446,9 +477,10 @@ function createPscsNode(idNum, img, nodeData){
         td = tr.insertCell();
         btn = document.createElement("button");
         btn.panelId = panel.id;
-        const pageEl = panel.describedNode;
+        // const pageEl = panel.describedNode;
         if (important_only){
             // Add button that displays all parameters
+            // btn.onclick = function(){populatePanel(panel, pageEl.paramsValues, pageEl.paramsTypes, important_only=false)}
             btn.onclick = function(){populatePanel(panel, pageEl.paramsValues, pageEl.paramsTypes, important_only=false)}
             btn.innerHTML = "Expand";
         }
@@ -466,6 +498,135 @@ function createPscsNode(idNum, img, nodeData){
         td.appendChild(btn);
         panel.appendChild(tbl);
     }
+    ////
+    function openMovablePanel(doc, nodeName = null) {
+    // Create the panel container
+    const panel = document.createElement('div');
+    panel.id = "movable-panel";
+    panel.style.position = 'fixed';
+    panel.style.top = '50px';
+    panel.style.left = '50px';
+    panel.style.width = '400px';
+    panel.style.height = '300px'; // initial height
+    panel.style.backgroundColor = '#fff';
+    panel.style.border = '1px solid #ccc';
+    panel.style.boxShadow = '0px 2px 10px rgba(0,0,0,0.1)';
+    panel.style.zIndex = 1000;
+    panel.style.overflow = 'hidden'; // Hide any overflow beyond panel boundaries
+
+    // Make panel a flex container in a column layout.
+    panel.style.display = 'flex';
+    panel.style.flexDirection = 'column';
+
+    // Create header for dragging and closing
+    const header = document.createElement('div');
+    header.style.cursor = 'move';
+    header.style.padding = '10px';
+    header.style.backgroundColor = '#f1f1f1';
+    header.style.borderBottom = '1px solid #ccc';
+    header.style.flexShrink = '0'; // prevent header from shrinking
+        if (nodeName !== null){
+            header.textContent = nodeName;
+            // header.innerHTML = "<strong>nodeName</strong>";
+        }
+
+    // Create close button
+    const closeButton = document.createElement('span');
+    closeButton.innerHTML = " &#x2715;";
+    closeButton.style.float = 'right';
+    closeButton.style.cursor = 'pointer';
+    closeButton.addEventListener('click', function () {
+        document.body.removeChild(panel);
+    });
+    header.appendChild(closeButton);
+
+    // Create content container and insert the doc text
+    const content = document.createElement('div');
+    content.style.padding = '10px';
+    // Enable scrolling if content overflows
+    content.style.overflowY = 'auto';
+    // Let the content container fill the remaining space
+    content.style.flex = '1';
+    content.style.boxSizing = 'border-box';
+    content.innerText = doc;
+
+    // Append header and content to panel
+    panel.appendChild(header);
+    panel.appendChild(content);
+
+    content.scrollTop = 0;
+
+    // Create a resizer handle
+    const resizer = document.createElement('div');
+    resizer.style.width = '10px';
+    resizer.style.height = '10px';
+    resizer.style.background = '#ccc';
+    resizer.style.cursor = 'se-resize';
+    resizer.style.position = 'absolute';
+    resizer.style.right = '0';
+    resizer.style.bottom = '0';
+    resizer.style.userSelect = 'none';
+    panel.appendChild(resizer);
+
+    document.body.appendChild(panel);
+
+    // Implement dragging of the panel
+    let offsetX = 0, offsetY = 0, isDragging = false;
+
+    header.addEventListener('mousedown', (e) => {
+        isDragging = true;
+        offsetX = e.clientX - panel.offsetLeft;
+        offsetY = e.clientY - panel.offsetTop;
+        document.addEventListener('mousemove', movePanel);
+        document.addEventListener('mouseup', stopMoving);
+    });
+
+    function movePanel(e) {
+        if (isDragging) {
+            panel.style.left = (e.clientX - offsetX) + 'px';
+            panel.style.top = (e.clientY - offsetY) + 'px';
+        }
+    }
+
+    function stopMoving() {
+        isDragging = false;
+        document.removeEventListener('mousemove', movePanel);
+        document.removeEventListener('mouseup', stopMoving);
+    }
+
+    // Implement panel resizing
+    let isResizing = false, origWidth = 0, origHeight = 0, startX = 0, startY = 0;
+
+    resizer.addEventListener('mousedown', (e) => {
+        e.stopPropagation(); // Prevent starting drag while resizing
+        isResizing = true;
+        origWidth = panel.offsetWidth;
+        origHeight = panel.offsetHeight;
+        startX = e.clientX;
+        startY = e.clientY;
+        document.addEventListener('mousemove', resizePanel);
+        document.addEventListener('mouseup', stopResizing);
+    });
+
+    function resizePanel(e) {
+        if (isResizing) {
+            const newWidth = origWidth + (e.clientX - startX);
+            const newHeight = origHeight + (e.clientY - startY);
+            // Enforce minimum dimensions for usability
+            panel.style.width = newWidth > 150 ? newWidth + 'px' : '150px';
+            panel.style.height = newHeight > 100 ? newHeight + 'px' : '100px';
+        }
+    }
+
+    function stopResizing() {
+        isResizing = false;
+        document.removeEventListener('mousemove', resizePanel);
+        document.removeEventListener('mouseup', stopResizing);
+    }
+}
+
+////
+
 
     function closePanel(panelId){
         let panel = document.getElementById(panelId);
