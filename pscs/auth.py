@@ -455,8 +455,12 @@ def logout():
     if g.user is None:
         return redirect(url_for('index'))
     if g.user["is_temp_user"]:
-        delete_temp_user(session["id_user"])
-    session.clear()
+        id_user = session["id_user"]
+        session.clear()
+        try:
+            delete_temp_user(id_user)
+        except Exception as e:
+            print(e)
     return redirect(url_for('index'))
 
 
