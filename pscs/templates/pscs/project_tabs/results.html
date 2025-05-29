@@ -29,12 +29,12 @@
             <th>Analysis</th>
             <th>Publication Status</th>
         </tr>
-        {% set initid = none %}
+        {% set initid = namespace(initid=none) %}
         {% for r in results %}
-            {% if initid is not none and initid|string() != r["id_job"]|string() %}
+            {% if initid.initid is not none and initid.initid|string() != r["id_job"]|string() %}
                 <tr class="spacer"><td class="spacer" colspan="3" style="padding-top: 5px;"></td></tr>
             {% endif %}
-            {% set initid = r["id_job"] %}
+            {% set initid.initid = r["id_job"] %}
 
             {% if r["interactive_tag"] is none %}
                 <tr>
