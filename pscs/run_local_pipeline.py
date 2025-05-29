@@ -119,7 +119,6 @@ if __name__ == "__main__":
     # Check if there is a currently-running job
     is_currently_running = db.execute("SELECT * FROM local_jobs WHERE is_running = 1").fetchall()
     if len(is_currently_running) > 0:
-        print("The job has been queued")
         exit(0)
 
     # None running; check job submission
@@ -128,7 +127,6 @@ if __name__ == "__main__":
                               "WHERE submitted_resource = 'local' AND "
                               "is_complete = 0 "
                               "ORDER BY date_submitted ASC").fetchall()
-    print(f"Found {len(queued_local)} queued local jobs.")
     while len(queued_local) > 0:
         job_specs = queued_local[0]
         db.execute("UPDATE local_jobs SET is_running = 1 WHERE id_job = ?", (job_specs["id_job"],))
@@ -142,8 +140,6 @@ if __name__ == "__main__":
 
         # Run job
         sing_command = f"singularity exec --cleanenv --no-home {args.instance_url} python3.11 /run_pscs_pipeline.py  {pipeline_json} {input_json} {proj_dir}"
-        print(f"Sing command: {sing_command}")
-        # TODO: check that files are correctly output
 
         # Mark job as complete
         try:
@@ -157,8 +153,6 @@ if __name__ == "__main__":
             print(f"Error running pipeline: {e}")
 
         # Record results into DB
-
-
         db.execute("UPDATE submitted_jobs "
                    "SET is_complete = 1, "
                    "date_completed=DATETIME('now'), "
@@ -174,4 +168,3 @@ if __name__ == "__main__":
                                   "ORDER BY date_submitted ASC").fetchall()
         if len(queued_local) > 0 and queued_local[0]["id_job"] == job_specs["id_job"]:
             break  # looping
-    print("Local pipelines complete.")
