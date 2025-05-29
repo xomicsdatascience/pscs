@@ -454,13 +454,15 @@ def load_logged_in_user():
 def logout():
     if g.user is None:
         return redirect(url_for('index'))
-    if g.user["is_temp_user"]:
+    else:
         id_user = session["id_user"]
+        is_temp = g.user["is_temp_user"]
         session.clear()
-        try:
-            delete_temp_user(id_user)
-        except Exception as e:
-            print(e)
+        if is_temp:
+            try:
+                delete_temp_user(id_user)
+            except Exception as e:
+                print(e)
     return redirect(url_for('index'))
 
 
