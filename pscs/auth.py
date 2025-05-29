@@ -448,6 +448,8 @@ def load_logged_in_user():
 
 @bp.route('/logout')
 def logout():
+    if g.user is None:
+        return redirect(url_for('index'))
     if g.user["is_temp_user"]:
         delete_temp_user(session["id_user"])
     session.clear()
