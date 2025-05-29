@@ -29,14 +29,13 @@
             <th>Analysis</th>
             <th>Publication Status</th>
         </tr>
-        {% set initid = '000' %}
+        {% set initid = none %}
         {% for r in results %}
-            {% if initid != r["id_job"] and initid == '000' %}
-                {% set initid = r["id_job"]|string() %}
-            {% elif initid|string() != r["id_job"]|string() %}
-                {% set initid = r["id_job"]|string() %}
+            {% if init_id is not none and initid|string() != r["id_job"]|string() %}
                 <tr class="spacer"><td class="spacer" colspan="3" style="padding-top: 5px;"></td></tr>
             {% endif %}
+            {% set initid = r["id_job"] %}
+
             {% if r["interactive_tag"] is none %}
                 <tr>
                     <td>{{r["file_name"] }}</td>
