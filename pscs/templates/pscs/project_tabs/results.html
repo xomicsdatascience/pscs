@@ -31,7 +31,7 @@
         </tr>
         {% set initid = none %}
         {% for r in results %}
-            {% if init_id is not none and initid|string() != r["id_job"]|string() %}
+            {% if initid is not none and initid|string() != r["id_job"]|string() %}
                 <tr class="spacer"><td class="spacer" colspan="3" style="padding-top: 5px;"></td></tr>
             {% endif %}
             {% set initid = r["id_job"] %}
