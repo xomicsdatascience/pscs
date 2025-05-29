@@ -161,6 +161,7 @@ CREATE TABLE results(
     interactive_tag VARCHAR(3) DEFAULT NULL,
     is_published BIT DEFAULT 0,
     is_peer_review BIT DEFAULT 0,
+    id_job TEXT DEFAULT '0',
     FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE,
     FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE
 );
@@ -169,9 +170,7 @@ CREATE TABLE results_figures(
     id_result TEXT UNIQUE NOT NULL,
     id_result_fig TEXT UNIQUE NOT NULL,
     file_path_fig TEXT NOT NULL,
-    FOREIGN KEY (id_result) REFERENCES results(id_result),
-    FOREIGN KEY (id_result_fig) REFERENCES results(id_result),
-    FOREIGN KEY (file_path_fig) REFERENCES results(file_path)
+    FOREIGN KEY (id_result) REFERENCES results(id_result)
 );
 
 CREATE TABLE results_deletion(

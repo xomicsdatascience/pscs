@@ -41,6 +41,7 @@ def register_result(db,
                     id_project,
                     id_analysis,
                     results_directory,
+                    id_job: str = None,
                     interactive_tag = None):
     """Register results into the DB"""
     if isinstance(results_directory, str):
@@ -56,7 +57,7 @@ def register_result(db,
                 continue
             else:
                 # Register files in this directory
-                register_result(db, id_project, id_analysis, results_directory / result, interactive_tag=result)
+                register_result(db, id_project, id_analysis, results_directory / result, id_job, interactive_tag=result)
                 continue
         id_result = str(uuid4())
         file_name = file_path.name
@@ -83,14 +84,14 @@ def register_result(db,
         # Insert into DB
         if interactive_tag is None:
             db.execute("INSERT INTO results "
-                       "(id_result, id_project, id_analysis, file_path, file_name, result_type) "
-                       "VALUES (?,?,?,?,?,?) ",
-                       (id_result, id_project, id_analysis, str(new_path), file_name, result_type))
+                       "(id_result, id_project, id_analysis, file_path, file_name, result_type, id_job) "
+                       "VALUES (?,?,?,?,?,?,?) ",
+                       (id_result, id_project, id_analysis, str(new_path), file_name, result_type, id_job))
         else:
             db.execute("INSERT INTO results "
-                       "(id_result, id_project, id_analysis, file_path, file_name, result_type, is_interactive, interactive_tag) "
-                       "VALUES (?,?,?,?,?,?,?,?) ",
-                       (id_result, id_project, id_analysis, str(new_path), file_name, result_type, 1, interactive_tag))
+                       "(id_result, id_project, id_analysis, file_path, file_name, result_type, is_interactive, interactive_tag, id_job) "
+                       "VALUES (?,?,?,?,?,?,?,?,?) ",
+                       (id_result, id_project, id_analysis, str(new_path), file_name, result_type, 1, interactive_tag, id_job))
             if new_binary_path is not None:
                 db.execute("INSERT INTO results_figures "
                            "(id_result, id_result_fig, file_path_fig) "
@@ -148,6 +149,7 @@ if __name__ == "__main__":
                             id_project=job_specs["id_project"],
                             id_analysis=job_specs["id_analysis"],
                             results_directory=proj_dir,
+                            id_job=job_specs["id_job"],
                             interactive_tag=None)
         except subprocess.CalledProcessError as e:
             print(f"Error running pipeline: {e}")

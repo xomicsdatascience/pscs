@@ -29,7 +29,14 @@
             <th>Analysis</th>
             <th>Publication Status</th>
         </tr>
+        {% set initid = '0' %}
         {% for r in results %}
+            {% if initid != r["id_job"] and initid != '0' %}
+                {% set initid = r["id_job"] %}
+            {% elif initid != r["id_job"] %}
+                {% set initid = r["id_job"] %}
+                <tr></tr>
+            {% endif %}
             {% if r["interactive_tag"] is none %}
                 <tr>
                     <td>{{r["file_name"] }}</td>

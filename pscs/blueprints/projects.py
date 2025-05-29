@@ -1673,9 +1673,12 @@ def _get_project_jobs_info(db, id_project: str) -> (dict, dict):
 
 def _get_project_results_info(db, id_project: str) -> list:
     """Returns details about results associated with the project"""
-    results = db.execute("SELECT R.file_path, A.analysis_name, R.is_published, R.is_peer_review, R.result_type, R.is_interactive, R.interactive_tag, R.id_result, R.file_name "
-                         "FROM results AS R INNER JOIN analysis AS A ON R.id_analysis = A.id_analysis "
-                         "WHERE R.id_project = ?", (id_project,)).fetchall()
+    results = db.execute(
+        "SELECT R.file_path, A.analysis_name, R.is_published, R.is_peer_review, R.result_type, R.is_interactive, R.interactive_tag, R.id_result, R.file_name, R.id_job, J.date_submitted "
+        "FROM results AS R INNER JOIN analysis AS A ON R.id_analysis = A.id_analysis "
+        "INNER JOIN submitted_jobs AS J ON R.id_job = J.id_job "
+        "WHERE R.id_project = ? "
+        "ORDER BY J.date_submitted ASC, R.id_analysis ASC", (id_project,)).fetchall()
     info = [dict(r) for r in results]
     for r in info:
         if r["is_published"]:
