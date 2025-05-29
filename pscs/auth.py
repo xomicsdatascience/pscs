@@ -42,7 +42,7 @@ def register():
             if not recaptcha_valid:
                 _ = recaptcha_msg  # Error from recaptcha is relatively useless; just tell user that there was a problem
                 flash("Error with reCAPTCHA token.")
-                return render_template("auth/register.html")
+                return render_template("auth/register.html", recaptcha_enabled=current_app.config["RECAPTCHA_ENABLED"])
         db = get_db()
         try:
             return create_user(db, username, email, password, password_confirm, user_ip, request.form)
@@ -71,7 +71,7 @@ def create_user(db: sqlite3.Connection,
     is_registration_valid, err_msg = validate_registration(db, email, password, password_confirm, username, request_form, is_temp_user)
     if not is_registration_valid:
         flash(err_msg)
-        return render_template("auth/register.html")
+        return render_template("auth/register.html", recaptcha_enabled=current_app.config["RECAPTCHA_ENABLED"])
     else:
         db.execute(
             "INSERT INTO users_auth (id_user, name_user, password, email, ip, confirmed_phi, confirmed_datause, is_temp_user) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
