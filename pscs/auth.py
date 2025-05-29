@@ -73,9 +73,13 @@ def create_user(db: sqlite3.Connection,
         flash(err_msg)
         return render_template("auth/register.html", recaptcha_enabled=current_app.config["RECAPTCHA_ENABLED"])
     else:
+        if "name" not in request_form.keys():
+            name = None
+        else:
+            name = request_form["name"]
         db.execute(
             "INSERT INTO users_auth (id_user, name_user, password, email, ip, confirmed_phi, confirmed_datause, name, is_temp_user) VALUES (?, ?, ?, ?, ?, ?, ?, ?,?)",
-            (id_user, username, generate_password_hash(password), email, user_ip, request_form["dataUse"] == "on", request_form["noPHI"] == "on", request.form["name"], is_temp_user))
+            (id_user, username, generate_password_hash(password), email, user_ip, request_form["dataUse"] == "on", request_form["noPHI"] == "on", name, is_temp_user))
         db.commit()
 
         # Send mail to user to verify.
@@ -451,8 +455,12 @@ def logout():
     if g.user is None:
         return redirect(url_for('index'))
     if g.user["is_temp_user"]:
-        delete_temp_user(session["id_user"])
-    session.clear()
+        id_user = session["id_user"]
+        session.clear()
+        try:
+            delete_temp_user(id_user)
+        except Exception as e:
+            print(e)
     return redirect(url_for('index'))
 
 
