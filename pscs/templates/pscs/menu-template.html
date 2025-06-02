@@ -1,5 +1,6 @@
-<form id='matplotlib_form'>
+<form id='matplotlib_form' onsubmit="return false">
     <input type="hidden" id="id_result" name="id_result" value="">
+    <input type="hidden" id="restore" name="restore" value="false">
     <table>
         <tr>
             <th>Property</th>
@@ -33,8 +34,11 @@
             <td><input type="number" id="axvline" name="axvline" placeholder="x value"></td>
         </tr>
         <tr>
-            <td><input type="submit" id="menu_update" value="Update"></td>
-            <td><input type="submit" value="Close" onclick="const el = document.getElementById('matplotlib_menu'); el.remove();"></td>
+            <td><input type="submit" id="menu_update" value="Update"
+                 onclick="document.querySelector('input[type=hidden][name=restore]').value='false';"></td>
+            <td><input type="button" value="Close" onclick="const el = document.getElementById('matplotlib_menu'); el.remove();"></td>
+            <td><input type="submit" id="restore_button" value="Restore original"
+                       onclick="document.querySelector('input[type=hidden][name=restore]').value='true';"></td>
         </tr>
     </table>
 </form>

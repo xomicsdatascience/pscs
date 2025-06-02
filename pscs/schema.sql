@@ -166,6 +166,15 @@ CREATE TABLE results(
     FOREIGN KEY (id_analysis) REFERENCES analysis(id_analysis) ON DELETE CASCADE
 );
 
+CREATE TABLE original_figures(
+    id_result TEXT UNIQUE NOT NULL PRIMARY KEY,
+    original_filepath TEXT NOT NULL,
+    original_figure_filepath TEXT NOT NULL,  -- binary pkl file
+    backup_filepath TEXT NOT NULL,
+    backup_figure_filepath TEXT NOT NULL,  -- binary pkl file
+    FOREIGN KEY (id_result) REFERENCES results(id_result) ON DELETE CASCADE
+);
+
 CREATE TABLE results_figures(
     id_result TEXT UNIQUE NOT NULL,
     id_result_fig TEXT UNIQUE NOT NULL,
