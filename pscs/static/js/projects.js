@@ -352,6 +352,8 @@ async function matplotlibMenu(event) {
 
     const updateButton = document.getElementById("menu_update");
     updateButton.addEventListener("click", updateFigure)
+    const restoreButton = document.getElementById("restore_button");
+    restoreButton.addEventListener("click", updateFigure)
 
     const rect = event.target.getBoundingClientRect();
     menu.style.left = rect.right + window.scrollX + 10 + "px";
@@ -380,6 +382,7 @@ async function matplotlibMenu(event) {
 
 async function updateFigure(){
     // Updates the displayed figure
+    console.log("updateFigure");
     let formContent = getFormContent("matplotlib_form");
     console.log("sending: ", formContent);
     await fetch( window.location.href + "/update_figure", {
@@ -395,8 +398,6 @@ async function updateFigure(){
             const baseUrl = img.src.split('?')[0];
             // Append a unique query parameter using the current timestamp
             img.src = `${baseUrl}?t=${new Date().getTime()}`;
-
-            console.log(response.status);
         })
 }
 

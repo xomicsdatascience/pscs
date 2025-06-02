@@ -2072,10 +2072,17 @@ def update_figure(id_project):
         file_path_fig = db.execute("SELECT file_path_fig FROM results_figures WHERE id_result = ?", (id_result,)).fetchone()
         if file_path_fig is None:
             return jsonify({"status": "error", "msg": "No associated binary file."}), 400
+        if not does_figure_backup_exist(id_result):
+            backup_figure(id_result)
+
+        # Check if this is just a restoration op
+        if "restore" in request.json.keys() and request.json["restore"] == 'true':
+            restore_figure(id_result)
+            return jsonify({"success": 1, "message": ""})
+
         # Load & update figure with new parameters
-        f = open(file_path_fig["file_path_fig"], "rb")
-        fig = pkl.load(f)
-        f.close()
+        with open(file_path_fig["file_path_fig"], "rb") as f:
+            fig = pkl.load(f)
         ax = fig.get_axes()[0]
         for k, v in request.json.items():
             if k == "id_result":
@@ -2085,10 +2092,53 @@ def update_figure(id_project):
         img_path = db.execute("SELECT file_path FROM results WHERE id_result = ?", (id_result,)).fetchone()["file_path"]
         fig.savefig(img_path)
         # Update pkl file, too
-        f = open(file_path_fig["file_path_fig"], "wb")
-        pkl.dump(fig, f)
-        f.close()
+        with open(file_path_fig["file_path_fig"], "wb") as f:
+            pkl.dump(fig, f)
         return jsonify({"status": "success", "msg": ""}), 200
+
+
+def does_figure_backup_exist(id_result):
+    """Checks whether a result backup exists for the specified result."""
+    db = get_db()
+    return db.execute("SELECT COUNT(*) FROM original_figures WHERE id_result = ?", (id_result,)).fetchone()[0] > 0
+
+
+def backup_figure(id_result):
+    """Create a backup of the original figure produced by a pipeline."""
+    res_info, backup_path = get_results_backup_info(id_result)
+    if not os.path.exists(backup_path):
+        os.makedirs(backup_path)
+    backup_filepath = join(backup_path, os.path.basename(res_info["file_path"]))
+    backup_figure_filepath = join(backup_path, os.path.basename(res_info["file_path_fig"]))
+    shutil.copy(res_info["file_path"], backup_filepath)
+    shutil.copy(res_info["file_path_fig"], backup_figure_filepath)
+
+    db = get_db()
+    db.execute("INSERT INTO original_figures (id_result, original_filepath, original_figure_filepath, backup_filepath, backup_figure_filepath) "
+               "VALUES (?,?,?,?,?)", (id_result, res_info["file_path"], res_info["file_path_fig"], backup_filepath, backup_figure_filepath))
+    db.commit()
+    return
+
+
+def restore_figure(id_result):
+    """Restore the original figure produced by a pipeline."""
+    db = get_db()
+    finfo = db.execute("SELECT original_filepath, original_figure_filepath, backup_filepath, backup_figure_filepath FROM original_figures WHERE id_result = ?", (id_result,)).fetchone()
+    shutil.copy(finfo["backup_filepath"], finfo["original_filepath"])
+    shutil.copy(finfo["backup_figure_filepath"], finfo["original_figure_filepath"])
+    return
+
+
+def get_results_backup_info(id_result):
+    db = get_db()
+    res_info = db.execute("SELECT R.id_project, R.id_analysis, R.id_job, R.file_path, RF.file_path_fig "
+                          "FROM results AS R INNER JOIN results_figures AS RF ON RF.id_result = R.id_result "
+                          "WHERE R.id_result = ?", (id_result,)).fetchone()
+    backup_path = current_app.config["ORIGINAL_FIGURES_DIRECTORY"].format(id_project=res_info["id_project"],
+                                                                          id_analysis=res_info["id_analysis"],
+                                                                          id_job=res_info["id_job"])
+    return res_info, backup_path
+
 
 def update_property(ax, prop, value):
     if value is None:
