@@ -159,6 +159,12 @@ def check_analysis_published(id_analysis: str) -> bool:
     return any([a["status"] == "public" for a in analysis_info])
 
 
+def check_analysis_is_default(id_analysis: str) -> bool:
+    """Checks whether the analysis is one of the default analyses."""
+    db = get_db()
+    return db.execute("SELECT COUNT(*) FROM default_analysis WHERE id_analysis = ?", (id_analysis,)).fetchone()[0] > 0
+
+
 def check_data_published(id_data: str) -> bool:
     """Checks whether the data has been made publicly available."""
     db = get_db()

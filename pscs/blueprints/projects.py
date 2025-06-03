@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename, escape
 import email_validator
 from email_validator import EmailNotValidError
 from pscs.auth import login_required, is_logged_in
-from pscs.db import get_db, check_user_permission, check_analysis_published, get_default_analysis
+from pscs.db import get_db, check_user_permission, check_analysis_published, get_default_analysis, check_analysis_is_default
 from pscs.pscs import delete_data, get_unique_value_for_field, add_user_to_project
 from pscs.transfers.fetching import read_logs
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -1781,10 +1781,11 @@ def import_pipeline(id_project):
     if request.method == "POST":
         # Get pipeline ID from the form
         id_analysis = request.form["id_analysis"]
-        if check_analysis_published(id_analysis=id_analysis) or \
-            check_user_permission(permission_name="analysis_read",
-                                 permission_value=1,
-                                 id_project=id_project):
+        if check_analysis_is_default(id_analysis) or \
+                check_analysis_published(id_analysis=id_analysis) or \
+                check_user_permission(permission_name="analysis_read",
+                                      permission_value=1,
+                                      id_project=id_project):
             copy_pipeline(id_analysis, id_project_destination=id_project)
             flash("Pipeline imported.")
         else:
