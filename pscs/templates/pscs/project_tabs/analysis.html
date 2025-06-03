@@ -39,7 +39,7 @@
 <button onclick="executePipeline('analysis');" id="buttonRun" disabled="disabled">Run</button>
 
 <p title="These are analyses that have been implemented to work with minimal assumptions.">Default Analyses</p>
-<select name="default_analysis" id="default_analysis" autocomplete="off" onchange="parseAndCreateTable(this, buttonRunId='buttonRunDefault');">
+<select name="default_analysis" id="default_analysis" autocomplete="off" onchange="parseAndCreateTable(this, buttonRunId='buttonRunDefault'); document.getElementById('buttonImportDefault').style.display = 'inline-block';">
     <option value="default" selected disabled>Select default analysis pipeline...</option>
     {%  for a in default_analysis %}
         <option value="{{ a['id_analysis']}}">{{ a["analysis_name"]}}</option>
