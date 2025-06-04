@@ -58,7 +58,7 @@ def request_publication(id_publication):
 
 
 @bp.route("/<id_publication>/file_request", methods=["POST"])
-@limiter.limit("1/minute")
+@limiter.limit("3/minute")
 def file_request(id_publication):
     if request.method == "POST":
         # First check that the user is allowed to download these
@@ -68,6 +68,35 @@ def file_request(id_publication):
         for id_data in req_files:
             # Check if data is public
             data_info = get_data_info(db, id_publication, id_data)
+            is_public = data_info["status"] == "public"
+            is_peer = data_info["status"] == "peer review" and is_peer_allowed(db, id_publication)
+            if is_public or is_peer:
+                file_info.append({"file_path": data_info["file_path"], "file_name": data_info["file_name"]})
+            else:
+                return jsonify({"success": 0, "message": "You do not have permission to access the requested files."}), 403
+        else:
+            # Get file paths of each file; zip into archive, send to user
+            try:
+                # Get project name
+                zip_name = zip_files(file_info)
+                return send_file(zip_name, as_attachment=True, download_name=f"data_{id_publication}.zip",
+                                 mimetype="application/zip")
+            finally:
+                os.remove(zip_name)
+    return jsonify({"success": 0, "message": "Unable to send file."})
+
+
+@bp.route("/<id_publication>/file_request_original", methods=["POST"])
+@limiter.limit("3/minute")
+def file_request_original(id_publication):
+    if request.method == "POST":
+        # First check that the user is allowed to download these
+        req_files = request.json
+        db = get_db()
+        file_info = []
+        for id_data in req_files:
+            # Check if data is public
+            data_info = get_data_original_info(db, id_publication, id_data)
             is_public = data_info["status"] == "public"
             is_peer = data_info["status"] == "peer review" and is_peer_allowed(db, id_publication)
             if is_public or is_peer:
@@ -123,6 +152,12 @@ def get_data_info(db, id_publication, id_data):
                       "INNER JOIN data AS D ON PD.id_data = D.id_data "
                       "WHERE PD.id_data = ? AND P.id_publication = ?", (id_data, id_publication)).fetchone()
 
+def get_data_original_info(db, id_publication, id_data):
+    return db.execute("SELECT P.status, D.file_path, D.file_name FROM publications AS P "
+                      "INNER JOIN publications_data_original AS PD ON P.id_publication = PD.id_publication "
+                      "INNER JOIN data_original AS D ON PD.id_data_original = D.id_data "
+                      "WHERE PD.id_data_original = ? AND P.id_publication = ?", (id_data, id_publication)).fetchone()
+
 
 def display_publication(id_publication):
     """Prepares and returns the requested publication. This function assumes that the user is allowed to access the
@@ -140,6 +175,7 @@ def display_publication(id_publication):
         publication_summary["affiliations"][author["author_position"]] = author["affiliations"]
 
     publication_summary["data"] = _get_publication_data(db, id_publication)
+    publication_summary["data_original"] = _get_publication_data_original(db, id_publication)
     publication_summary["analysis"] = _get_publication_analysis(db, id_publication)
     results = _get_publication_results(db, id_publication)
     publication_summary["results"] = dd(list)
@@ -253,6 +289,15 @@ def _get_publication_data(db, id_publication) -> list[dict]:
         return []
     return [dict(d) for d in data]
 
+def _get_publication_data_original(db, id_publication) -> list[dict]:
+    """Gets the id, filepath, data type, and file name for the original data associated with the publication."""
+    data = db.execute("SELECT D.id_data, D.file_path, D.file_name "
+                      "FROM data_original as D INNER JOIN publications_data_original as PD ON D.id_data = PD.id_data_original "
+                      "WHERE PD.id_publication = ?", (id_publication,)).fetchall()
+    print([dict(d) for d in data])
+    if data is None:
+        return []
+    return [dict(d) for d in data]
 
 def _get_publication_analysis(db, id_publication) -> list[dict]:
     """Gets the name and ID of analysis"""

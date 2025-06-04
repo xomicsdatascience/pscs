@@ -37,3 +37,13 @@
     {% endfor %}
 </select>
 <button onclick="executePipeline('analysis');" id="buttonRun" disabled="disabled">Run</button>
+
+<p title="These are analyses that have been implemented to work with minimal assumptions.">Default Analyses</p>
+<select name="default_analysis" id="default_analysis" autocomplete="off" onchange="parseAndCreateTable(this, buttonRunId='buttonRunDefault'); document.getElementById('buttonImportDefault').disabled = false;">
+    <option value="default" selected disabled>Select default analysis pipeline...</option>
+    {%  for a in default_analysis %}
+        <option value="{{ a['id_analysis']}}">{{ a["analysis_name"]}}</option>
+    {% endfor %}
+</select>
+<button onclick="executePipeline('default_analysis');" id="buttonRunDefault" disabled="disabled">Run</button>
+<button onclick="importDefaultPipeline('default_analysis');" id="buttonImportDefault" disabled="disabled">Import to current project</button>

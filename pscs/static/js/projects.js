@@ -102,6 +102,19 @@ async function executePipeline(elId) {
     unpauseRun("buttonRun")
 }
 
+async function importDefaultPipeline(selectId){
+    const selectEl = document.getElementById(selectId);
+    let formData = new FormData();
+    formData.append('id_analysis', selectEl.value);
+    await fetch(window.location.href + "/pipeline_import", {
+        method: "POST",
+        body: formData
+    })
+        .then(response => {
+            window.location.href = response.url
+        });
+}
+
 let pauseStartCursor = null;
 
 function pauseRun(elementIdToDisable) {

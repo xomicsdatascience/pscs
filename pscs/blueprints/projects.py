@@ -12,7 +12,7 @@ from werkzeug.utils import secure_filename, escape
 import email_validator
 from email_validator import EmailNotValidError
 from pscs.auth import login_required, is_logged_in
-from pscs.db import get_db, check_user_permission, check_analysis_published, get_default_analysis
+from pscs.db import get_db, check_user_permission, check_analysis_published, get_default_analysis, check_analysis_is_default
 from pscs.pscs import delete_data, get_unique_value_for_field, add_user_to_project
 from pscs.transfers.fetching import read_logs
 from werkzeug.security import check_password_hash, generate_password_hash
@@ -967,6 +967,13 @@ def _get_data(id_project) -> list:
                       "FROM data "
                       "WHERE id_project = ?", (id_project,)).fetchall()
 
+def _get_original_data(id_project) -> list:
+    """Returns the list of original data that has been uploaded to the project."""
+    db = get_db()
+    return db.execute("SELECT id_data, file_name, data_uploaded_time "
+                      "FROM data_original "
+                      "WHERE id_project = ?", (id_project,)).fetchall()
+
 
 def _get_analyses(id_project):
     """Gets the analyses and results associated with each. If there are any analyses that were not run, return them
@@ -1044,6 +1051,11 @@ def prepare_publication(id_project: str,
     # Move data into publication
     for id_data in publication_info["data"]:
         db.execute("INSERT INTO publications_data (id_publication, id_data) VALUES (?,?)", (id_publication, id_data))
+        # Get associated original data and insert into publications
+        id_data_original = db.execute("SELECT id_data FROM data_original WHERE id_data_h5ad = ?", (id_data,)).fetchone()
+        if id_data_original is not None:
+            db.execute("INSERT INTO publications_data_original (id_publication, id_data_original) VALUES (?,?)", (id_publication, id_data_original["id_data"]))
+
     # Move analysis into publication
     for id_analysis in publication_info["analyses"]:
         db.execute("INSERT INTO publications_analysis (id_publication, id_analysis) VALUES (?,?)", (id_publication, id_analysis))
@@ -1781,10 +1793,11 @@ def import_pipeline(id_project):
     if request.method == "POST":
         # Get pipeline ID from the form
         id_analysis = request.form["id_analysis"]
-        if check_analysis_published(id_analysis=id_analysis) or \
-            check_user_permission(permission_name="analysis_read",
-                                 permission_value=1,
-                                 id_project=id_project):
+        if check_analysis_is_default(id_analysis) or \
+                check_analysis_published(id_analysis=id_analysis) or \
+                check_user_permission(permission_name="analysis_read",
+                                      permission_value=1,
+                                      id_project=id_project):
             copy_pipeline(id_analysis, id_project_destination=id_project)
             flash("Pipeline imported.")
         else:

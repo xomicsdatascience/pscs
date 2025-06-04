@@ -75,7 +75,8 @@
 
 {% if project_summary["data"] | length > 0 %}
 <br>
-<h3>Project Data</h3>
+<h3>Project Data - Converted</h3>
+    <p>This data was converted from the original into .h5ad files.</p>
 <table>
     <tr>
         <th>File name</th>
@@ -90,6 +91,24 @@
 </table>
 <button id="buttonDownloadData" onclick="requestCheckedFiles('downloadCheck')">Download</button>
 <p style="display: none; color: #ff2222" id="rateWarning">Too many server requests; please allow some time to pass before requesting more data.</p>
+{% endif %}
+
+{% if project_summary["data_original"] | length > 0 %}
+<br>
+<h3>Project Data - Original</h3>
+<table>
+<tr>
+    <th>File name</th>
+    <th>Download</th>
+</tr>
+{% for pd in project_summary["data_original"] %}
+<tr>
+    <td>{{ pd["file_name"] }}</td>
+    <td><input class="originalDownloadCheck" id="{{ pd['id_data'] }}" type="checkbox"></td>
+</tr>
+{% endfor %}
+</table>
+    <button id="buttonDownloadOriginalData" onclick="requestOriginalCheckedFiles('originalDownloadCheck')">Download</button>
 {% endif %}
 
 <br>
