@@ -1052,8 +1052,9 @@ def prepare_publication(id_project: str,
     for id_data in publication_info["data"]:
         db.execute("INSERT INTO publications_data (id_publication, id_data) VALUES (?,?)", (id_publication, id_data))
         # Get associated original data and insert into publications
-        id_data_original = db.execute("SELECT id_data FROM data_original WHERE id_data_h5ad = ?", (id_data,)).fetchone()["id_data"]
-        db.execute("INSERT INTO publications_data_original (id_publication, id_data_original) VALUES (?,?)", (id_publication, id_data_original))
+        id_data_original = db.execute("SELECT id_data FROM data_original WHERE id_data_h5ad = ?", (id_data,)).fetchone()
+        if id_data_original is not None:
+            db.execute("INSERT INTO publications_data_original (id_publication, id_data_original) VALUES (?,?)", (id_publication, id_data_original["id_data"]))
 
     # Move analysis into publication
     for id_analysis in publication_info["analyses"]:
