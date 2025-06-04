@@ -2186,7 +2186,7 @@ async function importPipeline(analysisElemId, projectListElemID){
     }
 }
 
-async function requestCheckedFiles(checkClass){
+async function requestCheckedFiles(checkClass, request_dest = "/file_request"){
     let checks = document.getElementsByClassName(checkClass);
     let requestedFiles = [];
     for(let i = 0; i < checks.length; i++) {
@@ -2194,13 +2194,19 @@ async function requestCheckedFiles(checkClass){
             requestedFiles.push(checks[i].id);
         }
     }
-    await requestFiles(requestedFiles);
+    await requestFiles(requestedFiles, request_dest);
 }
 
-async function requestFiles(requestedFiles) {
+async function requestOriginalCheckedFiles(checkClass){
+    console.log("requesting original files");
+    return await requestCheckedFiles(checkClass, "/file_request_original");
+}
+
+async function requestFiles(requestedFiles, request_dest = "/file_request") {
     // For elements of the class `checkClass` that have been checked, gets their ID and sends a request to the server
     // to download it.
-    await fetch(window.location.pathname + "/file_request", {
+    console.log("requesting from " + request_dest);
+    await fetch(window.location.pathname + request_dest, {
                                             method: "POST",
                                             headers: {
                                                 "Accept": "application/json",

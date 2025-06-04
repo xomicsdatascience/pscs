@@ -127,6 +127,22 @@ CREATE TABLE data (
     FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE
 );
 
+CREATE TABLE data_original (
+    id_data TEXT UNIQUE NOT NULL PRIMARY KEY,
+    id_data_h5ad TEXT UNIQUE NOT NULL,
+    id_user TEXT NOT NULL,
+    id_project TEXT NOT NULL,
+    file_path TEXT NOT NULL,
+    data_type TEXT NOT NULL,
+    data_uploaded_time TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+    is_published BIT DEFAULT 0,
+    is_peer_review BIT DEFAULT 0,
+    file_name VARCHAR(100) NOT NULL DEFAULT 'data',
+    FOREIGN KEY (id_user) REFERENCES users_auth(id_user) ON DELETE CASCADE,
+    FOREIGN KEY (id_data_h5ad) REFERENCES data(id_data) ON DELETE CASCADE,
+    FOREIGN KEY (id_project) REFERENCES projects(id_project) ON DELETE CASCADE
+);
+
 CREATE TABLE data_deletion (
   id_data TEXT NOT NULL PRIMARY KEY,
   id_user TEXT NOT NULL,  -- owner/uploader
@@ -485,6 +501,12 @@ CREATE TABLE publications_data(
     id_data VARCHAR(36) NOT NULL,
     FOREIGN KEY (id_publication) REFERENCES publications(id_publication),
     FOREIGN KEY (id_data) REFERENCES data(id_data));
+
+CREATE TABLE publications_data_original(
+    id_publication VARCHAR(36) NOT NULL,
+    id_data_original VARCHAR(36) NOT NULL,
+    FOREIGN KEY (id_publication) REFERENCES publications(id_publication),
+    FOREIGN KEY (id_data_original) REFERENCES data_original(id_data));
 
 CREATE TABLE publications_results(
     id_publication VARCHAR(36) NOT NULL,

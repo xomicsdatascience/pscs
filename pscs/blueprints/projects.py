@@ -967,6 +967,13 @@ def _get_data(id_project) -> list:
                       "FROM data "
                       "WHERE id_project = ?", (id_project,)).fetchall()
 
+def _get_original_data(id_project) -> list:
+    """Returns the list of original data that has been uploaded to the project."""
+    db = get_db()
+    return db.execute("SELECT id_data, file_name, data_uploaded_time "
+                      "FROM data_original "
+                      "WHERE id_project = ?", (id_project,)).fetchall()
+
 
 def _get_analyses(id_project):
     """Gets the analyses and results associated with each. If there are any analyses that were not run, return them
@@ -1044,6 +1051,10 @@ def prepare_publication(id_project: str,
     # Move data into publication
     for id_data in publication_info["data"]:
         db.execute("INSERT INTO publications_data (id_publication, id_data) VALUES (?,?)", (id_publication, id_data))
+        # Get associated original data and insert into publications
+        id_data_original = db.execute("SELECT id_data FROM data_original WHERE id_data_h5ad = ?", (id_data,)).fetchone()["id_data"]
+        db.execute("INSERT INTO publications_data_original (id_publication, id_data_original) VALUES (?,?)", (id_publication, id_data_original))
+
     # Move analysis into publication
     for id_analysis in publication_info["analyses"]:
         db.execute("INSERT INTO publications_analysis (id_publication, id_analysis) VALUES (?,?)", (id_publication, id_analysis))
