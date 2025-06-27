@@ -337,7 +337,6 @@ function displayResult(file_path, file_id) {
 }
 
 async function matplotlibMenu(event) {
-    console.log("matplotlibMenu");
     let menu = document.getElementById("matplotlib_menu");
     if (menu) {return}  // no need to do anything
     menu = document.createElement("div");
@@ -380,7 +379,6 @@ async function matplotlibMenu(event) {
     }
 
     function mouseMoveHandler(e){
-        console.log("move");
         menu.style.left = (e.clientX - offsetX) + "px";
         menu.style.top = (e.clientY - offsetY) + "px";
     }
@@ -395,9 +393,7 @@ async function matplotlibMenu(event) {
 
 async function updateFigure(){
     // Updates the displayed figure
-    console.log("updateFigure");
     let formContent = getFormContent("matplotlib_form");
-    console.log("sending: ", formContent);
     await fetch( window.location.href + "/update_figure", {
         method: "POST",
         headers: {

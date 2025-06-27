@@ -9,6 +9,7 @@
 <select id="data_type_selector" autocomplete="off">
     <option id="default" selected disabled>Select uploader...</option>
     <option id="csv_h5ad">CSV -> H5AD</option>
+    <option id="h5ad">H5AD Upload</option>
 </select>
 <div id="uploader">
 </div>
@@ -24,7 +25,6 @@
         fetch(window.location.href + '/' + uploaderId)
             .then(response => response.text())
             .then(data => setUploader(data))
-
         let response = fetch(window.location.href + '/' + uploaderId + '/script')
                             .then(response => response.json())
                             .then(scripts => {

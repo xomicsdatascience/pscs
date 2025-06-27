@@ -2198,14 +2198,12 @@ async function requestCheckedFiles(checkClass, request_dest = "/file_request"){
 }
 
 async function requestOriginalCheckedFiles(checkClass){
-    console.log("requesting original files");
     return await requestCheckedFiles(checkClass, "/file_request_original");
 }
 
 async function requestFiles(requestedFiles, request_dest = "/file_request") {
     // For elements of the class `checkClass` that have been checked, gets their ID and sends a request to the server
     // to download it.
-    console.log("requesting from " + request_dest);
     await fetch(window.location.pathname + request_dest, {
                                             method: "POST",
                                             headers: {
