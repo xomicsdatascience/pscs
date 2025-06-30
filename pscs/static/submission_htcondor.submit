@@ -12,7 +12,7 @@ log = logs/pscs_latest.log
 
 # Request resources
 request_cpus = 2
-request_memory = {mem_requirement_mb) MB
+request_memory = {mem_requirement_mb} MB
 request_disk = 4 GB
 
 # transfer things
