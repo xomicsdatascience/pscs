@@ -201,8 +201,9 @@ def determine_resource(file_info: dict = None,
     duration = np.inf
     selected_resource = None
     for res in eligible_resources:
-        if res["max_duration_seconds"] < duration:
-            duration = res["max_duration_seconds"]
+        est_time = estimate_queue_length(res["name"])
+        if est_time < duration:
+            duration = est_time
             selected_resource = res["name"]
     if selected_resource is not None:
         return selected_resource
