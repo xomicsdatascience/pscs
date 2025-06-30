@@ -11,8 +11,8 @@ output = stdout/{pscs_job_id}.output
 log = logs/pscs_latest.log
 
 # Request resources
-request_cpus = 1
-request_memory = 2 GB
+request_cpus = 2
+request_memory = {mem_requirement_mb) MB
 request_disk = 4 GB
 
 # transfer things

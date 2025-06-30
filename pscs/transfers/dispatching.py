@@ -1,6 +1,11 @@
 # This file contains code for dispatching processing pipelines to different computational resources.
 import sqlite3
 import subprocess
+
+import anndata as ad
+import pandas as pd
+import numpy as np
+
 from pscs.db import get_db, get_unique_value_for_field
 from flask import current_app
 from os.path import join, basename
@@ -16,6 +21,7 @@ def dispatch(pipeline_json: str,
              file_info: dict,
              id_project: str,
              id_analysis: str,
+             mem_requirement_mb: int = None,
              resource: str = 'osp') -> str:
     """
     Collects the relevant files and sends them to the relevant computational resource.
@@ -32,6 +38,8 @@ def dispatch(pipeline_json: str,
         ID of the project for which the analysis is being run.
     id_analysis : str
         ID of the analysis being run.
+    mem_requirement_mb : int
+        Number of MB of memory required.
     resource : str
         Name of the resource that should be used.
     Returns
@@ -76,7 +84,8 @@ def dispatch(pipeline_json: str,
                                                    remote_project_dir=remote_proj_dir,
                                                    output_dir=remote_results,
                                                    id_user=id_user,
-                                                   pscs_job_id=pscs_job_id)
+                                                   pscs_job_id=pscs_job_id,
+                                                   mem_requirement_mb=mem_requirement_mb)
     transfer_file(htcondor_script, remote_proj_dir, resource=resource)
     cmd = f"condor_submit {os.path.join(remote_proj_dir, basename(htcondor_script))}"
     server_response = remote_cmd(cmd)
@@ -167,12 +176,131 @@ def make_local_directories(local_dirs: list):
     return
 
 
-def determine_resource():
-    # check local queue
-    if is_local_queue_too_long():
-        return "osp"
+def determine_resource(file_info: dict = None,
+                       pipeline_json: str = None):
+    remote_resources = current_app.config["REMOTE_COMPUTING"]
+    # convert remote res dict to list; add name
+    remote_resource_list = []
+    for resource_name, resource_info in remote_resources.items():
+        remote_resource_list.append(resource_info.copy())
+        remote_resource_list[-1]["name"] = resource_name[0]
+    sorted_resources = sorted(remote_resource_list, key=lambda x: x["preference"])
+
+    # Estimate job memory requirements
+    mem_requirement = estimate_job_memory_requirement(file_info=file_info,
+                                                      pipeline_json=pipeline_json)
+    mem_requirement = mem_requirement // (2**20)  # convert bytes to MB
+
+    # Check which resources are eligible
+    eligible_resources = []
+    for res in sorted_resources:
+        if res["max_memory_mb"] >= mem_requirement or res["max_memory_mb"] < 0:
+            eligible_resources.append(res)
+
+    # Check duration
+    duration = np.inf
+    selected_resource = None
+    for res in eligible_resources:
+        if res["max_duration_seconds"] < duration:
+            duration = res["max_duration_seconds"]
+            selected_resource = res["name"]
+    if selected_resource is not None:
+        return selected_resource
     else:
-        return "local"
+        # Something has gone wrong; submit to osp anyway
+        return "osp", min(mem_requirement, 20*(2**1024))  # 20GB limit
+
+
+def estimate_job_memory_requirement(file_info: dict, pipeline_json: str):
+    """Estimates the memory requirement for a particular job given the input data and pipeline configuration."""
+    max_mem = estimate_file_max_memory_requirements([f["file_path"] for f in file_info.values()])
+    mult = estimate_pipeline_memory_multiplier(pipeline_json)
+    return max_mem * mult
+
+
+def estimate_file_max_memory_requirements(fpaths: list[str]):
+    """Given a set of files, find the maximum estimated memory requirement across them."""
+    # The value is multiplied by the number of paths; taking the max is conservative
+    max_mem = None
+    for fpath in fpaths:
+        if fpath.endswith(".h5ad"):
+            mem = estimate_h5ad_memory_reqs(fpath)
+        else:
+            mem = os.path.getsize(fpath)  # assumes no compression
+        if max_mem is None:
+            max_mem = mem
+        else:
+            max_mem = max(max_mem, mem)
+    return max_mem
+
+
+def estimate_pipeline_memory_multiplier(pipeline_json: str):
+    """
+    Estimates the memory multiplier for a pipeline. This estimate is aggressive and assumes that pipeline branches
+    are never cleared. It also does not take into account that different paths may use different input files.
+    Parameters
+    ----------
+    pipeline_json : str
+        Path to the pipeline JSON file.
+    Returns
+    -------
+    float
+        Multiplier for memory requirements.
+    """
+    # Get number of splitting paths
+    # NOTE: A better way would be to execute all nodes down to an output node, clear the object, then
+    # repeat for all paths. The multiplier would be then be the maximum number of inputs of any node instead.
+    mult = 0
+    with open(pipeline_json, "r") as f:
+        pjson = json.load(f)
+        # Get number of inputs first
+        for n in pjson["nodes"]:
+            if n["num_inputs"] == 0:
+                mult += 1
+        for n in pjson["nodes"]:
+            if n["num_inputs"] == 0:
+                continue  # skip output nodes
+            mult *= n["num_outputs"]
+    return mult
+
+def estimate_h5ad_memory_reqs(h5ad_filepath):
+    """Estimates the memory requirements for loading an h5ad file into memory."""
+    adata = ad.read_h5ad(h5ad_filepath, backed="r")
+    adata_groups = ["X", "obs", "var", "obsm", "varm", "uns", "obsp", "varp"]
+    adata_dict = adata.__dict__
+    mem_req = 0  # in bytes
+    for group in adata_groups:
+        if group in adata_dict or "_"+group in adata_dict:
+            gdata = adata_dict[group]
+            try:
+                if group == "X":
+                    mem_req += np.prod(gdata.shape) * gdata.dtype.itemsize
+                # Check if df
+                elif isinstance(gdata, pd.DataFrame):
+                    mem_req += gdata.memory_usage(deep=False).sum()
+                elif isinstance(gdata, ad._core.aligned_mapping.AxisArrays):
+                    for k in gdata.keys():
+                        mem_req += np.prod(gdata[k].shape) * gdata[k].dtype.itemsize
+            except AttributeError:
+                continue  # errors don't matter much here; it'll just result in a worse estimate
+    return mem_req
+
+
+def estimate_queue_length(resource):
+    if resource == "local":
+        return local_queue_length()
+    elif resource == "osg":
+        return 15*60  # roughly 15-minute jobs
+
+
+def local_queue_length():
+    """Estimates the length of the local queue and returns it in seconds."""
+    # We would need a lot of performance info for each node in a pipeline to get decent estimates
+    # We'll instead get the number of jobs and assume ~60s per job.
+    db = get_db()
+    num_jobs = db.execute("SELECT COUNT(*) AS num_jobs FROM submitted_jobs "
+                          "WHERE submitted_resource = 'local' AND is_complete = 0").fetchone()["num_jobs"]
+    return 60*num_jobs
 
 
 def is_local_queue_too_long():
@@ -392,7 +520,7 @@ def generate_htcondor_submission(pipeline_json: str,
                                  output_dir: str,
                                  id_user: str,
                                  pscs_job_id: str,
-                                 ) -> str:
+                                 mem_requirement_mb: int = 5000) -> str:
     """
     Creates a .submit script for resources using HTCondor.
     Parameters
@@ -410,6 +538,8 @@ def generate_htcondor_submission(pipeline_json: str,
         Submitter's id
     pscs_job_id : str
         Job id given by PSCS
+    mem_requirement_mb : int
+        Amount of memory to request for the job in MB. Default: 5000.
     Returns
     -------
     str
@@ -447,8 +577,8 @@ def generate_htcondor_submission(pipeline_json: str,
                                              pscs_job_id=pscs_job_id,
                                              osf_user_email=current_app.config["REMOTE_COMPUTING_MISC"]["osp"]["NOTIFICATION_EMAIL"],
                                              osf_project_name=current_app.config["REMOTE_COMPUTING_MISC"]["osp"]["PROJECT_NAME"],
-                                             sif_path=current_app.config["REMOTE_COMPUTING_MISC"]["osp"]["SIF_PATH"]
-                                             )
+                                             sif_path=current_app.config["REMOTE_COMPUTING_MISC"]["osp"]["SIF_PATH"],
+                                             mem_requirement_mb=mem_requirement_mb)
     ht_file = os.fdopen(ht_fd, 'w')
     ht_file.write(htcondor_proj)
     ht_file.close()
