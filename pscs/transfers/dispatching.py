@@ -127,7 +127,6 @@ def local_dispatch(pipeline_json: str,
     results_dir = current_app.config["RESULTS_DIRECTORY"].format(id_project=id_project, id_analysis=id_analysis, id_job=pscs_job_id)
     dirs_to_make.append(results_dir)
     logs_dir = current_app.config["LOG_DIRECTORY"].format(id_project=id_project, id_analysis=id_analysis, id_job=pscs_job_id)
-    print(f"Logs dir: {logs_dir}")
     dirs_to_make.append(logs_dir)
     tags = db.execute("SELECT interactive_tag FROM analysis_interactive_tags").fetchall()
     tags = [tag["interactive_tag"] for tag in tags]
@@ -140,7 +139,6 @@ def local_dispatch(pipeline_json: str,
     f = open(f"{results_dir}/pscs-filepaths-{pscs_job_id}.json", 'w')
     json.dump(file_paths, f)
     f.close()
-    print(f"\n\nFile info: {proj_dir}/pscs-filepaths-{pscs_job_id}.json\n\n")
 
     db.execute("INSERT INTO submitted_jobs "
                "(id_job, submitted_resource, resource_job_id, id_user, id_project, id_analysis, server_response, remote_results_directory) "
@@ -183,9 +181,8 @@ def determine_resource(file_info: dict = None,
     remote_resource_list = []
     for resource_name, resource_info in remote_resources.items():
         remote_resource_list.append(resource_info.copy())
-        remote_resource_list[-1]["name"] = resource_name[0]
+        remote_resource_list[-1]["name"] = resource_name
     sorted_resources = sorted(remote_resource_list, key=lambda x: x["preference"])
-
     # Estimate job memory requirements
     mem_requirement = estimate_job_memory_requirement(file_info=file_info,
                                                       pipeline_json=pipeline_json)
@@ -262,7 +259,7 @@ def estimate_pipeline_memory_multiplier(pipeline_json: str):
             if n["num_inputs"] == 0:
                 mult += 1
         for n in pjson["nodes"]:
-            if n["num_inputs"] == 0:
+            if n["num_outputs"] == 0:
                 continue  # skip output nodes
             mult *= n["num_outputs"]
     return mult
@@ -278,8 +275,11 @@ def estimate_h5ad_memory_reqs(h5ad_filepath):
         if group in adata_dict:
             gdata = adata_dict[group]
             try:
-                if group == "X":
-                    mem_req += np.prod(gdata.shape) * gdata.dtype.itemsize
+                if group == "X" or group == "_X":
+                    if gdata is not None:
+                        mem_req += np.prod(gdata.shape) * gdata.dtype.itemsize
+                    else:
+                        mem_req += np.prod(adata.shape) * 8  # assume float64
                 # Check if df
                 elif isinstance(gdata, pd.DataFrame):
                     mem_req += gdata.memory_usage(deep=False).sum()

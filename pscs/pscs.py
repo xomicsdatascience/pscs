@@ -405,7 +405,8 @@ def run_analysis():
                                    file_info=file_info,
                                    id_project=id_project,
                                    id_analysis=id_analysis,
-                                   resource=resource)
+                                   resource=resource,
+                                   mem_requirement_mb=mem_req)
         elif resource == "local":
             pscs_job_id = local_dispatch(pipeline_json=pipeline_json,
                                          id_user=g.user['id_user'],
