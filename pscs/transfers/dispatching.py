@@ -232,6 +232,9 @@ def estimate_file_max_memory_requirements(fpaths: list[str]):
             max_mem = mem
         else:
             max_mem = max(max_mem, mem)
+    if max_mem is None:
+        print("Unable to estimate memory requirements.")
+        return 5000
     return max_mem
 
 
@@ -302,6 +305,8 @@ def local_queue_length():
     db = get_db()
     num_jobs = db.execute("SELECT COUNT(*) AS num_jobs FROM submitted_jobs "
                           "WHERE submitted_resource = 'local' AND is_complete = 0").fetchone()["num_jobs"]
+    if num_jobs is None:
+        return 0
     return 60*num_jobs
 
 
