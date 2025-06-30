@@ -294,8 +294,10 @@ def estimate_h5ad_memory_reqs(h5ad_filepath):
 def estimate_queue_length(resource):
     if resource == "local":
         return local_queue_length()
-    elif resource == "osg":
+    elif resource == "osp":
         return 15*60  # roughly 15-minute jobs
+    else:
+        return np.inf
 
 
 def local_queue_length():
