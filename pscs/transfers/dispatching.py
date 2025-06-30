@@ -267,10 +267,11 @@ def estimate_h5ad_memory_reqs(h5ad_filepath):
     """Estimates the memory requirements for loading an h5ad file into memory."""
     adata = ad.read_h5ad(h5ad_filepath, backed="r")
     adata_groups = ["X", "obs", "var", "obsm", "varm", "uns", "obsp", "varp"]
+    adata_groups.extend(["_" + k for k in adata_groups])
     adata_dict = adata.__dict__
     mem_req = 0  # in bytes
     for group in adata_groups:
-        if group in adata_dict or "_"+group in adata_dict:
+        if group in adata_dict:
             gdata = adata_dict[group]
             try:
                 if group == "X":
