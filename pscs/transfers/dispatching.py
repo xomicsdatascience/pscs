@@ -206,7 +206,7 @@ def determine_resource(file_info: dict = None,
             duration = est_time
             selected_resource = res["name"]
     if selected_resource is not None:
-        return selected_resource
+        return selected_resource, mem_requirement
     else:
         # Something has gone wrong; submit to osp anyway
         return "osp", min(mem_requirement, 20*(2**1024))  # 20GB limit
@@ -234,7 +234,7 @@ def estimate_file_max_memory_requirements(fpaths: list[str]):
             max_mem = max(max_mem, mem)
     if max_mem is None:
         print("Unable to estimate memory requirements.")
-        return 5000
+        return 4000
     return max_mem
 
 
