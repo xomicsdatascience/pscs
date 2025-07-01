@@ -15,3 +15,11 @@ function h5adListener(event) {
         }
     }
 }
+
+
+document.getElementById("form").addEventListener("submit", function (event) {
+    document.body.style.cursor = "wait";
+    event.target.addEventListener("submit", function () {
+        document.body.style.cursor = "default";
+    }, {once: true});
+});
