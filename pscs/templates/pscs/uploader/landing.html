@@ -5,6 +5,13 @@
 {% endblock %}
 
 {% block content %}
+
+    {% if g.user["is_temp_user"] %}
+        <p style="font-size: 16;">Any data that is uploaded to PSCS must not contain <a href="https://www.dhcs.ca.gov/dataandstats/data/Pages/ListofHIPAAIdentifiers.aspx">Personal Health Information</a>.</p>
+        <p style="font-size: 16; font-weight: bold;">Additionally, by uploading data to the PSCS you agree to the <a href="/static/Data_Use_Agreement.txt">Data Use Agreement</a>.</p>
+        <p style="font-size: 16;">As a temporary user, you will be unable to make your project public, but the data you upload may be distributed to external computing resources to complete pipeline execution.</p>
+        <br>
+    {% endif %}
 <label for="data_type_selector">Select the data uploader to use.</label>
 <select id="data_type_selector" autocomplete="off">
     <option id="default" selected disabled>Select uploader...</option>
