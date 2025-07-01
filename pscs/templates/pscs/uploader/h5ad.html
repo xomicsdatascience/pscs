@@ -1,0 +1,14 @@
+<script src="/static/js/uploader/h5ad.js"></script>
+
+<p>The uploaded data should meet the following requirements:</p>
+<ul>
+    <li>.h5ad file (HDF5 for AnnData)</li>
+</ul>
+
+<form method=post enctype=multipart/form-data action="{{form_url}}">
+    <label for="quantities">H5AD file</label><br>
+    <input id="h5ad" name="h5ad" type="file" accept=".h5ad" style="max-width: 200px;"><br>
+
+    <input type="text" id="file_name" name="file_name" placeholder="<Data name>" style="width: 200px;">
+    <input type="submit" value="Upload">
+</form>

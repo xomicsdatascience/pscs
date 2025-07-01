@@ -42,9 +42,14 @@ def uploader(id_project: str,
                                  permission_value=1,
                                  id_project=id_project):
             # get the uploader
+            url = url_for("projects.uploader.uploader", id_project=id_project, uploader=uploader)
             if uploader == "csv_h5ad":
-                url = url_for("projects.uploader.uploader", id_project=id_project, uploader=uploader)
                 return render_template("pscs/uploader/csv_h5ad.html", form_url=url)
+            elif uploader == "h5ad":
+                return render_template("pscs/uploader/h5ad.html", form_url=url)
+            else:
+                flash("Uploader not found.")
+                redirect(url_for("projects.upload", id_project=id_project))
         else:
             return redirect(url_for("pscs.index"))
     elif request.method == "POST":
@@ -57,9 +62,97 @@ def uploader(id_project: str,
                 flash("Data uploaded.")
                 # except Exception as e:
                 #     flash("There was a problem with the data upload.")
+            elif uploader == "h5ad":
+                process_h5ad(request, id_project)
+                flash("Data uploaded.")
             return redirect(url_for("projects.project", id_project=id_project))
         else:
             return redirect(url_for("projects.project", id_project=id_project))
+
+
+def extract_h5ad(req):
+    """
+    Given an HTML post request, returns
+    Parameters
+    ----------
+    req : Flask.request
+        HTML POST request sent by user.
+
+    Returns
+    -------
+    flask.FileStorage
+        Stream of the uploaded file; used for handling the incoming data.
+    str
+        Secure name of the uploaded file.
+    """
+    if req.form["file_name"] is None or len(req.form["file_name"]) == 0:
+        fname = process_filename(req.files["h5ad"].filename)
+    else:
+        fname = process_filename(req.form["file_name"])
+    return req.files["h5ad"].stream, fname
+
+
+def process_h5ad(req, id_project: str):
+    """
+    Processes the request assuming that the uploaded file is an .h5ad file and registers it into the database.
+    Parameters
+    ----------
+    req : Flask.request
+        HTML POST request sent by user.
+    id_project : str
+        ID of the project to which the data should be uploaded.
+
+    Returns
+    -------
+    None
+    """
+    h5ad_file_stream, h5ad_file_name = extract_h5ad(req)
+    # No need to load data; just need to write it directly to disk.
+    db = get_db()
+
+    id_user = session["id_user"]
+    id_data = get_unique_value_for_field(db, "id_data", "data")
+    out_path = join(current_app.config["DATA_DIRECTORY"].format(id_project=id_project), id_data + ".h5ad")
+    # Write out to datapath
+    with open(out_path, "wb") as f:
+        while True:
+            chunk = h5ad_file_stream.read(16384)  # 16 kB read
+            if not chunk:
+                break
+            f.write(chunk)
+    file_hash = calc_hash_of_file(out_path)
+    db.execute("INSERT INTO data (id_data, id_user, id_project, file_path, data_type, file_hash, file_name) "
+               "VALUES (?,?,?,?,?,?,?)",
+               (id_data, id_user, id_project, out_path, "h5ad", file_hash, h5ad_file_name))
+    num_files = len(db.execute("SELECT id_data FROM data WHERE id_project = ?", (id_project,)).fetchall())
+    db.execute(f'UPDATE projects SET num_files = {num_files} WHERE id_project = ?', (id_project,))
+
+    # Don't need to make copy for original data; instead, place symlink in directory
+    # (could do hardlink, but these might be on different filesystems in the future so meh)
+    out_path_original_data = current_app.config["ORIGINAL_DATA_DIRECTORY"].format(id_project=id_project)
+    os.makedirs(out_path_original_data, exist_ok=True)  # move to project creation
+    id_data_original = get_unique_value_for_field(db, "id_data", "data_original")
+
+    symlink_path = join(out_path_original_data, id_data_original)
+    os.symlink(out_path, symlink_path)  # Create symlink pointing to out_path with name id_data_original.
+
+    # Register - the fetcher is supposed to follow symlinks; check that it's doing that first
+    db.execute(
+        "INSERT INTO data_original (id_data, id_data_h5ad, id_user, id_project, file_path, data_type, file_name) "
+        "VALUES (?,?,?,?,?,?,?)",
+        (id_data_original, id_data, id_user, id_project, symlink_path, "h5ad", h5ad_file_name))
+    db.commit()
+
+    return
+
+
+def process_filename(fname: str) -> str:
+    """Processes uploaded filenames to be compatible with DB."""
+    fname = secure_filename(fname)
+    ext = os.path.splitext(fname)[1]
+    if len(fname) > current_app.config["MAX_FILENAME_CHARS"]:
+        fname = fname[:current_app.config["MAX_FILENAME_CHARS"] - len(ext)] + os.path.extsep + ext
+    return fname[:current_app.config["MAX_FILENAME_CHARS"]]
 
 
 def process_csv_h5ad(req, id_project: str):
@@ -151,7 +244,6 @@ def extract_csv_h5ad(req) -> (ad.AnnData, dict):
 
     # Load data
     uploaded_csv = {}
-    # data = ad.read_csv(quant.stream, first_column_names=True)
     data_csv = pd.read_csv(quant.stream, index_col=0)   # add variable to first_column_names for data without idx
     uploaded_csv["quantities"] = {"name": secure_filename(quant.filename), "data": data_csv}
     data = ad.AnnData(X=data_csv)
@@ -205,5 +297,9 @@ def uploader_script(id_project: str,
         if uploader == "csv_h5ad":
             scripts = dict()
             scripts["js"] = ["/static/js/uploader/csv_h5ad.js", "/static/js/external/papaparse/papaparse.min.js"]
+            return jsonify(scripts)
+        elif uploader == "h5ad":
+            scripts = dict()
+            scripts["js"] = ["/static/js/uploader/h5ad.js"]
             return jsonify(scripts)
     return

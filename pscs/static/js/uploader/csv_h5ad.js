@@ -118,7 +118,6 @@ function processQuant(results){
 
 function countNonUnique(arr){
     arr.sort()
-    console.log("examining: ", arr);
     let nonUniqueCount = 0;
     for (let idx = 1; idx<arr.length; idx++){
         if(arr[idx] === arr[idx-1] && nonUnique[nonUnique.length-1] !== arr[idx]){

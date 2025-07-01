@@ -398,14 +398,15 @@ def run_analysis():
                 return redirect(url_for("projects.project", id_project=id_project))
 
         # Dispatch to OSP
-        resource = determine_resource()
+        resource, mem_req = determine_resource(file_info=file_info, pipeline_json=pipeline_json)
         if resource != "local":
             pscs_job_id = dispatch(pipeline_json=pipeline_json,
                                    id_user=g.user['id_user'],
                                    file_info=file_info,
                                    id_project=id_project,
                                    id_analysis=id_analysis,
-                                   resource=resource)
+                                   resource=resource,
+                                   mem_requirement_mb=mem_req)
         elif resource == "local":
             pscs_job_id = local_dispatch(pipeline_json=pipeline_json,
                                          id_user=g.user['id_user'],
